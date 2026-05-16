@@ -1,0 +1,264 @@
+Create a production-level advanced profile system for my existing app called “ZoseChat”.
+
+IMPORTANT:
+This project already exists on GitHub and already has:
+
+* its own design system
+* existing colors
+* typography/fonts
+* spacing
+* theme
+* reusable components
+* layout structure
+* animations
+* styling conventions
+* backend architecture
+
+Your job is to DESIGN AND IMPLEMENT the new profile system so it PERFECTLY MATCHES the existing app style and branding.
+
+DO NOT invent a completely different UI style.
+
+Before generating the profile system:
+
+1. Analyze the entire existing project structure
+2. Detect the current:
+
+   * color palette
+   * typography
+   * component patterns
+   * spacing system
+   * card styles
+   * button styles
+   * animation style
+   * shadows
+   * border radius
+   * icons
+   * responsiveness
+3. Reuse existing components wherever possible
+4. Extend the current design system professionally
+5. Make the profile page feel native to the app
+
+The profile should look like it was originally built with the app from day one.
+
+---
+
+# MAIN OBJECTIVE
+
+Build a modern, premium, advanced social + professional profile system for ZoseChat.
+
+The profile must:
+
+* feel futuristic and premium
+* encourage engagement
+* support social networking
+* support professional identity
+* support following and friendships
+* be scalable
+* feel smoother and more advanced than Facebook profiles
+* remain simple and easy to use
+
+---
+
+# PROFILE FEATURES
+
+## Advanced Profile Header
+
+Create:
+
+* cover/banner image
+* profile photo
+* online indicator
+* verification badge
+* display name
+* @username
+* professional title
+* bio
+* location
+* website
+* join date
+* followers count
+* following count
+* friends count
+* mutual friends
+* profile completion progress
+* animated engagement stats
+
+Buttons:
+
+* Follow / Following
+* Add Friend
+* Message
+* Share
+* More menu
+
+All interactions should use smooth existing app animations.
+
+---
+
+# FOLLOW + FRIEND SYSTEM
+
+Implement:
+
+* Follow user
+* Unfollow user
+* Send friend request
+* Accept/reject request
+* Cancel request
+* Unfriend
+* Mutual friends
+* Suggested users
+* Real-time updates
+* Notifications
+
+Backend logic must be scalable and clean.
+
+---
+
+# PROFILE CONTENT TABS
+
+Animated tabs:
+
+* Posts
+* About
+* Friends
+* Photos
+* Videos
+* Portfolio
+* Activity
+* Saved
+* Communities
+* Achievements
+
+Tabs should dynamically load content.
+
+---
+
+# PROFESSIONAL FEATURES
+
+Include:
+
+* Skills
+* Experience
+* Education
+* Certifications
+* Portfolio
+* Featured projects
+* Resume upload
+* Business links
+* Work availability badge
+
+---
+
+# POSTS SYSTEM
+
+Advanced posts:
+
+* Text
+* Images
+* Videos
+* Polls
+* Shared posts
+* Articles
+
+Interactions:
+
+* Like
+* Comment
+* Share
+* Save
+* Repost
+* Emoji reactions
+
+Include:
+
+* infinite scrolling
+* lazy loading
+* optimistic updates
+* analytics
+* trending logic
+
+---
+
+# UI/UX REQUIREMENTS
+
+Follow the EXISTING GitHub project styles exactly:
+
+* existing colors
+* existing typography
+* existing component architecture
+* existing design language
+
+The new profile system should:
+
+* feel native to the app
+* maintain consistency
+* use reusable components
+* use existing Tailwind configs/themes
+* preserve current responsiveness
+
+Add:
+
+* glassmorphism where appropriate
+* premium transitions
+* skeleton loaders
+* smooth hover effects
+* mobile-first responsiveness
+* dark/light mode compatibility
+
+---
+
+# TECHNICAL REQUIREMENTS
+
+Use the same stack already used in the GitHub project.
+
+If missing, integrate:
+
+* React + TypeScript
+* Tailwind
+* Framer Motion
+* Zustand/Redux
+* Node.js
+* Express
+* MongoDB
+* JWT auth
+* Socket.io
+
+Follow the project’s existing architecture and coding style.
+
+---
+
+# BACKEND REQUIREMENTS
+
+Create scalable:
+
+* MongoDB schemas
+* API routes
+* controllers
+* services
+* socket events
+* notification logic
+* relationship models
+
+Include:
+
+* pagination
+* caching
+* optimized queries
+* protected routes
+* validation
+* rate limiting
+
+---
+
+# IMPORTANT IMPLEMENTATION RULES
+
+* Do NOT redesign the whole app
+* Do NOT change the global theme
+* Do NOT introduce conflicting styles
+* Reuse existing UI components first
+* Keep the app visually consistent
+* Extend the current architecture professionally
+
+The final profile system should feel like a premium built-in feature of the current ZoseChat app, not a separately designed module.
+
+Generate production-quality code with clean structure, reusable components, scalable architecture, and professional animations.

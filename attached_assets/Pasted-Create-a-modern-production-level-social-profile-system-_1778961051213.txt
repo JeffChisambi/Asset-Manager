@@ -1,0 +1,311 @@
+Create a modern, production-level social profile system for a messaging and professional networking platform called **“ZoseChat”**.
+
+The design should feel like a combination of:
+
+* Facebook profile system
+* LinkedIn professionalism
+* WhatsApp simplicity
+* and premium UI quality similar to Apple and Notion.
+
+Build this as a FULL ADVANCED PROFILE PAGE SYSTEM with clean architecture and scalable code.
+
+---
+
+# CORE GOAL
+
+The profile must:
+
+* Look highly professional and modern
+* Be easy to understand and easy to use
+* Support social networking
+* Encourage users to follow, connect, and interact
+* Feel premium and trustworthy
+* Be responsive on mobile and desktop
+* Be scalable for future features
+
+---
+
+# TECH STACK
+
+Use:
+
+* React + TypeScript
+* Tailwind CSS
+* Framer Motion animations
+* Node.js backend
+* Express API
+* MongoDB database
+* JWT authentication
+* Socket.io for real-time updates
+* Zustand or Redux for state management
+
+Structure the project professionally using reusable components and folders.
+
+---
+
+# PROFILE FEATURES
+
+## 1. HERO PROFILE HEADER
+
+Create a beautiful top profile section containing:
+
+* Large animated cover photo
+* Circular profile picture with glowing online indicator
+* Verification badge option
+* Full name
+* @username
+* Professional title (e.g. Software Engineer, Entrepreneur)
+* Bio/About section
+* Location
+* Website link
+* Join date
+* Followers count
+* Following count
+* Friends count
+* Mutual friends preview
+* Profile completion progress bar
+* Profile strength indicator
+* Real-time online/offline status
+
+Buttons:
+
+* Follow / Following
+* Add Friend
+* Message
+* Share Profile
+* More Options dropdown
+
+Animations should feel smooth and premium.
+
+---
+
+# FOLLOW + FRIEND SYSTEM
+
+Implement a complete advanced relationship system:
+
+## Follow System
+
+* Follow user
+* Unfollow user
+* Followers list modal
+* Following list modal
+* Suggested people to follow
+* Follow notifications
+* Real-time follower updates
+
+## Friend System
+
+* Send friend request
+* Accept request
+* Reject request
+* Cancel request
+* Remove friend (unfriend)
+* Friend request notifications
+* Mutual friends algorithm
+
+Use proper backend logic and database relationships.
+
+---
+
+# PROFILE TABS
+
+Create animated tabs:
+
+1. Posts
+2. About
+3. Friends
+4. Photos
+5. Videos
+6. Professional Portfolio
+7. Activity
+8. Saved Items
+9. Communities
+10. Achievements
+
+Each tab should load dynamically.
+
+---
+
+# POSTS SYSTEM
+
+Advanced post cards with:
+
+* Text posts
+* Images
+* Videos
+* Polls
+* Shared posts
+* Professional articles
+
+Interactions:
+
+* Like
+* Comment
+* Share
+* Save
+* Repost
+* React with emojis
+
+Include:
+
+* Infinite scrolling
+* Real-time updates
+* Engagement analytics
+* Trending posts
+
+---
+
+# PROFESSIONAL FEATURES
+
+Add premium professional networking features:
+
+* Skills section
+* Experience timeline
+* Education section
+* Certifications
+* Resume/CV upload
+* Portfolio gallery
+* Featured projects
+* Business links
+* Availability for work badge
+* Professional verification system
+
+---
+
+# ADVANCED UI/UX REQUIREMENTS
+
+Design style:
+
+* Minimal but premium
+* Apple-level spacing and polish
+* Soft shadows
+* Glassmorphism effects
+* Smooth hover effects
+* Elegant transitions
+* Rounded corners
+* Dark and light mode
+* Accessibility support
+
+Add:
+
+* Skeleton loading states
+* Lazy loading
+* Optimistic UI updates
+* Responsive layout
+* Mobile-first design
+
+---
+
+# REAL-TIME FEATURES
+
+Implement:
+
+* Live notifications
+* Real-time friend requests
+* Real-time followers updates
+* Typing indicators
+* Presence system
+* Online status updates
+
+Use Socket.io properly.
+
+---
+
+# SECURITY + PERFORMANCE
+
+Include:
+
+* JWT auth
+* Password hashing
+* Protected routes
+* Rate limiting
+* Input validation
+* Secure API structure
+* Optimized queries
+* Pagination
+* Image optimization
+* Caching strategy
+
+---
+
+# DATABASE MODELS
+
+Create scalable MongoDB models for:
+
+* Users
+* Followers
+* Friends
+* Posts
+* Notifications
+* Messages
+* Skills
+* Experience
+* Portfolio
+* Media
+
+Use professional schema design.
+
+---
+
+# ADMIN + MODERATION
+
+Add:
+
+* Report user
+* Block user
+* Privacy settings
+* Content moderation tools
+* Account verification requests
+* Profile visibility settings
+
+---
+
+# DESIGN DETAILS
+
+Color palette:
+
+* Primary: Deep blue
+* Accent: Neon cyan
+* Background: White + dark charcoal
+* Professional gradients
+* Smooth glowing effects
+
+Typography:
+
+* Modern sans-serif
+* Clean hierarchy
+* Excellent readability
+
+---
+
+# OUTPUT REQUIREMENTS
+
+Generate:
+
+1. Full frontend UI
+2. Backend API structure
+3. MongoDB schemas
+4. Responsive components
+5. Authentication flow
+6. Real-time socket implementation
+7. Beautiful animations
+8. Professional folder structure
+9. Sample dummy data
+10. Production-quality reusable code
+
+---
+
+# IMPORTANT
+
+The final product must:
+
+* Feel like a billion-dollar social platform
+* Look more advanced than a normal Facebook profile
+* Be highly interactive
+* Encourage social engagement
+* Be visually stunning
+* Be easy to navigate
+* Be professional enough for business users
+* Be optimized for future scaling
+
+Create the UI with a futuristic premium feel similar to modern Silicon Valley startup products.
