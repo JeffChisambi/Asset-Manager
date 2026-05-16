@@ -1,0 +1,374 @@
+Build a production-level advanced social profile system for my existing app called “ZoseChat” using the EXACT same architecture, styling system, navigation, animations, and coding patterns already used in the app.
+
+The goal is to create a premium Facebook-style profile experience where users can:
+
+* tap someone’s profile picture from chat/posts/comments
+* open that person’s profile
+* follow them
+* friend/unfriend them
+* view their posts/photos/videos
+* interact socially in a modern way
+
+The profile system must feel deeply integrated into the app — NOT like a separate UI.
+
+---
+
+# CORE FEATURE (VERY IMPORTANT)
+
+Implement Facebook-style dynamic profile navigation.
+
+When users click:
+
+* avatar
+* username
+* profile image
+* profile card
+
+from:
+
+* chats
+* posts
+* comments
+* friend lists
+* notifications
+
+the app should dynamically open THAT user’s profile page.
+
+Example:
+router.push(`/profile/${userId}`)
+
+The profile screen must support:
+
+* viewing own profile
+* viewing another user profile
+* dynamic user loading
+* conditional actions depending on ownership
+
+If viewing own profile:
+
+* Edit Profile
+* Share Profile
+* Settings
+
+If viewing another user:
+
+* Follow
+* Add Friend
+* Message
+* Block
+* Report
+
+Use Expo Router dynamic routing properly.
+
+Suggested route:
+app/profile/[userId].tsx
+
+---
+
+# MUST FOLLOW THIS EXISTING TECH STACK EXACTLY
+
+## Framework
+
+* React Native 0.81
+* Expo SDK 54
+* Expo Router v6
+* TypeScript
+
+## Styling
+
+Use ONLY:
+
+* React Native StyleSheet.create
+* existing constants/colors.ts
+* existing useColors() hook
+
+DO NOT use:
+
+* Tailwind
+* NativeWind
+* styled-components
+* external UI kits
+
+The profile UI must match the existing app perfectly.
+
+---
+
+# TYPOGRAPHY
+
+Use ONLY:
+
+* Inter_400Regular
+* Inter_500Medium
+* Inter_600SemiBold
+* Inter_700Bold
+
+Maintain the existing typography hierarchy already used in the app.
+
+---
+
+# COLORS
+
+Use colors ONLY from:
+useColors()
+
+Existing tokens:
+
+* primary (#4A80F0)
+* background
+* foreground
+* muted
+* mutedForeground
+* card
+* border
+
+Never hardcode random colors.
+
+---
+
+# ICONS
+
+Use:
+
+* Ionicons
+* Feather
+* MaterialCommunityIcons
+  from @expo/vector-icons
+
+Use SF Symbols on iOS where appropriate.
+
+---
+
+# SAFE AREA + WEB SUPPORT
+
+Use:
+
+* useSafeAreaInsets()
+
+Apply:
+
+* 67px top padding when Platform.OS === "web"
+
+Ensure support for:
+
+* iOS
+* Android
+* Web
+
+---
+
+# ANIMATIONS
+
+Use:
+
+* react-native-reanimated
+* expo-haptics
+
+Create:
+
+* smooth shared transitions
+* animated tab switching
+* profile header animations
+* follow button animations
+* press scaling
+* smooth opacity transitions
+* spring interactions
+
+Animations should feel premium and native like Facebook + Apple-level polish.
+
+---
+
+# PROFILE HEADER
+
+Build a modern animated profile header including:
+
+* cover photo/banner
+* profile avatar
+* online indicator
+* verification badge
+* full name
+* @username
+* professional title
+* bio
+* location
+* website
+* join date
+* followers count
+* following count
+* friends count
+* mutual friends
+* profile completion indicator
+* profile strength animation
+
+Buttons:
+
+* Follow / Following
+* Add Friend
+* Message
+* Share
+* More menu
+
+All buttons must include:
+
+* haptic feedback
+* animated press states
+* smooth transitions
+
+---
+
+# FOLLOW + FRIEND SYSTEM
+
+Implement frontend architecture for:
+
+* follow user
+* unfollow user
+* send friend request
+* accept request
+* reject request
+* cancel request
+* unfriend
+* mutual friends
+* suggested users
+
+Even though backend does not exist yet:
+
+* structure state professionally
+* prepare for React Query integration
+* use reusable hooks
+* use mock APIs/services
+* architect for future scalability
+
+---
+
+# PROFILE TABS
+
+Create animated tabs:
+
+* Posts
+* About
+* Friends
+* Photos
+* Videos
+* Portfolio
+* Activity
+* Saved
+* Communities
+* Achievements
+
+Requirements:
+
+* lazy rendering
+* smooth transitions
+* optimized scrolling
+* FlatList optimization
+* memory-efficient rendering
+
+---
+
+# POSTS SYSTEM
+
+Create advanced post cards supporting:
+
+* text
+* images
+* videos
+* polls
+* reposts
+* professional articles
+
+Interactions:
+
+* Like
+* Comment
+* Share
+* Save
+* Repost
+* Emoji reactions
+
+Include:
+
+* optimistic UI
+* skeleton loading
+* infinite scroll preparation
+* engagement counters
+* reusable post components
+
+---
+
+# PROFESSIONAL FEATURES
+
+Add:
+
+* Skills section
+* Experience timeline
+* Education
+* Certifications
+* Resume placeholder
+* Featured projects
+* Portfolio gallery
+* Business/social links
+* Availability for work badge
+
+---
+
+# PERFORMANCE REQUIREMENTS
+
+Optimize for:
+
+* minimal re-renders
+* memoized components
+* reusable hooks
+* smooth 60fps scrolling
+* image optimization
+* lazy loading
+* scalable architecture
+
+---
+
+# REQUIRED FILE STRUCTURE
+
+Generate a clean scalable structure like:
+
+app/
+profile/
+[userId].tsx
+
+components/
+profile/
+ProfileHeader.tsx
+ProfileTabs.tsx
+ProfileStats.tsx
+FriendButton.tsx
+FollowButton.tsx
+ProfilePostCard.tsx
+
+hooks/
+profile/
+useProfile.ts
+useFollow.ts
+useFriendship.ts
+
+services/
+profile/
+profile.service.ts
+
+types/
+profile.ts
+
+mock/
+users.ts
+posts.ts
+
+---
+
+# IMPORTANT
+
+The final result should:
+
+* feel more advanced than Facebook profiles
+* feel premium and futuristic
+* still remain simple and intuitive
+* perfectly match the current app’s styling
+* use the existing architecture naturally
+* look like it was built by a world-class Silicon Valley product team
+
+Generate production-quality React Native + Expo Router + TypeScript code that integrates seamlessly into the current ZoseChat application.
