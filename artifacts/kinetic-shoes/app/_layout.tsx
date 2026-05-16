@@ -32,6 +32,14 @@ function RootLayoutNav() {
         name="chat/new-group"
         options={{ headerShown: false, animation: "slide_from_bottom" }}
       />
+      <Stack.Screen
+        name="call/voice"
+        options={{ headerShown: false, animation: "slide_from_bottom", presentation: "fullScreenModal" }}
+      />
+      <Stack.Screen
+        name="call/video"
+        options={{ headerShown: false, animation: "slide_from_bottom", presentation: "fullScreenModal" }}
+      />
     </Stack>
   );
 }

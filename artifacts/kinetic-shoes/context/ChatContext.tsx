@@ -7,6 +7,8 @@ import React, {
   useState,
 } from "react";
 
+export type MessageType = "text" | "voice" | "image" | "file";
+
 export type AppUser = {
   id: string;
   username: string;
@@ -37,9 +39,22 @@ export type Message = {
   id: string;
   conversationId: string;
   senderId: string;
-  text: string;
+  type: MessageType;
+  text?: string;
+  audioUri?: string;
+  audioDuration?: number;
+  imageUri?: string;
+  fileName?: string;
+  fileSize?: number;
+  fileMimeType?: string;
   timestamp: number;
 };
+
+export type MediaPayload =
+  | { type: "text"; text: string }
+  | { type: "voice"; audioUri: string; audioDuration: number }
+  | { type: "image"; imageUri: string }
+  | { type: "file"; fileName: string; fileSize: number; fileMimeType?: string };
 
 export const SEED_USERS: AppUser[] = [
   {
@@ -130,6 +145,7 @@ type ChatContextType = {
   cancelFriendRequest: (requestId: string) => void;
   getOrCreateDirectConversation: (friendId: string) => string;
   sendMessage: (conversationId: string, text: string) => void;
+  sendMediaMessage: (conversationId: string, payload: MediaPayload) => void;
   createGroup: (name: string, memberIds: string[]) => string;
   addGroupMember: (conversationId: string, userId: string) => void;
   removeGroupMember: (conversationId: string, userId: string) => void;
@@ -145,7 +161,7 @@ type ChatContextType = {
 };
 
 const ChatContext = createContext<ChatContextType | null>(null);
-const STORAGE_KEY = "kinetic_chat_v2";
+const STORAGE_KEY = "kinetic_chat_v3";
 
 type PersistedState = {
   currentUser: AppUser | null;
@@ -223,7 +239,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           (r.toId === currentUser.id && r.fromId === toId)
       );
       if (exists) return;
-
       const newReq: FriendRequest = {
         id: genId(),
         fromId: currentUser.id,
@@ -232,7 +247,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         createdAt: Date.now(),
       };
       setFriendRequests((prev) => [...prev, newReq]);
-
       const target = SEED_USERS.find((u) => u.id === toId);
       if (target?.isBot) {
         setTimeout(() => {
@@ -277,7 +291,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           c.memberIds.includes(friendId)
       );
       if (existing) return existing.id;
-
       const newConv: Conversation = {
         id: genId(),
         type: "direct",
@@ -290,49 +303,88 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [currentUser, conversations]
   );
 
+  const triggerBotReply = useCallback(
+    (conversationId: string, botIds: string[]) => {
+      if (botIds.length === 0) return;
+      const delay = 1200 + Math.random() * 1800;
+      setTimeout(() => {
+        const botId = botIds[Math.floor(Math.random() * botIds.length)];
+        const replyText = BOT_REPLIES[Math.floor(Math.random() * BOT_REPLIES.length)];
+        const botMsg: Message = {
+          id: genId(),
+          conversationId,
+          senderId: botId,
+          type: "text",
+          text: replyText,
+          timestamp: Date.now(),
+        };
+        setMessages((prev) => ({
+          ...prev,
+          [conversationId]: [...(prev[conversationId] ?? []), botMsg],
+        }));
+      }, delay);
+    },
+    []
+  );
+
   const sendMessage = useCallback(
     (conversationId: string, text: string) => {
       if (!currentUser || !text.trim()) return;
-
       const msg: Message = {
         id: genId(),
         conversationId,
         senderId: currentUser.id,
+        type: "text",
         text: text.trim(),
         timestamp: Date.now(),
       };
-
       setMessages((prev) => ({
         ...prev,
         [conversationId]: [...(prev[conversationId] ?? []), msg],
       }));
-
       const conv = conversations.find((c) => c.id === conversationId);
       if (!conv) return;
       const botIds = conv.memberIds.filter(
-        (id) => id !== currentUser.id && SEED_USERS.find((u) => u.id === id)?.isBot
+        (id) =>
+          id !== currentUser.id && SEED_USERS.find((u) => u.id === id)?.isBot
       );
-
-      if (botIds.length > 0) {
-        const delay = 1200 + Math.random() * 1800;
-        setTimeout(() => {
-          const botId = botIds[Math.floor(Math.random() * botIds.length)];
-          const replyText = BOT_REPLIES[Math.floor(Math.random() * BOT_REPLIES.length)];
-          const botMsg: Message = {
-            id: genId(),
-            conversationId,
-            senderId: botId,
-            text: replyText,
-            timestamp: Date.now(),
-          };
-          setMessages((prev) => ({
-            ...prev,
-            [conversationId]: [...(prev[conversationId] ?? []), botMsg],
-          }));
-        }, delay);
-      }
+      triggerBotReply(conversationId, botIds);
     },
-    [currentUser, conversations]
+    [currentUser, conversations, triggerBotReply]
+  );
+
+  const sendMediaMessage = useCallback(
+    (conversationId: string, payload: MediaPayload) => {
+      if (!currentUser) return;
+      const base = {
+        id: genId(),
+        conversationId,
+        senderId: currentUser.id,
+        timestamp: Date.now(),
+      };
+      let msg: Message;
+      if (payload.type === "voice") {
+        msg = { ...base, type: "voice", audioUri: payload.audioUri, audioDuration: payload.audioDuration };
+      } else if (payload.type === "image") {
+        msg = { ...base, type: "image", imageUri: payload.imageUri };
+      } else if (payload.type === "file") {
+        msg = { ...base, type: "file", fileName: payload.fileName, fileSize: payload.fileSize, fileMimeType: payload.fileMimeType };
+      } else {
+        msg = { ...base, type: "text", text: payload.text };
+      }
+      setMessages((prev) => ({
+        ...prev,
+        [conversationId]: [...(prev[conversationId] ?? []), msg],
+      }));
+      const conv = conversations.find((c) => c.id === conversationId);
+      if (!conv) return;
+      const botIds = conv.memberIds.filter(
+        (id) =>
+          id !== currentUser.id && SEED_USERS.find((u) => u.id === id)?.isBot
+      );
+      triggerBotReply(conversationId, botIds);
+    },
+    [currentUser, conversations, triggerBotReply]
   );
 
   const createGroup = useCallback(
@@ -464,6 +516,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         cancelFriendRequest,
         getOrCreateDirectConversation,
         sendMessage,
+        sendMediaMessage,
         createGroup,
         addGroupMember,
         removeGroupMember,
