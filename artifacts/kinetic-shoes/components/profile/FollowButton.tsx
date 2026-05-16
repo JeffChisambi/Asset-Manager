@@ -1,13 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
-import React, { memo, useEffect } from "react";
-import { StyleSheet, Text } from "react-native";
+import React, { memo } from "react";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
 } from "react-native-reanimated";
-import { Pressable } from "react-native";
 import { useColors } from "@/hooks/useColors";
 
 interface FollowButtonProps {
@@ -20,16 +18,9 @@ export const FollowButton = memo(
   ({ isFollowing, onPress, isLoading }: FollowButtonProps) => {
     const colors = useColors();
     const scale = useSharedValue(1);
-    const bgOpacity = useSharedValue(isFollowing ? 0 : 1);
-
-    useEffect(() => {
-      bgOpacity.value = withTiming(isFollowing ? 0 : 1, { duration: 200 });
-    }, [isFollowing]);
 
     const animStyle = useAnimatedStyle(() => ({
       transform: [{ scale: scale.value }],
-      backgroundColor: isFollowing ? "transparent" : colors.primary,
-      borderColor: isFollowing ? colors.border : colors.primary,
     }));
 
     const handlePressIn = () => {
@@ -46,7 +37,16 @@ export const FollowButton = memo(
         onPressOut={handlePressOut}
         disabled={isLoading}
       >
-        <Animated.View style={[styles.btn, animStyle]}>
+        <Animated.View
+          style={[
+            styles.btn,
+            animStyle,
+            {
+              backgroundColor: isFollowing ? "transparent" : colors.primary,
+              borderColor: isFollowing ? colors.border : colors.primary,
+            },
+          ]}
+        >
           <Ionicons
             name={isFollowing ? "checkmark" : "add"}
             size={16}
