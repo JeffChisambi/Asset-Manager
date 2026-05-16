@@ -1,0 +1,57 @@
+Analyze the provided app screenshot/reference and recreate it with absolute visual and structural accuracy using React Native + Expo. The final result must feel indistinguishable from the original production app.
+
+Requirements:
+
+Use React Native with Expo architecture only
+Recreate the UI pixel-perfectly
+Match all spacing, alignment, sizing, typography, colors, shadows, border radii, icons, and layout proportions exactly
+Preserve the original visual hierarchy and responsiveness across screen sizes
+Use clean, scalable, production-grade component architecture
+Separate reusable UI components properly
+Maintain smooth performance and optimized rendering
+Follow modern mobile UX standards and native interaction behavior
+
+Design fidelity:
+
+Do not redesign, simplify, improvise, or reinterpret the interface
+Replicate every section, card, button, animation, navigation element, and interaction precisely
+Preserve exact paddings, margins, and positioning
+Match gradients, glass effects, blur, glow, and transparency accurately if present
+Use proper font weights and typography scaling
+Ensure perfect dark/light theme consistency if applicable
+
+Code quality:
+
+Write clean, maintainable, senior-level code
+Use organized folders and scalable architecture
+Avoid hardcoded repeated values
+Use constants/theme configuration where appropriate
+Ensure components are reusable and modular
+Add subtle polished animations where necessary to match the original experience
+Ensure responsiveness on both Android and iOS
+
+Technical expectations:
+
+Use Expo-compatible libraries only
+Ensure all interactions and gestures work smoothly
+Use FlatList/SectionList optimization where needed
+Optimize image loading and rendering performance
+Maintain proper safe area handling
+Implement adaptive layouts for multiple screen dimensions
+
+Execution process:
+
+First deeply analyze the entire UI structure and interaction patterns
+Identify reusable components and design systems
+Recreate the layout section-by-section with exact precision
+Refine the implementation multiple times for visual accuracy
+Compare against the reference continuously and correct inconsistencies
+Deliver a polished production-ready result, not a prototype
+
+Output expectations:
+
+Production-quality React Native + Expo code
+Visually indistinguishable from the reference
+Clean file structure
+Fully functional and ready to run
+Premium, modern, high-end app quality with zero sloppy implementation

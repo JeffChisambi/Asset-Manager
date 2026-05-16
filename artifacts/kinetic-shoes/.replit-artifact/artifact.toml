@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/"
+title = "Kinetic Shoes"
+version = "1.0.0"
+id = "artifacts/kinetic-shoes"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/" ]
+localPort = 19642
+
+[services.development]
+run = "pnpm --filter @workspace/kinetic-shoes run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/kinetic-shoes", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/kinetic-shoes", "run", "serve" ]
+
+[services.env]
+PORT = "19642"
+BASE_PATH = "/"

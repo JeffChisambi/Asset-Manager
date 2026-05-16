@@ -1,0 +1,38 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "HlObwcY0QbjxUEty39neT"
+uri = "file://artifacts/kinetic-shoes/assets/images/icon.png"
+type = "image"
+title = "kinetic shoes app icon"
+
+[[generated]]
+id = "OXtUMgwabq9GBW5k9q3KG"
+uri = "file://artifacts/kinetic-shoes/assets/images/nike_air90.png"
+type = "image"
+title = "nike air 90 shoe"
+
+[[generated]]
+id = "qBNael7drixGZeI9q-xAY"
+uri = "file://artifacts/kinetic-shoes/assets/images/air_jordan3.png"
+type = "image"
+title = "air jordan 3 shoe"
+
+[[generated]]
+id = "UswMo9dnPUQjwuZuw6mv1"
+uri = "file://artifacts/kinetic-shoes/assets/images/nike_dunk.png"
+type = "image"
+title = "nike dunk low shoe"
+
+[[generated]]
+id = "TsYIw6_ZS9EMZ9zbq5QWy"
+uri = "file://artifacts/kinetic-shoes/assets/images/adidas_nmd.png"
+type = "image"
+title = "adidas nmd shoe"
+
+[[generated]]
+id = "GcVM3da1E0BeUlwMRRXS6"
+uri = "file://artifacts/kinetic-shoes/assets/images/banner_shoe.png"
+type = "image"
+title = "banner shoe hero"
