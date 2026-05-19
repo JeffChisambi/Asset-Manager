@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, ActivityIndicator } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -10,6 +10,7 @@ interface FileMessageBubbleProps {
   fileMimeType?: string;
   isMine: boolean;
   timestamp: number;
+  status?: "sending" | "sent" | "failed";
 }
 
 function formatSize(bytes?: number) {
@@ -42,6 +43,7 @@ export function FileMessageBubble({
   fileMimeType,
   isMine,
   timestamp,
+  status,
 }: FileMessageBubbleProps) {
   const colors = useColors();
   const icon = getFileIcon(fileMimeType, fileName);
@@ -63,7 +65,11 @@ export function FileMessageBubble({
       >
         <View style={styles.content}>
           <View style={[styles.iconBox, { backgroundColor: iconBg }]}>
-            <Ionicons name={icon} size={22} color={iconColor} />
+            {status === "sending" ? (
+              <ActivityIndicator color={iconColor} size="small" />
+            ) : (
+              <Ionicons name={icon} size={22} color={iconColor} />
+            )}
           </View>
           <View style={styles.fileInfo}>
             <Text

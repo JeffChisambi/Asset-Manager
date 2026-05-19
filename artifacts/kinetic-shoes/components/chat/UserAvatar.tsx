@@ -1,13 +1,14 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity } from "react-native";
 
 interface UserAvatarProps {
   displayName: string;
   avatarColor: string;
   size?: number;
+  onPress?: () => void;
 }
 
-export function UserAvatar({ displayName, avatarColor, size = 44 }: UserAvatarProps) {
+export function UserAvatar({ displayName, avatarColor, size = 44, onPress }: UserAvatarProps) {
   const initials = displayName
     .split(" ")
     .map((w) => w[0])
@@ -17,7 +18,7 @@ export function UserAvatar({ displayName, avatarColor, size = 44 }: UserAvatarPr
 
   const fontSize = size * 0.38;
 
-  return (
+  const content = (
     <View
       style={[
         styles.avatar,
@@ -32,6 +33,16 @@ export function UserAvatar({ displayName, avatarColor, size = 44 }: UserAvatarPr
       <Text style={[styles.initials, { fontSize }]}>{initials}</Text>
     </View>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity activeOpacity={0.8} onPress={onPress}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
 }
 
 const styles = StyleSheet.create({

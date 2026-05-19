@@ -1,7 +1,8 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { memo, useEffect } from "react";
+import React, { memo } from "react";
 import {
+  Image,
   Linking,
   Platform,
   Pressable,
@@ -9,12 +10,6 @@ import {
   Text,
   View,
 } from "react-native";
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-  withTiming,
-} from "react-native-reanimated";
 import { FollowButton } from "./FollowButton";
 import { FriendButton } from "./FriendButton";
 import { useFollow } from "@/hooks/profile/useFollow";
@@ -22,8 +17,8 @@ import { useFriendship } from "@/hooks/profile/useFriendship";
 import { User } from "@/types/profile";
 import { useColors } from "@/hooks/useColors";
 
-const COVER_HEIGHT = 160;
-const AVATAR_SIZE = 84;
+const COVER_HEIGHT = 200;
+const AVATAR_SIZE = 90;
 
 function getInitials(name: string): string {
   return name
@@ -40,15 +35,6 @@ interface ProfileCompletionBarProps {
 
 const ProfileCompletionBar = memo(({ percent }: ProfileCompletionBarProps) => {
   const colors = useColors();
-  const width = useSharedValue(0);
-
-  useEffect(() => {
-    width.value = withTiming(percent, { duration: 800 });
-  }, [percent]);
-
-  const barStyle = useAnimatedStyle(() => ({
-    width: `${width.value}%` as any,
-  }));
 
   return (
     <View style={styles.completionContainer}>
@@ -60,14 +46,11 @@ const ProfileCompletionBar = memo(({ percent }: ProfileCompletionBarProps) => {
           {percent}%
         </Text>
       </View>
-      <View
-        style={[styles.completionTrack, { backgroundColor: colors.border }]}
-      >
-        <Animated.View
+      <View style={[styles.completionTrack, { backgroundColor: colors.border }]}>
+        <View
           style={[
             styles.completionFill,
-            barStyle,
-            { backgroundColor: colors.primary },
+            { width: `${percent}%`, backgroundColor: colors.primary },
           ]}
         />
       </View>
@@ -97,19 +80,6 @@ export const ProfileHeader = memo(
     const { isFollowing, toggle: toggleFollow } = useFollow(user.id);
     const friendship = useFriendship(user.id);
 
-    const avatarScale = useSharedValue(0.8);
-    const avatarOpacity = useSharedValue(0);
-
-    useEffect(() => {
-      avatarScale.value = withSpring(1, { damping: 12 });
-      avatarOpacity.value = withTiming(1, { duration: 400 });
-    }, []);
-
-    const avatarStyle = useAnimatedStyle(() => ({
-      transform: [{ scale: avatarScale.value }],
-      opacity: avatarOpacity.value,
-    }));
-
     const handleLink = () => {
       if (user.website) {
         const url = user.website.startsWith("http")
@@ -126,16 +96,21 @@ export const ProfileHeader = memo(
 
     return (
       <View>
-        {/* Cover */}
-        <View
-          style={[styles.cover, { backgroundColor: user.coverColor }]}
-        >
+        {/* Cover photo */}
+        <View style={[styles.cover, { backgroundColor: user.coverColor }]}>
+          {user.coverUrl ? (
+            <Image
+              source={{ uri: user.coverUrl }}
+              style={StyleSheet.absoluteFillObject}
+              resizeMode="cover"
+            />
+          ) : null}
           <View style={styles.coverOverlay} />
           {!isOwn && (
             <View style={styles.coverMutualBadge}>
               <Ionicons name="people-outline" size={12} color="#fff" />
               <Text style={styles.coverMutualText}>
-                {user.mutualFriendsCount} mutual friends
+                {user.mutualFriendsCount} mutual
               </Text>
             </View>
           )}
@@ -143,16 +118,22 @@ export const ProfileHeader = memo(
 
         {/* Avatar row */}
         <View style={styles.avatarRow}>
-          <Animated.View style={[styles.avatarWrap, avatarStyle]}>
-            <View
-              style={[styles.avatarCircle, { backgroundColor: user.avatarColor }]}
-            >
-              <Text style={styles.initials}>{getInitials(user.displayName)}</Text>
+          <View style={styles.avatarWrap}>
+            <View style={[styles.avatarCircle, { backgroundColor: user.avatarColor }]}>
+              {user.avatarUrl ? (
+                <Image
+                  source={{ uri: user.avatarUrl }}
+                  style={styles.avatarImage}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text style={styles.initials}>{getInitials(user.displayName)}</Text>
+              )}
             </View>
             {user.isOnline && <View style={styles.onlineDot} />}
-          </Animated.View>
+          </View>
 
-          {/* Own profile buttons */}
+          {/* Action buttons */}
           {isOwn ? (
             <View style={styles.ownActions}>
               <Pressable
@@ -176,19 +157,12 @@ export const ProfileHeader = memo(
             </View>
           ) : (
             <View style={styles.ownActions}>
-              <FollowButton
-                isFollowing={isFollowing}
-                onPress={toggleFollow}
-              />
+              <FollowButton isFollowing={isFollowing} onPress={toggleFollow} />
               <Pressable
                 style={[styles.iconBtn, { borderColor: colors.border, backgroundColor: colors.card }]}
                 onPress={() => { haptic(); onMessagePress?.(); }}
               >
-                <Ionicons
-                  name="chatbubble-outline"
-                  size={16}
-                  color={colors.foreground}
-                />
+                <Ionicons name="chatbubble-outline" size={16} color={colors.foreground} />
               </Pressable>
               <Pressable
                 style={[styles.iconBtn, { borderColor: colors.border, backgroundColor: colors.card }]}
@@ -220,9 +194,11 @@ export const ProfileHeader = memo(
             @{user.username}
           </Text>
 
-          <Text style={[styles.title, { color: colors.mutedForeground }]}>
-            {user.title}
-          </Text>
+          {user.title ? (
+            <Text style={[styles.title, { color: colors.mutedForeground }]}>
+              {user.title}
+            </Text>
+          ) : null}
 
           {user.bio ? (
             <Text style={[styles.bio, { color: colors.foreground }]}>
@@ -234,11 +210,7 @@ export const ProfileHeader = memo(
           <View style={styles.metaRow}>
             {user.location ? (
               <View style={styles.metaItem}>
-                <Ionicons
-                  name="location-outline"
-                  size={13}
-                  color={colors.mutedForeground}
-                />
+                <Ionicons name="location-outline" size={13} color={colors.mutedForeground} />
                 <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
                   {user.location}
                 </Text>
@@ -253,37 +225,9 @@ export const ProfileHeader = memo(
               </Pressable>
             ) : null}
             <View style={styles.metaItem}>
-              <Ionicons
-                name="calendar-outline"
-                size={13}
-                color={colors.mutedForeground}
-              />
+              <Ionicons name="calendar-outline" size={13} color={colors.mutedForeground} />
               <Text style={[styles.metaText, { color: colors.mutedForeground }]}>
                 Joined {user.joinDate}
-              </Text>
-            </View>
-          </View>
-
-          {/* Shoe info row */}
-          <View style={styles.shoeRow}>
-            <View
-              style={[styles.shoeTag, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-            >
-              <MaterialCommunityIcons
-                name="shoe-sneaker"
-                size={13}
-                color={colors.primary}
-              />
-              <Text style={[styles.shoeTagText, { color: colors.foreground }]}>
-                {user.shoeSize}
-              </Text>
-            </View>
-            <View
-              style={[styles.shoeTag, { backgroundColor: colors.secondary, borderColor: colors.border }]}
-            >
-              <Ionicons name="star-outline" size={13} color={colors.primary} />
-              <Text style={[styles.shoeTagText, { color: colors.foreground }]}>
-                {user.favoriteBrand}
               </Text>
             </View>
           </View>
@@ -325,9 +269,7 @@ export const ProfileHeader = memo(
           )}
 
           {/* Profile completion (own only) */}
-          {isOwn && (
-            <ProfileCompletionBar percent={user.profileCompletion} />
-          )}
+          {isOwn && <ProfileCompletionBar percent={user.profileCompletion} />}
         </View>
       </View>
     );
@@ -338,10 +280,11 @@ const styles = StyleSheet.create({
   cover: {
     height: COVER_HEIGHT,
     position: "relative",
+    overflow: "hidden",
   },
   coverOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.18)",
+    backgroundColor: "rgba(0,0,0,0.22)",
   },
   coverMutualBadge: {
     position: "absolute",
@@ -377,12 +320,23 @@ const styles = StyleSheet.create({
     borderRadius: AVATAR_SIZE / 2,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: "#fff",
+    overflow: "hidden",
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  avatarImage: {
+    width: "100%",
+    height: "100%",
+    borderRadius: AVATAR_SIZE / 2,
   },
   initials: {
     color: "#fff",
-    fontSize: 28,
+    fontSize: 32,
     fontFamily: "Inter_700Bold",
   },
   onlineDot: {
@@ -399,114 +353,111 @@ const styles = StyleSheet.create({
   ownActions: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
     paddingBottom: 4,
   },
   editBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 100,
-    borderWidth: 1.5,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 16,
+    borderWidth: 2,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   editBtnLabel: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
   },
   iconBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    borderWidth: 1.5,
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   info: {
     paddingHorizontal: 16,
-    paddingBottom: 4,
-    gap: 4,
+    paddingBottom: 8,
+    gap: 6,
   },
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginTop: 4,
+    gap: 8,
+    marginTop: 6,
   },
   displayName: {
-    fontSize: 20,
+    fontSize: 22,
     fontFamily: "Inter_700Bold",
   },
   username: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
   },
   title: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    marginBottom: 2,
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+    marginBottom: 4,
   },
   bio: {
-    fontSize: 14,
+    fontSize: 15,
     fontFamily: "Inter_400Regular",
-    lineHeight: 20,
+    lineHeight: 22,
     marginTop: 4,
   },
   metaRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 12,
-    marginTop: 8,
+    gap: 16,
+    marginTop: 12,
   },
   metaItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 6,
   },
   metaText: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
-  },
-  shoeRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 8,
-  },
-  shoeTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 100,
-    borderWidth: 1,
-  },
-  shoeTagText: {
-    fontSize: 12,
+    fontSize: 13,
     fontFamily: "Inter_500Medium",
   },
   requestBanner: {
-    marginTop: 12,
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
+    marginTop: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 2,
+    gap: 12,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
   },
   requestText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
   },
   requestActions: {
     flexDirection: "row",
   },
   friendRow: {
-    marginTop: 12,
+    marginTop: 16,
     flexDirection: "row",
   },
   completionContainer: {
-    marginTop: 14,
-    gap: 6,
+    marginTop: 16,
+    gap: 8,
   },
   completionRow: {
     flexDirection: "row",
@@ -514,20 +465,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   completionLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_400Regular",
+    fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
   completionPct: {
-    fontSize: 12,
-    fontFamily: "Inter_700Bold",
+    fontSize: 13,
+    fontFamily: "Inter_800ExtraBold",
   },
   completionTrack: {
-    height: 5,
-    borderRadius: 100,
+    height: 8,
+    borderRadius: 4,
     overflow: "hidden",
+    borderWidth: 1,
   },
   completionFill: {
     height: "100%",
-    borderRadius: 100,
+    borderRadius: 4,
   },
 });

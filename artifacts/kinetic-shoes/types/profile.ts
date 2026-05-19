@@ -4,6 +4,8 @@ export interface User {
   displayName: string;
   avatarColor: string;
   coverColor: string;
+  avatarUrl?: string;
+  coverUrl?: string;
   bio: string;
   location: string;
   website: string;

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { User, Post } from "@/types/profile";
 import { ProfileService } from "@/services/profile/profile.service";
 
@@ -16,17 +16,27 @@ export function useProfile(userId: string): UseProfileReturn {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Track whether we already have data so re-fetches (e.g. after edit)
+  // don't show the loading skeleton — they update silently in the background.
+  const hasDataRef = useRef(false);
+
   const load = useCallback(async () => {
-    setIsLoading(true);
+    // Only show the full loading state on the very first fetch.
+    if (!hasDataRef.current) {
+      setIsLoading(true);
+    }
     setError(null);
+
     try {
       const [userData, postsData] = await Promise.all([
         ProfileService.getUser(userId),
         ProfileService.getPosts(userId),
       ]);
+
       if (!userData) {
         setError("User not found");
       } else {
+        hasDataRef.current = true;
         setUser(userData);
         setPosts(postsData);
       }
@@ -37,7 +47,12 @@ export function useProfile(userId: string): UseProfileReturn {
     }
   }, [userId]);
 
+  // Reset when the userId changes (e.g. viewing a different user's profile).
   useEffect(() => {
+    hasDataRef.current = false;
+    setUser(null);
+    setPosts([]);
+    setError(null);
     load();
   }, [load]);
 

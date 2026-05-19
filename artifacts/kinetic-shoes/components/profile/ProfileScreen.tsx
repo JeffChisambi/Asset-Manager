@@ -1,5 +1,5 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
-import React, { memo, useCallback, useState } from "react";
+import React, { memo, useCallback, useState, useEffect } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -9,16 +9,39 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Alert,
+  Modal,
+  Pressable,
+  TextInput,
+  Image,
+  Dimensions,
 } from "react-native";
+
+const { width } = Dimensions.get("window");
+const CARD_W = (width - 48) / 2;
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useFocusEffect } from "expo-router";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+} from "react-native-reanimated";
+import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { ProfileService } from "@/services/profile/profile.service";
+import { StoreService } from "@/services/store/store.service";
 import { ProfileHeader } from "./ProfileHeader";
 import { ProfileStats } from "./ProfileStats";
 import { ProfileTabs } from "./ProfileTabs";
 import { ProfilePostCard } from "./ProfilePostCard";
 import { useProfile } from "@/hooks/profile/useProfile";
-import { CURRENT_USER_ID } from "@/mock/users";
 import { Post, ProfileTab, User } from "@/types/profile";
+import { Store, MerchantType } from "@/types/store";
+import { useChat } from "@/context/ChatContext";
+import * as ImagePicker from "expo-image-picker";
 import { useColors } from "@/hooks/useColors";
+import { useStore } from "@/hooks/useStore";
 
 // ─── Empty state ─────────────────────────────────────────────────────────────
 
@@ -58,12 +81,6 @@ const AboutTab = memo(({ user }: AboutTabProps) => {
     { icon: "link-outline", label: "Website", value: user.website || "—" },
   ];
 
-  const shoeRows: { icon: string; label: string; value: string }[] = [
-    { icon: "resize-outline", label: "Shoe size", value: user.shoeSize },
-    { icon: "star-outline", label: "Favourite brand", value: user.favoriteBrand },
-    { icon: "ribbon-outline", label: "Title", value: user.title },
-  ];
-
   return (
     <View style={styles.aboutContainer}>
       <View
@@ -89,29 +106,6 @@ const AboutTab = memo(({ user }: AboutTabProps) => {
               name={r.icon as any}
               size={16}
               color={colors.mutedForeground}
-            />
-            <Text style={[styles.aboutRowLabel, { color: colors.mutedForeground }]}>
-              {r.label}
-            </Text>
-            <Text style={[styles.aboutRowValue, { color: colors.foreground }]}>
-              {r.value}
-            </Text>
-          </View>
-        ))}
-      </View>
-
-      <View
-        style={[styles.aboutCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-      >
-        <Text style={[styles.aboutSection, { color: colors.foreground }]}>
-          Sneaker Profile
-        </Text>
-        {shoeRows.map((r) => (
-          <View key={r.label} style={styles.aboutRow}>
-            <Ionicons
-              name={r.icon as any}
-              size={16}
-              color={colors.primary}
             />
             <Text style={[styles.aboutRowLabel, { color: colors.mutedForeground }]}>
               {r.label}
@@ -162,23 +156,1314 @@ const ProfileSkeleton = memo(() => {
   );
 });
 
+interface ShopVendorSidebarProps {
+  visible: boolean;
+  onClose: () => void;
+  userId: string;
+  store: Store | null;
+  onSuccess: () => void;
+  onDeleteStore?: (storeId: string) => void;
+}
+
+function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDeleteStore }: ShopVendorSidebarProps) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  
+  // Navigation tabs inside Sidebar
+  const [step, setStep] = useState<"choose" | "builder" | "success">("choose");
+  const [builderTab, setBuilderTab] = useState<"branding" | "inventory" | "preview" | "settings">("branding");
+  const [loading, setLoading] = useState(false);
+  const [merchantType, setMerchantType] = useState<MerchantType>("basic_shop");
+
+  // Shop / Vendor Branding Fields
+  const [storeName, setStoreName] = useState("");
+  const [storeTagline, setStoreTagline] = useState("");
+  const [storeEmoji, setStoreEmoji] = useState("🏪");
+  const [storeAccent, setStoreAccent] = useState("#4A80F0");
+  const [coverGradient, setCoverGradient] = useState<[string, string]>(["#4A00E0", "#8E2DE2"]);
+  const [coverImageUrl, setCoverImageUrl] = useState("");
+  
+  // Products Inventory Fields
+  const [products, setProducts] = useState<any[]>([]);
+  const [newProdName, setNewProdName] = useState("");
+  const [newProdPrice, setNewProdPrice] = useState("");
+  const [newProdCategory, setNewProdCategory] = useState("Shoes");
+  const [newProdImageUrl, setNewProdImageUrl] = useState("");
+
+  // Product Editing state
+  const [editingProductId, setEditingProductId] = useState<string | null>(null);
+  // Store active status
+  const [isActive, setIsActive] = useState(true);
+  const [deactivateLoading, setDeactivateLoading] = useState(false);
+
+  // Constants
+  const EMOJIS = ["🏪", "👟", "🍕", "💻", "🛋️", "💄", "🍎", "⚡"];
+  const ACCENTS = ["#4A80F0", "#11998E", "#F7971E", "#7C3AED", "#FF6B6B"];
+  const GRADIENTS: { name: string; colors: [string, string] }[] = [
+    { name: "Neon Purple", colors: ["#4A00E0", "#8E2DE2"] },
+    { name: "Ocean Breeze", colors: ["#00c6ff", "#0072ff"] },
+    { name: "Sunset Gold", colors: ["#F7971E", "#FFD200"] },
+    { name: "Emerald Teal", colors: ["#11998E", "#38EF7D"] },
+    { name: "Cherry Blast", colors: ["#FF416C", "#FF4B2B"] },
+  ];
+
+  const PRODUCT_CATEGORIES = [
+    { label: "Shoes", emoji: "👟" },
+    { label: "Food", emoji: "🍔" },
+    { label: "Fashion", emoji: "👗" },
+    { label: "Electronics", emoji: "📱" },
+    { label: "Furniture", emoji: "🛋️" },
+    { label: "Beauty", emoji: "💄" },
+  ];
+
+  const handleAddProduct = () => {
+    if (!newProdName.trim()) {
+      Alert.alert("Required", "Please enter product name");
+      return;
+    }
+    const priceNum = parseFloat(newProdPrice) || 29.99;
+    
+    if (editingProductId) {
+      // Update existing
+      setProducts(products.map(p => p.id === editingProductId ? {
+        ...p,
+        name: newProdName.trim(),
+        price: priceNum,
+        image_url: newProdImageUrl.trim() || null,
+        category: newProdCategory
+      } : p));
+      setEditingProductId(null);
+    } else {
+      // Add new
+      const newProd = {
+        id: "temp-" + Date.now().toString(),
+        name: newProdName.trim(),
+        price: priceNum,
+        brand: "My Brand",
+        rating: 5.0,
+        category: newProdCategory,
+        image_url: newProdImageUrl.trim() || null
+      };
+      setProducts([...products, newProd]);
+    }
+    
+    setNewProdName("");
+    setNewProdPrice("");
+    setNewProdImageUrl("");
+    setNewProdCategory("Shoes");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingProductId(null);
+    setNewProdName("");
+    setNewProdPrice("");
+    setNewProdImageUrl("");
+    setNewProdCategory("Shoes");
+  };
+
+  const [deleteLoading, setDeleteLoading] = useState(false);
+
+  const handleDeleteStore = () => {
+    if (!store) return;
+    const storeName = store.name;
+
+    Alert.alert(
+      "Delete Shop",
+      `Are you sure you want to permanently delete "${storeName}"? This will remove all products and data. This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Yes, Delete",
+          style: "destructive",
+          onPress: () => {
+            Alert.alert(
+              "Final Confirmation",
+              `You are about to permanently delete "${storeName}". This cannot be reversed.`,
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Delete Permanently",
+                  style: "destructive",
+                  onPress: async () => {
+                    setDeleteLoading(true);
+                    try {
+                      await StoreService.deleteStore(store.id, userId);
+                      onDeleteStore?.(store.id);
+                      onClose();
+                      onSuccess();
+                    } catch (err: any) {
+                      Alert.alert("Deletion Failed", err.message || "Could not delete this shop. Please try again.");
+                    } finally {
+                      setDeleteLoading(false);
+                    }
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeactivateStore = () => {
+    if (!store) return;
+    const action = isActive ? "deactivate" : "reactivate";
+    const actionLabel = isActive ? "Deactivate" : "Reactivate";
+    const desc = isActive
+      ? `Deactivating "${store.name}" will hide it from the Marketplace. Customers won't be able to find or browse it until you reactivate it.`
+      : `Reactivating "${store.name}" will make it visible again in the Marketplace immediately.`;
+
+    Alert.alert(`${actionLabel} Shop`, desc, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: actionLabel,
+        style: isActive ? "destructive" : "default",
+        onPress: async () => {
+          setDeactivateLoading(true);
+          try {
+            await StoreService.updateStore(store.id, {
+              ...store,
+              is_active: !isActive,
+              owner_id: userId,
+            });
+            setIsActive((prev) => !prev);
+            onSuccess();
+          } catch (err: any) {
+            Alert.alert("Error", err.message || `Could not ${action} the shop. Try again.`);
+          } finally {
+            setDeactivateLoading(false);
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleSaveStore = async () => {
+    if (!storeName.trim()) {
+      Alert.alert("Required field", "Please enter a store name.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const title = merchantType === "basic_shop" ? "Basic Shop Owner" : "Independent Vendor";
+      await ProfileService.updateProfile(userId, { title });
+      
+      const config = {
+        owner_id: userId,
+        name: storeName.trim(),
+        tagline: storeTagline.trim() || "Your ultimate marketplace partner",
+        emoji: storeEmoji,
+        accent_color: storeAccent,
+        cover_gradient_start: coverGradient[0],
+        cover_gradient_end: coverGradient[1],
+        cover_image_url: coverImageUrl.trim() || null,
+        products: products,
+        merchant_type: merchantType,
+      };
+
+      if (store) {
+        await StoreService.updateStore(store.id, config as any);
+      } else {
+        await StoreService.createStore(config as any);
+      }
+      setStep("success");
+      onSuccess();
+    } catch (err: any) {
+      Alert.alert("Error", err.message || "Could not build store config. Try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const pickImage = async (onSelected: (uri: string) => void) => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "We need camera roll permissions to select images.");
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        onSelected(result.assets[0].uri);
+      }
+    } catch (e) {
+      console.log("Image picker error:", e);
+      Alert.alert("Error", "Could not pick image from device.");
+    }
+  };
+
+  const handleClose = () => {
+    setStep("choose");
+    setBuilderTab("branding");
+    onClose();
+  };
+
+  // Sidebar reanimated setup - cover the full screen
+  const screenHeight = Dimensions.get("window").height;
+  const animValue = useSharedValue(screenHeight);
+  const backdropOpacity = useSharedValue(0);
+
+  const [sidebarVisible, setSidebarVisible] = useState(visible);
+
+  useEffect(() => {
+    if (visible) {
+      setSidebarVisible(true);
+      if (store) {
+        setMerchantType(store.merchant_type);
+        setStoreName(store.name || "");
+        setStoreTagline(store.tagline || "");
+        setStoreEmoji(store.emoji || "🏪");
+        setStoreAccent(store.accent_color || "#4A80F0");
+        setCoverGradient([
+          store.cover_gradient_start || "#4A00E0",
+          store.cover_gradient_end || "#8E2DE2"
+        ]);
+        setCoverImageUrl(store.cover_image_url || "");
+        setProducts(store.products || []);
+        setIsActive(store.is_active !== false); // default true
+        setStep("builder");
+      } else {
+        // Reset to default for new store creation
+        setMerchantType("basic_shop");
+        setStoreName("");
+        setStoreTagline("");
+        setStoreEmoji("🏪");
+        setStoreAccent("#4A80F0");
+        setCoverGradient(["#4A00E0", "#8E2DE2"]);
+        setCoverImageUrl("");
+        setProducts([
+          { id: "temp-1", name: "Premium Air Force", price: 120, brand: "Nike", rating: 4.8, category: "Shoes", image_url: "" },
+          { id: "temp-2", name: "Ultra Boost V2", price: 180, brand: "Adidas", rating: 4.9, category: "Shoes", image_url: "" }
+        ]);
+        setStep("choose");
+      }
+      setBuilderTab("branding");
+      animValue.value = withTiming(0, { duration: 350 });
+      backdropOpacity.value = withTiming(1, { duration: 350 });
+    } else {
+      animValue.value = withTiming(screenHeight, { duration: 250 });
+      backdropOpacity.value = withTiming(0, { duration: 250 });
+      const timer = setTimeout(() => {
+        setSidebarVisible(false);
+      }, 250);
+      return () => clearTimeout(timer);
+    }
+  }, [visible, store]);
+
+  const sidebarAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: animValue.value }],
+  }));
+
+  const backdropAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.value,
+  }));
+
+  if (!sidebarVisible) return null;
+
+  return (
+    <Modal transparent visible={sidebarVisible} animationType="none" onRequestClose={handleClose}>
+      {/* Backdrop */}
+      <Animated.View style={[styles.sidebarBackdrop, backdropAnimatedStyle]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+      </Animated.View>
+
+      {/* Sidebar Sheet */}
+      <Animated.View style={[
+        styles.sidebarSheet,
+        sidebarAnimatedStyle,
+        { backgroundColor: colors.card, borderColor: colors.border, paddingTop: insets.top }
+      ]}>
+        {/* Header */}
+        <View style={styles.sidebarHeader}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.sidebarSubtitle, { color: colors.mutedForeground }]}>
+              {store ? "Shop Manager" : "Store Builder"}
+            </Text>
+            <Text style={[styles.sidebarTitle, { color: colors.foreground }]} numberOfLines={1}>
+              {step === "choose" ? "Select Merchant Type" : step === "success" ? "Success!" : store ? "Edit Store Properties" : merchantType === "basic_shop" ? "Basic Store" : "Vendor Store"}
+            </Text>
+          </View>
+          <TouchableOpacity onPress={handleClose} style={styles.sidebarCloseBtn}>
+            <Ionicons name="close" size={20} color={colors.foreground} />
+          </TouchableOpacity>
+        </View>
+
+        {step === "choose" ? (
+          <ScrollView contentContainerStyle={styles.sidebarBody} showsVerticalScrollIndicator={false}>
+            <Text style={[styles.choiceSubtitle, { color: colors.mutedForeground }]}>
+              Choose how you want to offer your services or sell products on the platform.
+            </Text>
+
+            <Pressable
+              style={[styles.choiceCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => {
+                setMerchantType("basic_shop");
+                setStep("builder");
+              }}
+            >
+              <View style={[styles.choiceIconCircle, { backgroundColor: "#4A80F0", borderColor: colors.border }]}>
+                <Ionicons name="storefront" size={24} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.choiceCardTitle, { color: colors.foreground }]}>
+                  Create a Basic Store
+                </Text>
+                <Text style={[styles.choiceCardDesc, { color: colors.mutedForeground }]}>
+                  Set up your storefront with custom colors, list goods and grow.
+                </Text>
+              </View>
+              <Ionicons name="arrow-forward" size={20} color={colors.foreground} />
+            </Pressable>
+
+            <Pressable
+              style={[styles.choiceCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => {
+                setMerchantType("vendor");
+                setStep("builder");
+              }}
+            >
+              <View style={[styles.choiceIconCircle, { backgroundColor: "#FF6B6B", borderColor: colors.border }]}>
+                <Ionicons name="cube" size={24} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.choiceCardTitle, { color: colors.foreground }]}>
+                  Become a Vendor
+                </Text>
+                <Text style={[styles.choiceCardDesc, { color: colors.mutedForeground }]}>
+                  Sell specialized items directly, manage orders, handle buyer chats and more.
+                </Text>
+              </View>
+              <Ionicons name="arrow-forward" size={20} color={colors.foreground} />
+            </Pressable>
+          </ScrollView>
+        ) : step === "success" ? (
+          <View style={styles.successWrapper}>
+            <Ionicons name="checkmark-circle" size={72} color="#22C55E" />
+            <Text style={[styles.successTitleText, { color: colors.foreground }]}>
+              {store ? "Updated Successfully!" : "Upgraded Successfully!"}
+            </Text>
+            <Text style={[styles.successDescText, { color: colors.mutedForeground }]}>
+              Your {merchantType === "basic_shop" ? "Basic Store" : "Vendor Store"} has been compiled and is now online.
+            </Text>
+            <TouchableOpacity
+              style={[styles.sidebarSubmitBtn, { backgroundColor: colors.primary }]}
+              onPress={handleClose}
+            >
+              <Text style={styles.submitBtnText}>Launch Store</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            {/* Nav Tabs for Builder */}
+            <View style={styles.builderNav}>
+              {(["branding", "inventory", "preview", ...(store ? ["settings"] : [])] as const).map((tab) => (
+                <Pressable
+                  key={tab}
+                  style={[
+                    styles.builderNavTab,
+                    builderTab === tab && { borderBottomColor: tab === "settings" ? "#EF4444" : storeAccent, borderBottomWidth: 2 }
+                  ]}
+                  onPress={() => setBuilderTab(tab as any)}
+                >
+                  <Text style={[
+                    styles.builderNavText,
+                    {
+                      color: builderTab === tab
+                        ? (tab === "settings" ? "#EF4444" : colors.foreground)
+                        : colors.mutedForeground
+                    }
+                  ]}>
+                    {tab === "settings" ? "⚙️ SETTINGS" : tab.toUpperCase()}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {/* Main Form Fields */}
+            <ScrollView contentContainerStyle={styles.sidebarBody} showsVerticalScrollIndicator={false}>
+              {builderTab === "branding" && (
+                <View style={styles.formGroup}>
+                  <View style={styles.modalInputGroup}>
+                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Store Name</Text>
+                    <TextInput
+                      style={[styles.modalInput, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]}
+                      placeholder="e.g. Sneaker Plaza"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={storeName}
+                      onChangeText={setStoreName}
+                    />
+                  </View>
+
+                  <View style={styles.modalInputGroup}>
+                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Store Tagline</Text>
+                    <TextInput
+                      style={[styles.modalInput, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]}
+                      placeholder="e.g. Best kicks in the city"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={storeTagline}
+                      onChangeText={setStoreTagline}
+                    />
+                  </View>
+
+                  <View style={styles.modalInputGroup}>
+                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Shop Cover Photo</Text>
+                    <Pressable
+                      style={[
+                        {
+                          backgroundColor: colors.input,
+                          borderColor: colors.border,
+                          borderWidth: 1.5,
+                          borderRadius: 12,
+                          height: 120,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          overflow: "hidden",
+                        }
+                      ]}
+                      onPress={() => pickImage(setCoverImageUrl)}
+                    >
+                      {coverImageUrl ? (
+                        <>
+                          <Image source={{ uri: coverImageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                          <View style={{ position: "absolute", bottom: 8, right: 8, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <Ionicons name="camera" size={14} color="#fff" />
+                            <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" }}>Change Image</Text>
+                          </View>
+                        </>
+                      ) : (
+                        <View style={{ alignItems: "center", gap: 6 }}>
+                          <Ionicons name="image-outline" size={32} color={colors.mutedForeground} />
+                          <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>Upload Cover Image</Text>
+                          <Text style={{ color: colors.mutedForeground, fontSize: 10 }}>Supports JPEG, PNG from device</Text>
+                        </View>
+                      )}
+                    </Pressable>
+                  </View>
+
+                  {/* Emoji selector */}
+                  <View style={styles.modalInputGroup}>
+                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Store Icon (Emoji)</Text>
+                    <View style={styles.emojiRow}>
+                      {EMOJIS.map((e) => (
+                        <Pressable
+                          key={e}
+                          style={[
+                            styles.emojiBtn,
+                            storeEmoji === e && { backgroundColor: colors.border }
+                          ]}
+                          onPress={() => setStoreEmoji(e)}
+                        >
+                          <Text style={{ fontSize: 24 }}>{e}</Text>
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Theme Accents */}
+                  <View style={styles.modalInputGroup}>
+                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Branding Accent Color</Text>
+                    <View style={styles.accentRow}>
+                      {ACCENTS.map((acc) => (
+                        <Pressable
+                          key={acc}
+                          style={[
+                            styles.accentDot,
+                            { backgroundColor: acc },
+                            storeAccent === acc && styles.accentDotActive,
+                          ]}
+                          onPress={() => setStoreAccent(acc)}
+                        />
+                      ))}
+                    </View>
+                  </View>
+
+                  {/* Cover Gradients */}
+                  <View style={styles.modalInputGroup}>
+                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Hero Cover Gradient</Text>
+                    <View style={styles.gradientRow}>
+                      {GRADIENTS.map((grad) => (
+                        <Pressable
+                          key={grad.name}
+                          style={[
+                            styles.gradientCard,
+                            { borderColor: colors.border },
+                            coverGradient[0] === grad.colors[0] && { borderWidth: 2, borderColor: storeAccent }
+                          ]}
+                          onPress={() => setCoverGradient(grad.colors)}
+                        >
+                          <LinearGradient
+                            colors={grad.colors}
+                            start={{ x: 0, y: 0 }}
+                            end={{ x: 1, y: 1 }}
+                            style={StyleSheet.absoluteFill}
+                          />
+                        </Pressable>
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              {builderTab === "inventory" && (
+                <View style={styles.formGroup}>
+                  <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+                    {editingProductId ? "Modify product details and save changes." : "Add mock items to stock your store shelves instantly."}
+                  </Text>
+
+                  {/* Add / Edit Form */}
+                  <View style={[styles.addCard, { backgroundColor: colors.muted, borderColor: colors.border, borderRadius: 14 }]}>
+                    {editingProductId && (
+                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8, backgroundColor: storeAccent + "22", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
+                        <Text style={{ color: storeAccent, fontFamily: "Inter_700Bold", fontSize: 11 }}>EDITING PRODUCT MODE</Text>
+                        <TouchableOpacity onPress={handleCancelEdit}>
+                          <Text style={{ color: "#EF4444", fontFamily: "Inter_700Bold", fontSize: 11 }}>Cancel</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                    <TextInput
+                      style={[styles.modalInput, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground, marginBottom: 8 }]}
+                      placeholder="Product Name"
+                      placeholderTextColor={colors.mutedForeground}
+                      value={newProdName}
+                      onChangeText={setNewProdName}
+                    />
+                    <Pressable
+                      style={[
+                        {
+                          backgroundColor: colors.input,
+                          borderColor: colors.border,
+                          borderWidth: 1.5,
+                          borderRadius: 12,
+                          height: 90,
+                          justifyContent: "center",
+                          alignItems: "center",
+                          overflow: "hidden",
+                          marginBottom: 12,
+                        }
+                      ]}
+                      onPress={() => pickImage(setNewProdImageUrl)}
+                    >
+                      {newProdImageUrl ? (
+                        <>
+                          <Image source={{ uri: newProdImageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                          <View style={{ position: "absolute", bottom: 6, right: 6, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                            <Ionicons name="camera" size={12} color="#fff" />
+                            <Text style={{ color: "#fff", fontSize: 10, fontFamily: "Inter_700Bold" }}>Change</Text>
+                          </View>
+                        </>
+                      ) : (
+                        <View style={{ alignItems: "center", gap: 4 }}>
+                          <Ionicons name="camera-outline" size={24} color={colors.mutedForeground} />
+                          <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Upload Product Image</Text>
+                        </View>
+                      )}
+                    </Pressable>
+
+                    {/* Category Selection */}
+                    <Text style={[styles.modalLabel, { color: colors.mutedForeground, fontSize: 11, marginBottom: 6 }]}>Product Category</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginBottom: 12 }}>
+                      {PRODUCT_CATEGORIES.map(cat => {
+                        const isSelected = newProdCategory === cat.label;
+                        return (
+                          <Pressable
+                            key={cat.label}
+                            onPress={() => setNewProdCategory(cat.label)}
+                            style={{
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                              paddingHorizontal: 10,
+                              paddingVertical: 6,
+                              borderRadius: 8,
+                              borderWidth: 1.5,
+                              borderColor: isSelected ? storeAccent : colors.border,
+                              backgroundColor: isSelected ? storeAccent + "15" : colors.input
+                            }}
+                          >
+                            <Text style={{ fontSize: 13 }}>{cat.emoji}</Text>
+                            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: isSelected ? storeAccent : colors.mutedForeground }}>{cat.label}</Text>
+                          </Pressable>
+                        );
+                      })}
+                    </ScrollView>
+
+                    <View style={{ flexDirection: "row", gap: 8 }}>
+                      <TextInput
+                        style={[styles.modalInput, { flex: 1, backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]}
+                        placeholder="Price ($)"
+                        placeholderTextColor={colors.mutedForeground}
+                        keyboardType="numeric"
+                        value={newProdPrice}
+                        onChangeText={setNewProdPrice}
+                      />
+                      <Pressable
+                        style={[styles.addProductBtn, { backgroundColor: storeAccent }]}
+                        onPress={handleAddProduct}
+                      >
+                        <Ionicons name={editingProductId ? "checkmark" : "add"} size={20} color="#fff" />
+                        <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 13 }}>
+                          {editingProductId ? "Save" : "Add"}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+
+                  {/* Current List */}
+                  <View style={{ gap: 8, marginTop: 8 }}>
+                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>
+                      Products Stock ({products.length})
+                    </Text>
+                    {products.map((p) => (
+                      <View
+                        key={p.id}
+                        style={[styles.prodItemRow, { backgroundColor: colors.input, borderColor: colors.border }]}
+                      >
+                        {p.image_url ? (
+                          <Image source={{ uri: p.image_url }} style={{ width: 36, height: 36, borderRadius: 8, marginRight: 4 }} />
+                        ) : (
+                          <Text style={{ fontSize: 20 }}>{storeEmoji}</Text>
+                        )}
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 13 }} numberOfLines={1}>
+                            {p.name}
+                          </Text>
+                          <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
+                            <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>
+                              ${p.price.toFixed(2)}
+                            </Text>
+                            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.mutedForeground }} />
+                            <Text style={{ color: storeAccent, fontSize: 10, fontFamily: "Inter_700Bold" }}>
+                              {p.category || "Shoes"}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+                          <TouchableOpacity onPress={() => {
+                            setEditingProductId(p.id);
+                            setNewProdName(p.name);
+                            setNewProdPrice(String(p.price));
+                            setNewProdImageUrl(p.image_url || "");
+                            setNewProdCategory(p.category || "Shoes");
+                          }}>
+                            <Ionicons name="pencil-outline" size={16} color={colors.foreground} />
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => setProducts(products.filter((x) => x.id !== p.id))}>
+                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {builderTab === "preview" && (
+                <View style={styles.formGroup}>
+                  <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
+                    Interactive miniature preview matching Super Store architecture.
+                  </Text>
+
+                  {/* MINI PREVIEW BOX */}
+                  <View style={[styles.miniPreviewCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                    {/* Cover Hero Gradient or Cover Image */}
+                    <View style={[styles.miniPreviewCover, { height: 90 }]}>
+                      {coverImageUrl ? (
+                        <Image source={{ uri: coverImageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                      ) : (
+                        <LinearGradient
+                          colors={coverGradient}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={StyleSheet.absoluteFill}
+                        />
+                      )}
+                      <View style={styles.miniEmojiCircle}>
+                        <Text style={{ fontSize: 20 }}>{storeEmoji}</Text>
+                      </View>
+                    </View>
+
+                    {/* Stats details */}
+                    <View style={styles.miniPreviewInfo}>
+                      <View style={styles.miniTitleRow}>
+                        <Text style={[styles.miniStoreName, { color: colors.foreground }]} numberOfLines={1}>
+                          {storeName || "My Custom Store"}
+                        </Text>
+                        <Ionicons name="checkmark-circle" size={14} color="#4A80F0" />
+                      </View>
+                      <Text style={[styles.miniTagline, { color: colors.mutedForeground }]} numberOfLines={1}>
+                        {storeTagline || "Configure tagline in Branding"}
+                      </Text>
+
+                      {/* Open Tag & Time */}
+                      <View style={{ flexDirection: "row", gap: 6, marginVertical: 8 }}>
+                        <View style={styles.miniBadge}>
+                          <View style={[styles.statusDot, { backgroundColor: "#22C55E" }]} />
+                          <Text style={{ fontSize: 9, color: "#22C55E", fontFamily: "Inter_700Bold" }}>Open</Text>
+                        </View>
+                        <View style={[styles.miniBadge, { backgroundColor: colors.muted }]}>
+                          <Text style={{ fontSize: 9, color: colors.mutedForeground }}>15-25 min</Text>
+                        </View>
+                      </View>
+
+                      {/* Mini Stats Bar */}
+                      <View style={[styles.miniStatsBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        <View style={{ flex: 1, alignItems: "center" }}>
+                          <Text style={{ color: colors.foreground, fontSize: 10, fontFamily: "Inter_800ExtraBold" }}>5.0</Text>
+                          <Text style={{ color: colors.mutedForeground, fontSize: 8 }}>Rating</Text>
+                        </View>
+                        <View style={[styles.miniDivider, { backgroundColor: colors.border }]} />
+                        <View style={{ flex: 1, alignItems: "center" }}>
+                          <Text style={{ color: colors.foreground, fontSize: 10, fontFamily: "Inter_800ExtraBold" }}>{products.length}</Text>
+                          <Text style={{ color: colors.mutedForeground, fontSize: 8 }}>Products</Text>
+                        </View>
+                        <View style={[styles.miniDivider, { backgroundColor: colors.border }]} />
+                        <View style={{ flex: 1, alignItems: "center" }}>
+                          <Text style={{ color: colors.foreground, fontSize: 10, fontFamily: "Inter_800ExtraBold" }}>$15</Text>
+                          <Text style={{ color: colors.mutedForeground, fontSize: 8 }}>Min Order</Text>
+                        </View>
+                      </View>
+
+                      {/* Category Pill preview */}
+                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginVertical: 10 }}>
+                        <View style={[styles.miniPill, { backgroundColor: storeAccent }]}>
+                          <Text style={{ color: "#fff", fontSize: 9, fontFamily: "Inter_700Bold" }}>All</Text>
+                        </View>
+                        <View style={[styles.miniPill, { borderColor: colors.border, borderWidth: 1 }]}>
+                          <Text style={{ color: colors.mutedForeground, fontSize: 9 }}>New Arrivals</Text>
+                        </View>
+                      </ScrollView>
+
+                      {/* Products Miniature Grid */}
+                      <Text style={{ color: colors.foreground, fontSize: 11, fontFamily: "Inter_700Bold", marginBottom: 6 }}>
+                        Product Catalog
+                      </Text>
+                      <View style={styles.miniGrid}>
+                        {products.map((p) => (
+                          <View
+                            key={p.id}
+                            style={[styles.miniProductCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                          >
+                            <View style={[styles.miniProductImg, { backgroundColor: colors.muted }]}>
+                              {p.image_url ? (
+                                <Image source={{ uri: p.image_url }} style={{ width: "100%", height: "100%", resizeMode: "cover" }} />
+                              ) : (
+                                <Text style={{ fontSize: 22 }}>{storeEmoji}</Text>
+                              )}
+                            </View>
+                            <View style={{ padding: 6 }}>
+                              <Text style={[styles.miniProductName, { color: colors.foreground }]} numberOfLines={1}>
+                                {p.name}
+                              </Text>
+                              <Text style={{ color: colors.foreground, fontSize: 10, fontFamily: "Inter_800ExtraBold" }}>
+                                ${Number(p.price).toFixed(0)}
+                              </Text>
+                            </View>
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              )}
+              {builderTab === "settings" && store && (
+                <View style={styles.formGroup}>
+                  <Text style={[styles.modalLabel, { color: colors.mutedForeground, marginBottom: 4 }]}>SHOP VISIBILITY</Text>
+
+                  <View style={[styles.settingsStatusBanner, { backgroundColor: isActive ? "#22C55E14" : "#F9731614", borderColor: isActive ? "#22C55E55" : "#F9731655" }]}>
+                    <View style={[styles.settingsStatusDot, { backgroundColor: isActive ? "#22C55E" : "#F97316" }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: "Inter_700Bold", fontSize: 13, color: isActive ? "#22C55E" : "#F97316" }}>
+                        {isActive ? "Shop is Active" : "Shop is Deactivated"}
+                      </Text>
+                      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: colors.mutedForeground, marginTop: 2 }}>
+                        {isActive
+                          ? "Your shop is visible in the Marketplace and accepting customers."
+                          : "Your shop is hidden from the Marketplace. Reactivate to go live again."}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <TouchableOpacity
+                    style={[styles.settingsDangerRow, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    onPress={handleDeactivateStore}
+                    disabled={deactivateLoading || deleteLoading}
+                  >
+                    <View style={[styles.settingsRowIcon, { backgroundColor: isActive ? "#F9731618" : "#22C55E18" }]}>
+                      {deactivateLoading ? (
+                        <ActivityIndicator size="small" color={isActive ? "#F97316" : "#22C55E"} />
+                      ) : (
+                        <Ionicons name={isActive ? "pause-circle-outline" : "play-circle-outline"} size={22} color={isActive ? "#F97316" : "#22C55E"} />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: isActive ? "#F97316" : "#22C55E" }}>
+                        {isActive ? "Deactivate Shop" : "Reactivate Shop"}
+                      </Text>
+                      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                        {isActive
+                          ? "Temporarily hide your shop from the Marketplace."
+                          : "Bring your shop back online and visible to customers."}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+                  </TouchableOpacity>
+
+                  <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 20 }} />
+
+                  <Text style={[styles.modalLabel, { color: "#EF4444", marginBottom: 4 }]}>DANGER ZONE</Text>
+                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.mutedForeground, marginBottom: 14 }}>
+                    Permanent actions that cannot be undone.
+                  </Text>
+
+                  <TouchableOpacity
+                    style={[styles.settingsDangerRow, { borderColor: "#EF444444", backgroundColor: "#EF444408" }]}
+                    onPress={handleDeleteStore}
+                    disabled={deleteLoading || deactivateLoading}
+                  >
+                    <View style={[styles.settingsRowIcon, { backgroundColor: "#EF444418" }]}>
+                      {deleteLoading ? (
+                        <ActivityIndicator size="small" color="#EF4444" />
+                      ) : (
+                        <Ionicons name="trash-outline" size={22} color="#EF4444" />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: "#EF4444" }}>
+                        Delete This Shop
+                      </Text>
+                      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                        Permanently remove this shop and all its products. Cannot be undone.
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color="#EF4444" />
+                  </TouchableOpacity>
+                </View>
+              )}
+            </ScrollView>
+
+            {/* Bottom Actions footer inside sidebar */}
+            <View style={[styles.sidebarFooter, { borderTopColor: colors.border, backgroundColor: colors.card }]}>
+              {builderTab !== "settings" && (
+                <TouchableOpacity
+                  style={[styles.sidebarSubmitBtn, { backgroundColor: storeAccent }]}
+                  onPress={handleSaveStore}
+                  disabled={loading || deleteLoading || deactivateLoading}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.submitBtnText}>
+                      {store ? "Save Changes" : merchantType === "basic_shop" ? "Compile Basic Store" : "Register as Vendor"}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              )}
+            </View>
+          </>
+        )}
+      </Animated.View>
+    </Modal>
+  );
+}
+
+// ─── Profession Setup Sidebar ──────────────────────────────────────────────────
+
+interface ProfessionSidebarProps {
+  visible: boolean;
+  onClose: () => void;
+  userId: string;
+  user: User | null;
+  store: Store | null;
+  onSuccess: () => void;
+}
+
+function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }: ProfessionSidebarProps) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [step, setStep] = useState<"select" | "setup" | "success">("select");
+  const [loading, setLoading] = useState(false);
+
+  // Selected Profession
+  const [selectedProf, setSelectedProf] = useState("");
+  const [selectedProfEmoji, setSelectedProfEmoji] = useState("💼");
+
+  // Branding details
+  const [brandName, setBrandName] = useState("");
+  const [brandTagline, setBrandTagline] = useState("");
+  const [brandAccent, setBrandAccent] = useState("#4A80F0");
+  const [coverImageUrl, setCoverImageUrl] = useState("");
+
+  const PROFESSIONS = [
+    { label: "Basic Shop Owner", emoji: "🏪", desc: "Build a digital catalog storefront to showcase and list standard items.", isShop: true, type: "basic_shop" },
+    { label: "Independent Vendor", emoji: "📦", desc: "Become an active vendor, receive order chats, list specialized products.", isShop: true, type: "vendor" },
+    { label: "Tailor / Fashion Designer", emoji: "🧵", desc: "Showcase custom tailoring, design collections, and alteration services." },
+    { label: "Barber", emoji: "💈", desc: "Offer premium styling, haircuts, beard grooming, and portfolio shots." },
+    { label: "Hairdresser / Braider", emoji: "💇‍♀️", desc: "Present beautiful braids, wig styling, extensions, and treatment catalog." },
+    { label: "Carpenter", emoji: "🪚", desc: "Show off bespoke woodwork, custom furniture, cabinets, and carpentry." },
+    { label: "Bricklayer / Builder", emoji: "🧱", desc: "Showcase masonry, brick construction, structural building, and repairs." },
+    { label: "Electrician", emoji: "⚡", desc: "Offer expert electrical wiring, fixture installation, and power fixes." },
+    { label: "Plumber", emoji: "🪠", desc: "Showcase drainage repairs, pipe fitting, plumbing installations." },
+    { label: "Welder / Metal Fabricator", emoji: "👨‍🏭", desc: "Present custom metal fabrication, heavy welding, iron gates, and grilles." },
+    { label: "Mechanic (car / motorcycle)", emoji: "🔧", desc: "Showcase auto repairs, motor servicing, diagnostics, and repairs." },
+    { label: "Bicycle Repair Technician", emoji: "🚲", desc: "Offer gear tuning, puncture repairs, custom bike builds, and maintenance." },
+    { label: "Mobile Money Agent", emoji: "📲", desc: "Show service coverage for payments, fast transfers, deposits, and cashouts." },
+    { label: "Photographer / Videographer", emoji: "📷", desc: "Present event photography, cinematic videos, custom portraits." },
+    { label: "Caterer / Cook", emoji: "🍳", desc: "Showcase gourmet meals, event catering, baking recipes, and food plates." },
+    { label: "Event Decorator", emoji: "🎈", desc: "Show balloon installations, theme parties, premium flower backdrops." },
+    { label: "DJ / Sound System Operator", emoji: "🎧", desc: "Present live sound systems, party mixes, music equipment rental." },
+    { label: "Private Tutor", emoji: "📖", desc: "Offer homework assistance, test prep, subject tutoring, and lessons." },
+    { label: "Graphic Designer / Printer", emoji: "🎨", desc: "Show logo designs, flyer creations, business card printing services." },
+    { label: "Computer Repair Technician", emoji: "💻", desc: "Offer OS installations, laptop screen fixes, software upgrades." },
+    { label: "House Painter", emoji: "🖌️", desc: "Present professional interior/exterior paint styling, textured walls." },
+    { label: "Taxi / Minibus Operator", emoji: "🚕", desc: "Show taxi bookings, airport pickups, tours, and shuttle routes." }
+  ];
+
+  const ACCENTS = ["#4A80F0", "#11998E", "#F7971E", "#7C3AED", "#FF6B6B"];
+
+  // Reanimated sliding config
+  const screenWidth = Dimensions.get("window").width;
+  const animValue = useSharedValue(screenWidth);
+  const backdropOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (visible) {
+      setStep("select");
+      setBrandName("");
+      setBrandTagline("");
+      setBrandAccent("#4A80F0");
+      setCoverImageUrl("");
+      setSelectedProf("");
+      animValue.value = withTiming(0, { duration: 350 });
+      backdropOpacity.value = withTiming(1, { duration: 350 });
+    } else {
+      animValue.value = withTiming(screenWidth, { duration: 250 });
+      backdropOpacity.value = withTiming(0, { duration: 250 });
+    }
+  }, [visible]);
+
+  const pickImage = async (onSelected: (uri: string) => void) => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Permission Required", "We need camera roll permissions to select images.");
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 0.8,
+      });
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        onSelected(result.assets[0].uri);
+      }
+    } catch (e) {
+      console.log("Image picker error:", e);
+      Alert.alert("Error", "Could not pick image from device.");
+    }
+  };
+
+  const handleSelectProfession = (prof: typeof PROFESSIONS[0]) => {
+    setSelectedProf(prof.label);
+    setSelectedProfEmoji(prof.emoji);
+    setBrandName(`${user?.displayName || "My"} ${prof.label}`);
+    setBrandTagline(`Expert ${prof.label.toLowerCase()} services and collections`);
+    setBrandAccent(ACCENTS[Math.floor(Math.random() * ACCENTS.length)]);
+    setCoverImageUrl("");
+    setStep("setup");
+  };
+
+  const handleSaveProfession = async () => {
+    if (!brandName.trim()) {
+      Alert.alert("Required", "Please enter a business/brand name.");
+      return;
+    }
+    setLoading(true);
+    try {
+      // 1. Update user profile title to the chosen profession
+      await ProfileService.updateProfile(userId, { title: selectedProf });
+
+      // Determine merchant type
+      let mType = "basic_shop";
+      const matched = PROFESSIONS.find(p => p.label === selectedProf);
+      if (matched && matched.isShop) {
+        mType = matched.type;
+      } else {
+        mType = "professional"; // Custom professional brand type!
+      }
+
+      // 2. Register/Update corresponding store config
+      const config = {
+        owner_id: userId,
+        name: brandName.trim(),
+        tagline: brandTagline.trim(),
+        emoji: selectedProfEmoji,
+        accent_color: brandAccent,
+        cover_gradient_start: "#4A00E0",
+        cover_gradient_end: "#8E2DE2",
+        cover_image_url: coverImageUrl.trim() || null,
+        merchant_type: mType,
+        // Pre-stock some sample professional portfolio services if creating a brand new showcase
+        products: [
+          { id: "temp-prof-1", name: `Bespoke ${selectedProf} Service`, price: 49.99, brand: brandName.trim(), rating: 5.0, category: "Services", image_url: "" },
+          { id: "temp-prof-2", name: `Premium Portfolio Showcase`, price: 99.99, brand: brandName.trim(), rating: 5.0, category: "Portfolio", image_url: "" }
+        ]
+      };
+
+      await StoreService.createStore(config as any);
+
+      setStep("success");
+      onSuccess();
+    } catch (e: any) {
+      Alert.alert("Error", e.message || "Could not register your professional brand.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClose = () => {
+    onClose();
+  };
+
+  const sidebarAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: animValue.value }],
+  }));
+
+  const backdropAnimatedStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.value,
+  }));
+
+  if (!visible) return null;
+
+  return (
+    <Modal transparent visible={visible} animationType="none" onRequestClose={handleClose}>
+      <Animated.View style={[styles.sidebarBackdrop, backdropAnimatedStyle]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+      </Animated.View>
+
+      <Animated.View style={[
+        styles.sidebarSheet,
+        sidebarAnimatedStyle,
+        { backgroundColor: colors.card, borderColor: colors.border, paddingTop: insets.top }
+      ]}>
+        {/* Header */}
+        <View style={[styles.sidebarHeader, { flexDirection: "row", alignItems: "center", gap: 12 }]}>
+          <TouchableOpacity style={[styles.sidebarCloseBtn, { paddingRight: 6 }]} onPress={handleClose}>
+            <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.sidebarSubtitle, { color: colors.mutedForeground }]}>
+              Brand & Profession Inception
+            </Text>
+            <Text style={[styles.sidebarTitle, { color: colors.foreground, fontSize: 18 }]}>
+              {step === "select" ? "Choose Your Path" : step === "setup" ? "Design Your Brand" : "Success!"}
+            </Text>
+          </View>
+        </View>
+
+        {step === "select" ? (
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 18, gap: 12, paddingBottom: 100 }}>
+            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, marginBottom: 4 }}>
+              Select a path below to instantly build a highly polished professional showcase brand. Visitors of your profile can view your portfolios, services, products, and contact you directly.
+            </Text>
+
+            {PROFESSIONS.map((prof) => (
+              <Pressable
+                key={prof.label}
+                style={{
+                  backgroundColor: colors.card,
+                  borderColor: colors.border,
+                  borderWidth: 1.5,
+                  borderRadius: 14,
+                  padding: 14,
+                  flexDirection: "row",
+                  alignItems: "center",
+                  gap: 12,
+                  marginBottom: 4,
+                }}
+                onPress={() => handleSelectProfession(prof)}
+              >
+                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.muted, alignItems: "center", justifyContent: "center" }}>
+                  <Text style={{ fontSize: 24 }}>{prof.emoji}</Text>
+                </View>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={{ color: colors.foreground, fontSize: 15, fontFamily: "Inter_700Bold" }}>{prof.label}</Text>
+                  <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_500Medium" }} numberOfLines={2}>{prof.desc}</Text>
+                </View>
+                <Ionicons name="arrow-forward" size={18} color={colors.mutedForeground} />
+              </Pressable>
+            ))}
+          </ScrollView>
+        ) : step === "setup" ? (
+          <>
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 18, gap: 16 }}>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.muted, padding: 10, borderRadius: 10 }}>
+                <Text style={{ fontSize: 20 }}>{selectedProfEmoji}</Text>
+                <View>
+                  <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_700Bold", textTransform: "uppercase" }}>SELECTED PROFESSION</Text>
+                  <Text style={{ fontSize: 14, color: colors.foreground, fontFamily: "Inter_700Bold" }}>{selectedProf}</Text>
+                </View>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Brand / Business Name</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]}
+                  placeholder="e.g. Nick's Elite Alterations"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={brandName}
+                  onChangeText={setBrandName}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Brand Tagline / Bio</Text>
+                <TextInput
+                  style={[styles.modalInput, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]}
+                  placeholder="e.g. Providing high-quality styling"
+                  placeholderTextColor={colors.mutedForeground}
+                  value={brandTagline}
+                  onChangeText={setBrandTagline}
+                />
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Showcase Cover Image</Text>
+                <Pressable
+                  style={{
+                    backgroundColor: colors.input,
+                    borderColor: colors.border,
+                    borderWidth: 1.5,
+                    borderRadius: 12,
+                    height: 120,
+                    justifyContent: "center",
+                    alignItems: "center",
+                    overflow: "hidden",
+                  }}
+                  onPress={() => pickImage(setCoverImageUrl)}
+                >
+                  {coverImageUrl ? (
+                    <>
+                      <Image source={{ uri: coverImageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                      <View style={{ position: "absolute", bottom: 8, right: 8, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                        <Ionicons name="camera" size={14} color="#fff" />
+                        <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" }}>Change Image</Text>
+                      </View>
+                    </>
+                  ) : (
+                    <View style={{ alignItems: "center", gap: 6 }}>
+                      <Ionicons name="image-outline" size={32} color={colors.mutedForeground} />
+                      <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>Upload Cover Image</Text>
+                      <Text style={{ color: colors.mutedForeground, fontSize: 10 }}>Select professional banner from device</Text>
+                    </View>
+                  )}
+                </Pressable>
+              </View>
+
+              <View style={styles.modalInputGroup}>
+                <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Brand Accent Color</Text>
+                <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
+                  {ACCENTS.map((c) => (
+                    <TouchableOpacity
+                      key={c}
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 19,
+                        backgroundColor: c,
+                        borderWidth: brandAccent === c ? 3 : 0,
+                        borderColor: colors.foreground,
+                      }}
+                      onPress={() => setBrandAccent(c)}
+                    />
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={[styles.sidebarFooter, { borderTopColor: colors.border, backgroundColor: colors.card, flexDirection: "row", gap: 10 }]}>
+              <TouchableOpacity
+                style={[styles.sidebarSubmitBtn, { flex: 1, backgroundColor: colors.muted }]}
+                onPress={() => setStep("select")}
+              >
+                <Text style={[styles.submitBtnText, { color: colors.foreground }]}>Back</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.sidebarSubmitBtn, { flex: 2, backgroundColor: brandAccent }]}
+                onPress={handleSaveProfession}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.submitBtnText}>Launch Brand</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </>
+        ) : (
+          <View style={[styles.successWrapper, { padding: 32, flex: 1, justifyContent: "center", alignItems: "center", gap: 16 }]}>
+            <Ionicons name="checkmark-circle" size={80} color="#22C55E" />
+            <Text style={[styles.successTitleText, { color: colors.foreground, fontSize: 22, fontFamily: "Inter_800ExtraBold" }]}>
+              Brand Live & Compiled!
+            </Text>
+            <Text style={[styles.successDescText, { color: colors.mutedForeground, textAlign: "center", fontSize: 14, fontFamily: "Inter_500Medium" }]}>
+              Congratulations! Your brand as a "{selectedProf}" is now fully set up. Visitors can browse your services, portfolio, and easily message you.
+            </Text>
+            <TouchableOpacity
+              style={[styles.sidebarSubmitBtn, { width: "100%", backgroundColor: colors.primary, marginTop: 14 }]}
+              onPress={handleClose}
+            >
+              <Text style={styles.submitBtnText}>View My Showcase</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </Animated.View>
+    </Modal>
+  );
+}
+
 // ─── Main ProfileScreen ───────────────────────────────────────────────────────
 
 interface ProfileScreenProps {
+
   userId: string;
   showBackButton?: boolean;
   onBack?: () => void;
+  onEditPress?: () => void;
 }
 
-export function ProfileScreen({ userId, showBackButton, onBack }: ProfileScreenProps) {
+export function ProfileScreen({ userId, showBackButton, onBack, onEditPress }: ProfileScreenProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
+  const { currentUser } = useChat();
   const { user, posts, isLoading, error, refresh } = useProfile(userId);
   const [activeTab, setActiveTab] = useState<ProfileTab>("posts");
 
-  const isOwn = userId === CURRENT_USER_ID;
+  const isOwn = userId === currentUser?.id;
+  const { stores, store, refreshStore, selectActiveStore } = useStore(userId);
+  const hasShop = !!store || !!user?.title;
+  const [modalVisible, setModalVisible] = useState(false);
+  const [professionModalVisible, setProfessionModalVisible] = useState(false);
+
+  const handleRefresh = useCallback(() => {
+    refresh();
+    refreshStore();
+  }, [refresh, refreshStore]);
+
+  // Re-fetch the profile every time this screen comes into focus.
+  useFocusEffect(
+    useCallback(() => {
+      handleRefresh();
+    }, [handleRefresh])
+  );
 
   const renderPost = useCallback(
     ({ item }: { item: Post }) => <ProfilePostCard post={item} />,
@@ -228,19 +1513,203 @@ export function ProfileScreen({ userId, showBackButton, onBack }: ProfileScreenP
       case "posts":
         return null; // handled by FlatList
       case "collection":
+        if (store) {
+          return (
+            <View style={{ padding: 18, gap: 14 }}>
+              {/* Horizontal selector bar for multiple stores/professions */}
+              {((stores.length > 1) || (isOwn && stores.length > 0)) && (
+                <ScrollView
+                  horizontal
+                  showsHorizontalScrollIndicator={false}
+                  contentContainerStyle={{ gap: 8, paddingBottom: 6 }}
+                >
+                  {stores.map((s) => {
+                    const isActive = s.id === store.id;
+                    return (
+                      <TouchableOpacity
+                        key={s.id}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                          backgroundColor: isActive ? store.accent_color : colors.card,
+                          borderColor: isActive ? store.accent_color : colors.border,
+                          borderWidth: 1.5,
+                          borderRadius: 20,
+                          paddingHorizontal: 12,
+                          paddingVertical: 6,
+                        }}
+                        onPress={() => selectActiveStore(s.id)}
+                      >
+                        <Text style={{ fontSize: 14 }}>{s.emoji}</Text>
+                        <Text
+                          style={{
+                            color: isActive ? "#fff" : colors.foreground,
+                            fontSize: 12,
+                            fontFamily: "Inter_700Bold",
+                          }}
+                        >
+                          {s.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                  {isOwn && (
+                    <TouchableOpacity
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 6,
+                        backgroundColor: colors.muted,
+                        borderColor: colors.border,
+                        borderWidth: 1.5,
+                        borderRadius: 20,
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                      }}
+                      onPress={() => setProfessionModalVisible(true)}
+                    >
+                      <Ionicons name="add" size={14} color={colors.foreground} />
+                      <Text
+                        style={{
+                          color: colors.foreground,
+                          fontSize: 12,
+                          fontFamily: "Inter_700Bold",
+                        }}
+                      >
+                        Create New...
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </ScrollView>
+              )}
+              {/* Premium Store Header Card */}
+              <View style={{ width: "100%", borderColor: store.accent_color + "77", borderWidth: 1.5, borderRadius: 16, overflow: "hidden", backgroundColor: colors.card }}>
+                {/* Cover gradient or image */}
+                <View style={{ height: 120, position: "relative", justifyContent: "flex-end" }}>
+                  {store.cover_image_url ? (
+                    <Image source={{ uri: store.cover_image_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                  ) : (
+                    <LinearGradient
+                      colors={[store.cover_gradient_start, store.cover_gradient_end]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={StyleSheet.absoluteFill}
+                    />
+                  )}
+                  <LinearGradient
+                    colors={["rgba(0,0,0,0.1)", "rgba(0,0,0,0.65)"]}
+                    style={StyleSheet.absoluteFill}
+                  />
+                  {/* Emoji overlay */}
+                  <View style={{ position: "absolute", bottom: -20, left: 16, width: 50, height: 50, borderRadius: 12, backgroundColor: colors.card, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.border, elevation: 4 }}>
+                    <Text style={{ fontSize: 26 }}>{store.emoji}</Text>
+                  </View>
+                </View>
+
+                {/* Store details */}
+                <View style={{ padding: 16, paddingTop: 28, gap: 4 }}>
+                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                    <View style={{ flex: 1, marginRight: 8 }}>
+                      <Text style={{ color: colors.foreground, fontSize: 18, fontFamily: "Inter_800ExtraBold" }}>{store.name}</Text>
+                      <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_500Medium" }} numberOfLines={1}>{store.tagline}</Text>
+                    </View>
+                    {isOwn && (
+                      <TouchableOpacity
+                        style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: store.accent_color, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }}
+                        onPress={() => setModalVisible(true)}
+                      >
+                        <Ionicons name="create-outline" size={16} color="#fff" />
+                        <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 12 }}>
+                          {store.merchant_type === "professional" ? "Edit Brand" : "Edit Shop"}
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.muted, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                      <Ionicons name={store.merchant_type === "professional" ? "sparkles-outline" : "cube-outline"} size={12} color={colors.mutedForeground} />
+                      <Text style={{ color: colors.foreground, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>
+                        {store.products?.length || 0} {store.merchant_type === "professional" ? "Services" : "Items"}
+                      </Text>
+                    </View>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.muted, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
+                      <Ionicons name={store.merchant_type === "professional" ? "briefcase-outline" : "storefront-outline"} size={12} color={colors.mutedForeground} />
+                      <Text style={{ color: colors.foreground, fontSize: 11, fontFamily: "Inter_600SemiBold" }} numberOfLines={1}>
+                        {store.merchant_type === "basic_shop" ? "Basic Store" : store.merchant_type === "vendor" ? "Vendor Store" : `${user?.title || "Professional"}`}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </View>
+
+              {(!store.products || store.products.length === 0) ? (
+                <EmptyTab
+                  icon={store.merchant_type === "professional" ? "briefcase-outline" : "storefront-outline"}
+                  title={store.merchant_type === "professional" ? "No Services Yet" : "No Products Yet"}
+                  subtitle={store.merchant_type === "professional" ? "Your portfolio services will appear here" : "Your store products will appear here"}
+                />
+              ) : (
+                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
+                  {store.products.map(p => (
+                    <View key={p.id} style={{ width: CARD_W, backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 16, overflow: "hidden", elevation: 4 }}>
+                      <View style={{ height: 120, backgroundColor: colors.muted, alignItems: "center", justifyContent: "center", position: "relative" }}>
+                        {p.image_url ? (
+                          <Image source={{ uri: p.image_url }} style={{ width: "100%", height: "100%", resizeMode: "cover" }} />
+                        ) : (
+                          <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" }}>
+                            <Text style={{ fontSize: 24 }}>{store.emoji}</Text>
+                          </View>
+                        )}
+                        <View style={{ position: "absolute", top: 8, right: 8, backgroundColor: store.accent_color, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ color: "#fff", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase" }}>{p.category || (store.merchant_type === "professional" ? "Service" : "Shoes")}</Text>
+                        </View>
+                      </View>
+                      <View style={{ padding: 10, gap: 2 }}>
+                        <Text style={{ color: colors.mutedForeground, fontSize: 10, fontFamily: "Inter_600SemiBold" }}>{p.brand || `${user?.title || "Professional"}`}</Text>
+                        <Text style={{ color: colors.foreground, fontSize: 13, fontFamily: "Inter_700Bold" }} numberOfLines={1}>{p.name}</Text>
+                        <Text style={{ color: store.accent_color, fontSize: 14, fontFamily: "Inter_800ExtraBold", marginTop: 2 }}>${Number(p.price).toFixed(2)}</Text>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          );
+        }
         return (
-          <EmptyTab
-            icon="cube-outline"
-            title="No Collection Yet"
-            subtitle="Shoes you own will appear here"
-          />
+          <View style={{ padding: 18, gap: 14 }}>
+            <EmptyTab
+              icon="storefront-outline"
+              title="No Active Brand or Shops"
+              subtitle={isOwn ? "Setup a professional showcase, design portfolio, or digital storefront catalog to list your crafts, services, and products." : "This user hasn't active storefronts or portfolios yet."}
+            />
+            {isOwn && (
+              <TouchableOpacity
+                style={{
+                  backgroundColor: colors.primary,
+                  padding: 14,
+                  borderRadius: 14,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginTop: 6,
+                }}
+                onPress={() => setProfessionModalVisible(true)}
+              >
+                <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 14 }}>
+                  Launch Brand or Shop
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
         );
       case "wishlist":
         return (
           <EmptyTab
             icon="heart-outline"
             title="Wishlist is Empty"
-            subtitle="Save shoes you want to buy"
+            subtitle="Save items you want to get"
           />
         );
       case "reviews":
@@ -248,7 +1717,7 @@ export function ProfileScreen({ userId, showBackButton, onBack }: ProfileScreenP
           <EmptyTab
             icon="star-outline"
             title="No Reviews Yet"
-            subtitle="Reviews for purchased shoes appear here"
+            subtitle="Your reviews will appear here"
           />
         );
       case "about":
@@ -260,22 +1729,31 @@ export function ProfileScreen({ userId, showBackButton, onBack }: ProfileScreenP
 
   const headerContent = (
     <>
-      {showBackButton && (
-        <View style={[styles.floatingBack, { top: topPad + 8 }]}>
+      <View style={[styles.pageHeader, { paddingTop: topPad + 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 10 }]}>
+        {showBackButton ? (
           <TouchableOpacity
             style={[styles.backCircle, { backgroundColor: "rgba(0,0,0,0.45)" }]}
             onPress={onBack}
           >
             <Ionicons name="arrow-back" size={20} color="#fff" />
           </TouchableOpacity>
-        </View>
-      )}
-      {!showBackButton && (
-        <View style={{ height: topPad }} />
-      )}
+        ) : (
+          <View style={{ width: 40 }} />
+        )}
+
+        {isOwn && (
+          <TouchableOpacity
+            style={[styles.headerIconBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            onPress={() => setProfessionModalVisible(true)}
+          >
+            <Ionicons name="ellipsis-horizontal" size={20} color={colors.foreground} />
+          </TouchableOpacity>
+        )}
+      </View>
       <ProfileHeader
         user={user}
         isOwn={isOwn}
+        onEditPress={onEditPress}
       />
       <ProfileStats
         posts={user.postsCount}
@@ -297,7 +1775,7 @@ export function ProfileScreen({ userId, showBackButton, onBack }: ProfileScreenP
           ListHeaderComponent={
             <>
               {headerContent}
-              <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
+              <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} hasShop={hasShop} />
               <View style={{ height: 14 }} />
             </>
           }
@@ -312,6 +1790,21 @@ export function ProfileScreen({ userId, showBackButton, onBack }: ProfileScreenP
           contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
           stickyHeaderIndices={[]}
         />
+        <ShopVendorSidebar
+          visible={modalVisible}
+          onClose={() => setModalVisible(false)}
+          userId={userId}
+          store={store}
+          onSuccess={handleRefresh}
+        />
+        <ProfessionSidebar
+          visible={professionModalVisible}
+          onClose={() => setProfessionModalVisible(false)}
+          userId={userId}
+          user={user}
+          store={store}
+          onSuccess={handleRefresh}
+        />
       </View>
     );
   }
@@ -324,9 +1817,24 @@ export function ProfileScreen({ userId, showBackButton, onBack }: ProfileScreenP
         stickyHeaderIndices={[1]}
       >
         <View>{headerContent}</View>
-        <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} />
+        <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} hasShop={hasShop} />
         <View>{renderTabContent()}</View>
       </ScrollView>
+      <ShopVendorSidebar
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        userId={userId}
+        store={store}
+        onSuccess={handleRefresh}
+      />
+      <ProfessionSidebar
+        visible={professionModalVisible}
+        onClose={() => setProfessionModalVisible(false)}
+        userId={userId}
+        user={user}
+        store={store}
+        onSuccess={handleRefresh}
+      />
     </View>
   );
 }
@@ -379,51 +1887,449 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingTop: 60,
     paddingHorizontal: 32,
-    gap: 10,
+    gap: 12,
   },
   emptyTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
+    fontSize: 18,
+    fontFamily: "Inter_700Bold",
     textAlign: "center",
   },
   emptySub: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
     textAlign: "center",
+  },
+  pageHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingBottom: 8,
+  },
+  pageTitle: {
+    fontSize: 24,
+    fontFamily: "Inter_800ExtraBold",
+  },
+  headerIconBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    alignItems: "center",
+    justifyContent: "center",
   },
   aboutContainer: {
     padding: 16,
-    gap: 12,
+    gap: 16,
   },
   aboutCard: {
-    borderRadius: 14,
+    borderRadius: 20,
     borderWidth: 1,
-    padding: 16,
-    gap: 12,
+    padding: 20,
+    gap: 14,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
   },
   aboutSection: {
-    fontSize: 15,
+    fontSize: 16,
     fontFamily: "Inter_700Bold",
-    marginBottom: 2,
+    marginBottom: 4,
   },
   aboutBio: {
     fontSize: 14,
     fontFamily: "Inter_400Regular",
-    lineHeight: 21,
+    lineHeight: 22,
   },
   aboutRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 12,
   },
   aboutRowLabel: {
     fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    width: 110,
+    fontFamily: "Inter_500Medium",
+    width: 120,
   },
   aboutRowValue: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
     flex: 1,
+  },
+  sidebarBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.55)",
+  },
+  sidebarSheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+    elevation: 20,
+  },
+  sidebarHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(0,0,0,0.1)",
+  },
+  sidebarTitle: {
+    fontSize: 20,
+    fontFamily: "Inter_800ExtraBold",
+  },
+  sidebarSubtitle: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    textTransform: "uppercase",
+  },
+  sidebarCloseBtn: {
+    padding: 6,
+  },
+  sidebarBody: {
+    padding: 18,
+    paddingBottom: 100,
+  },
+  choiceSubtitle: {
+    fontSize: 14,
+    fontFamily: "Inter_500Medium",
+    lineHeight: 22,
+    marginBottom: 20,
+    marginTop: 4,
+  },
+  choiceCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    padding: 20,
+    borderRadius: 0,
+    borderWidth: 2,
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 0,
+  },
+  choiceIconCircle: {
+    width: 54,
+    height: 54,
+    borderRadius: 0,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+  },
+  choiceCardTitle: {
+    fontSize: 17,
+    fontFamily: "Inter_800ExtraBold",
+    marginBottom: 4,
+    textTransform: "uppercase",
+  },
+  choiceCardDesc: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    lineHeight: 18,
+  },
+  toggleBar: {
+    flexDirection: "row",
+    marginHorizontal: 18,
+    marginTop: 14,
+    borderRadius: 10,
+    padding: 3,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  toggleText: {
+    fontSize: 12,
+    fontFamily: "Inter_700Bold",
+  },
+  builderNav: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.05)",
+    marginHorizontal: 18,
+    marginTop: 14,
+  },
+  builderNavTab: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 10,
+  },
+  builderNavText: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+  },
+  formGroup: {
+    gap: 18,
+  },
+  modalInputGroup: {
+    gap: 8,
+  },
+  modalLabel: {
+    fontSize: 13,
+    fontFamily: "Inter_600SemiBold",
+    marginLeft: 4,
+  },
+  modalInput: {
+    borderWidth: 1.5,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 48,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  emojiRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  emojiBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.08)",
+  },
+  accentRow: {
+    flexDirection: "row",
+    gap: 12,
+    paddingVertical: 4,
+  },
+  accentDot: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  accentDotActive: {
+    borderWidth: 3,
+    borderColor: "#fff",
+    transform: [{ scale: 1.15 }],
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+  },
+  gradientRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    paddingVertical: 4,
+  },
+  gradientCard: {
+    width: 52,
+    height: 38,
+    borderRadius: 8,
+    overflow: "hidden",
+    borderWidth: 1.5,
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    lineHeight: 18,
+  },
+  addCard: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 12,
+  },
+  addProductBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    height: 48,
+  },
+  prodItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  miniPreviewCard: {
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+  },
+  miniPreviewCover: {
+    height: 80,
+    justifyContent: "flex-end",
+    position: "relative",
+  },
+  miniEmojiCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: "rgba(255,255,255,0.25)",
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.4)",
+    alignItems: "center",
+    justifyContent: "center",
+    position: "absolute",
+    bottom: -14,
+    left: 14,
+    zIndex: 2,
+  },
+  miniPreviewInfo: {
+    padding: 14,
+    paddingTop: 20,
+  },
+  miniTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  miniStoreName: {
+    fontSize: 14,
+    fontFamily: "Inter_800ExtraBold",
+  },
+  miniTagline: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
+    marginTop: 2,
+  },
+  miniBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 10,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  miniStatsBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+    paddingVertical: 8,
+  },
+  miniDivider: {
+    width: 1,
+    height: 20,
+  },
+  miniPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  miniGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  miniProductCard: {
+    width: "47%",
+    borderRadius: 10,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  miniProductImg: {
+    height: 50,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  miniProductName: {
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+    lineHeight: 12,
+    marginBottom: 2,
+  },
+  sidebarFooter: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderTopWidth: 1,
+  },
+  sidebarSubmitBtn: {
+    height: 46,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+  },
+  submitBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+  },
+  // ── Settings Tab ──────────────────────────────────────────────────────────────
+  settingsStatusBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 16,
+  },
+  settingsStatusDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  settingsDangerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  settingsRowIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  successWrapper: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 24,
+    gap: 16,
+  },
+  successTitleText: {
+    fontSize: 18,
+    fontFamily: "Inter_800ExtraBold",
+  },
+  successDescText: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    textAlign: "center",
+    lineHeight: 18,
   },
 });

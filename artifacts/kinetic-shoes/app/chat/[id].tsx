@@ -4,6 +4,8 @@ import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import { router, useLocalSearchParams } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -68,13 +70,25 @@ function GroupInfoModal({
             <Text style={[styles.groupSectionLabel, { color: colors.mutedForeground }]}>MEMBERS</Text>
             {members.map((member) => (
               <View key={member.id} style={[styles.memberRow, { borderBottomColor: colors.border }]}>
-                <UserAvatar displayName={member.displayName} avatarColor={member.avatarColor} size={42} />
-                <View style={styles.memberInfo}>
-                  <Text style={[styles.memberName, { color: colors.foreground }]}>
-                    {member.displayName}{member.id === currentUser?.id ? " (You)" : ""}{member.id === conv?.createdBy ? " · Admin" : ""}
-                  </Text>
-                  <Text style={[styles.memberHandle, { color: colors.mutedForeground }]}>@{member.username}</Text>
-                </View>
+                <Pressable
+                  style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 12 }}
+                  onPress={() => {
+                    onClose();
+                    router.push(`/profile/${member.id}`);
+                  }}
+                >
+                  <UserAvatar 
+                    displayName={member.displayName} 
+                    avatarColor={member.avatarColor} 
+                    size={42} 
+                  />
+                  <View style={styles.memberInfo}>
+                    <Text style={[styles.memberName, { color: colors.foreground }]}>
+                      {member.displayName}{member.id === currentUser?.id ? " (You)" : ""}{member.id === conv?.createdBy ? " · Admin" : ""}
+                    </Text>
+                    <Text style={[styles.memberHandle, { color: colors.mutedForeground }]}>@{member.username}</Text>
+                  </View>
+                </Pressable>
                 {isAdmin && member.id !== currentUser?.id && (
                   <Pressable onPress={() => removeGroupMember(conversationId, member.id)} hitSlop={8}>
                     <Ionicons name="remove-circle-outline" size={22} color={colors.destructive} />
@@ -88,11 +102,23 @@ function GroupInfoModal({
               <Text style={[styles.groupSectionLabel, { color: colors.mutedForeground }]}>ADD MEMBERS</Text>
               {nonMembers.map((friend) => (
                 <View key={friend.id} style={[styles.memberRow, { borderBottomColor: colors.border }]}>
-                  <UserAvatar displayName={friend.displayName} avatarColor={friend.avatarColor} size={42} />
-                  <View style={styles.memberInfo}>
-                    <Text style={[styles.memberName, { color: colors.foreground }]}>{friend.displayName}</Text>
-                    <Text style={[styles.memberHandle, { color: colors.mutedForeground }]}>@{friend.username}</Text>
-                  </View>
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 12 }}
+                    onPress={() => {
+                      onClose();
+                      router.push(`/profile/${friend.id}`);
+                    }}
+                  >
+                    <UserAvatar 
+                      displayName={friend.displayName} 
+                      avatarColor={friend.avatarColor} 
+                      size={42} 
+                    />
+                    <View style={styles.memberInfo}>
+                      <Text style={[styles.memberName, { color: colors.foreground }]}>{friend.displayName}</Text>
+                      <Text style={[styles.memberHandle, { color: colors.mutedForeground }]}>@{friend.username}</Text>
+                    </View>
+                  </Pressable>
                   <Pressable onPress={() => addGroupMember(conversationId, friend.id)} style={[styles.addMemberBtn, { backgroundColor: colors.primary }]}>
                     <Ionicons name="add" size={16} color="#FFF" />
                   </Pressable>
@@ -235,6 +261,7 @@ function ChatMessageItem({
         imageUri={message.imageUri}
         isMine={isMine}
         timestamp={message.timestamp}
+        status={message.status}
       />
     );
   }
@@ -246,6 +273,7 @@ function ChatMessageItem({
         fileMimeType={message.fileMimeType}
         isMine={isMine}
         timestamp={message.timestamp}
+        status={message.status}
       />
     );
   }
@@ -261,6 +289,16 @@ function ChatMessageItem({
   );
 }
 
+const WALLPAPERS: Record<string, { bg: string; isGradient?: boolean; colors?: string[] }> = {
+  default: { bg: "transparent" },
+  peach: { bg: "#FFF2EE" },
+  lavender: { bg: "#F4EDFF" },
+  stealth: { bg: "#16161A" },
+  sunset: { bg: "transparent", isGradient: true, colors: ["#FF9966", "#FF5E62"] },
+  neon: { bg: "transparent", isGradient: true, colors: ["#00F2FE", "#4FACFE"] },
+  sneakers: { bg: "transparent" },
+};
+
 export default function ConversationScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const colors = useColors();
@@ -275,6 +313,14 @@ export default function ConversationScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingDuration, setRecordingDuration] = useState(0);
   const recordingRef = useRef<Audio.Recording | null>(null);
+
+  const [wallpaper, setWallpaper] = useState<string>("default");
+
+  useEffect(() => {
+    AsyncStorage.getItem("chat_wallpaper").then((val) => {
+      if (val) setWallpaper(val);
+    });
+  }, []);
 
   const conv = getConversation(id ?? "");
   const rawMessages = getConversationMessages(id ?? "");
@@ -375,6 +421,16 @@ export default function ConversationScreen() {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [inputText, id, sendMessage]);
 
+  const [typing, setTyping] = useState(false);
+  const typingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleInputChange = (text: string) => {
+    setInputText(text);
+    setTyping(true);
+    if (typingTimerRef.current) clearTimeout(typingTimerRef.current);
+    typingTimerRef.current = setTimeout(() => setTyping(false), 1200);
+  };
+
   const handleVoiceCall = () => router.push(`/call/voice?convId=${id}`);
   const handleVideoCall = () => router.push(`/call/video?convId=${id}`);
 
@@ -401,34 +457,62 @@ export default function ConversationScreen() {
       behavior="padding"
       keyboardVerticalOffset={0}
     >
-      {/* Header */}
+      {/* Premium Header */}
       <View style={[styles.headerBar, { paddingTop: topPad + 8, borderBottomColor: colors.border, backgroundColor: colors.background }]}>
-        <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+        <Pressable onPress={() => router.back()} hitSlop={12} style={[styles.backBtn, { backgroundColor: colors.muted }]}>
+          <Ionicons name="chevron-back" size={20} color={colors.foreground} />
         </Pressable>
-        <UserAvatar displayName={getConvTitle()} avatarColor={getConvAvatarColor()} size={38} />
-        <View style={styles.headerTitleBlock}>
-          <Text style={[styles.convTitle, { color: colors.foreground }]} numberOfLines={1}>{getConvTitle()}</Text>
-          <Text style={[styles.convSubtitle, { color: colors.mutedForeground }]}>{getConvSubtitle()}</Text>
-        </View>
+        <Pressable
+          onPress={() => {
+            if (isGroup) { setGroupInfoVisible(true); }
+            else { const otherId = conv.memberIds.find((mid) => mid !== currentUser?.id) ?? ""; if (otherId) router.push(`/profile/${otherId}`); }
+          }}
+          style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 10 }}
+        >
+          <View style={{ position: "relative" }}>
+            <UserAvatar displayName={getConvTitle()} avatarColor={getConvAvatarColor()} size={40} />
+            {!isGroup && <View style={[styles.onlineIndicator, { backgroundColor: "#22C55E", borderColor: colors.background }]} />}
+          </View>
+          <View style={styles.headerTitleBlock}>
+            <Text style={[styles.convTitle, { color: colors.foreground }]} numberOfLines={1}>{getConvTitle()}</Text>
+            <Text style={[styles.convSubtitle, { color: "#22C55E" }]}>
+              {isGroup ? `${conv.memberIds.length} members` : "Active now"}
+            </Text>
+          </View>
+        </Pressable>
         <View style={styles.headerActions}>
-          <Pressable onPress={handleVoiceCall} hitSlop={8} style={styles.headerAction}>
-            <Ionicons name="call-outline" size={22} color={colors.primary} />
+          <Pressable onPress={handleVoiceCall} hitSlop={8} style={[styles.headerAction, { backgroundColor: colors.primary + "18" }]}>
+            <Ionicons name="call-outline" size={20} color={colors.primary} />
           </Pressable>
-          <Pressable onPress={handleVideoCall} hitSlop={8} style={styles.headerAction}>
-            <Ionicons name="videocam-outline" size={22} color={colors.primary} />
+          <Pressable onPress={handleVideoCall} hitSlop={8} style={[styles.headerAction, { backgroundColor: colors.primary + "18" }]}>
+            <Ionicons name="videocam-outline" size={20} color={colors.primary} />
           </Pressable>
           {isGroup && (
-            <Pressable onPress={() => setGroupInfoVisible(true)} hitSlop={8} style={styles.headerAction}>
-              <Ionicons name="people-outline" size={22} color={colors.foreground} />
+            <Pressable onPress={() => setGroupInfoVisible(true)} hitSlop={8} style={[styles.headerAction, { backgroundColor: colors.muted }]}>
+              <Ionicons name="people-outline" size={20} color={colors.foreground} />
             </Pressable>
           )}
         </View>
       </View>
 
       {/* Messages */}
-      <FlatList
-        data={displayMessages}
+      <View style={[{ flex: 1, overflow: "hidden" }, wallpaper !== "default" && (WALLPAPERS[wallpaper]?.isGradient ? { backgroundColor: "transparent" } : { backgroundColor: WALLPAPERS[wallpaper]?.bg })]}>
+        {wallpaper === "sunset" && (
+          <LinearGradient colors={WALLPAPERS.sunset.colors as any} style={StyleSheet.absoluteFillObject} />
+        )}
+        {wallpaper === "neon" && (
+          <LinearGradient colors={WALLPAPERS.neon.colors as any} style={StyleSheet.absoluteFillObject} />
+        )}
+        {wallpaper === "sneakers" && (
+          <View style={[StyleSheet.absoluteFillObject, { backgroundColor: colors.muted, opacity: 0.12, flexWrap: "wrap", flexDirection: "row", gap: 18, padding: 20 }]}>
+            {Array.from({ length: 90 }).map((_, i) => (
+              <Text key={i} style={{ fontSize: 24 }}>👟</Text>
+            ))}
+          </View>
+        )}
+
+        <FlatList
+          data={displayMessages}
         keyExtractor={(item) => item.id}
         inverted
         renderItem={({ item }) => (
@@ -443,9 +527,21 @@ export default function ConversationScreen() {
         showsVerticalScrollIndicator={false}
         keyboardDismissMode="interactive"
         keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          typing ? (
+            <View style={styles.typingRow}>
+              <UserAvatar displayName={getConvTitle()} avatarColor={getConvAvatarColor()} size={24} />
+              <View style={[styles.typingBubble, { backgroundColor: colors.muted }]}>
+                <View style={styles.typingDots}>
+                  {[0,1,2].map((i) => <View key={i} style={[styles.typingDot, { backgroundColor: colors.mutedForeground }]} />)}
+                </View>
+              </View>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyConv}>
-            <UserAvatar displayName={getConvTitle()} avatarColor={getConvAvatarColor()} size={64} />
+            <UserAvatar displayName={getConvTitle()} avatarColor={getConvAvatarColor()} size={72} />
             <Text style={[styles.emptyConvName, { color: colors.foreground }]}>{getConvTitle()}</Text>
             <Text style={[styles.emptyConvText, { color: colors.mutedForeground }]}>
               {isGroup ? "Group created! Say hello 👋" : "Say hi to start the conversation!"}
@@ -453,6 +549,7 @@ export default function ConversationScreen() {
           </View>
         }
       />
+      </View>
 
       {/* Input Bar */}
       {isRecording ? (
@@ -465,24 +562,20 @@ export default function ConversationScreen() {
         <View
           style={[
             styles.inputBar,
-            {
-              backgroundColor: colors.background,
-              borderTopColor: colors.border,
-              paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 4,
-            },
+            { backgroundColor: colors.background, borderTopColor: colors.border, paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 4 },
           ]}
         >
-          <Pressable onPress={() => setAttachVisible(true)} style={styles.inputIconBtn}>
-            <Ionicons name="add-circle-outline" size={26} color={colors.mutedForeground} />
+          <Pressable onPress={() => setAttachVisible(true)} style={[styles.inputIconBtn, { backgroundColor: colors.muted }]}>
+            <Ionicons name="add" size={22} color={colors.foreground} />
           </Pressable>
 
-          <View style={[styles.inputWrap, { backgroundColor: colors.muted }]}>
+          <View style={[styles.inputWrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
             <TextInput
               style={[styles.textInput, { color: colors.foreground }]}
               placeholder="Message…"
               placeholderTextColor={colors.mutedForeground}
               value={inputText}
-              onChangeText={setInputText}
+              onChangeText={handleInputChange}
               multiline
               maxLength={1000}
               onSubmitEditing={Platform.OS === "web" ? handleSend : undefined}
@@ -491,7 +584,7 @@ export default function ConversationScreen() {
 
           {inputText.trim() ? (
             <Pressable onPress={handleSend} style={[styles.sendBtn, { backgroundColor: colors.primary }]}>
-              <Ionicons name="send" size={18} color="#FFF" />
+              <Ionicons name="send" size={17} color="#FFF" />
             </Pressable>
           ) : (
             <Pressable
@@ -525,39 +618,46 @@ const styles = StyleSheet.create({
   headerBar: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
     paddingBottom: 10,
     gap: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { padding: 4 },
-  headerTitleBlock: { flex: 1, gap: 1 },
-  convTitle: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
-  convSubtitle: { fontSize: 12, fontFamily: "Inter_400Regular" },
-  headerActions: { flexDirection: "row", alignItems: "center", gap: 2 },
-  headerAction: { padding: 6 },
+  backBtn: { padding: 8, borderRadius: 12 },
+  onlineIndicator: { position: "absolute", bottom: 1, right: 1, width: 11, height: 11, borderRadius: 6, borderWidth: 2 },
+  headerTitleBlock: { flex: 1 },
+  convTitle: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  convSubtitle: { fontSize: 12, fontFamily: "Inter_500Medium", marginTop: 1 },
+  headerActions: { flexDirection: "row", alignItems: "center", gap: 6 },
+  headerAction: { padding: 8, borderRadius: 12 },
   messagesList: { flexGrow: 1, paddingVertical: 8 },
+  // Typing indicator
+  typingRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 16, paddingVertical: 6, transform: [{ scaleY: -1 }] },
+  typingBubble: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20, borderBottomLeftRadius: 4 },
+  typingDots: { flexDirection: "row", gap: 4 },
+  typingDot: { width: 7, height: 7, borderRadius: 4, opacity: 0.7 },
   inputBar: {
     flexDirection: "row",
     alignItems: "flex-end",
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingTop: 8,
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 10,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
-  inputIconBtn: { padding: 4, marginBottom: 6 },
+  inputIconBtn: { padding: 8, borderRadius: 12, marginBottom: 4 },
   inputWrap: {
     flex: 1,
     borderRadius: 22,
     paddingHorizontal: 14,
     paddingVertical: 10,
     maxHeight: 120,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   textInput: { fontSize: 15, fontFamily: "Inter_400Regular", lineHeight: 20 },
   sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 2,

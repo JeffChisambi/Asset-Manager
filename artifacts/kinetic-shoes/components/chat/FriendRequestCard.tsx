@@ -1,5 +1,6 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { router } from "expo-router";
 
 import { UserAvatar } from "@/components/chat/UserAvatar";
 import { type AppUser } from "@/context/ChatContext";
@@ -29,19 +30,24 @@ export function FriendRequestCard({
         { backgroundColor: colors.card, borderColor: colors.border },
       ]}
     >
-      <UserAvatar
-        displayName={user.displayName}
-        avatarColor={user.avatarColor}
-        size={48}
-      />
-      <View style={styles.info}>
-        <Text style={[styles.name, { color: colors.foreground }]}>
-          {user.displayName}
-        </Text>
-        <Text style={[styles.username, { color: colors.mutedForeground }]}>
-          @{user.username}
-        </Text>
-      </View>
+      <Pressable
+        style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 12 }}
+        onPress={() => router.push(`/profile/${user.id}`)}
+      >
+        <UserAvatar
+          displayName={user.displayName}
+          avatarColor={user.avatarColor}
+          size={48}
+        />
+        <View style={styles.info}>
+          <Text style={[styles.name, { color: colors.foreground }]}>
+            {user.displayName}
+          </Text>
+          <Text style={[styles.username, { color: colors.mutedForeground }]}>
+            @{user.username}
+          </Text>
+        </View>
+      </Pressable>
       {type === "received" && (
         <View style={styles.actions}>
           <Pressable

@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
 
 import { UserAvatar } from "@/components/chat/UserAvatar";
 import { useChat } from "@/context/ChatContext";
@@ -122,6 +123,7 @@ export default function VideoCallScreen() {
         style={[styles.topBar, { paddingTop: topPad + 4, opacity: fadeAnim }]}
         pointerEvents={showControls ? "auto" : "none"}
       >
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
         <Pressable onPress={() => router.back()} style={styles.topBtn}>
           <Ionicons name="chevron-down" size={26} color="#FFF" />
         </Pressable>
@@ -143,6 +145,7 @@ export default function VideoCallScreen() {
         ]}
         pointerEvents={showControls ? "auto" : "none"}
       >
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
         <View style={styles.controlRow}>
           <View style={styles.controlItem}>
             <Pressable
@@ -248,7 +251,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 12,
     paddingBottom: 12,
-    backgroundColor: "rgba(0,0,0,0.35)",
+    overflow: "hidden",
   },
   topBtn: { padding: 8 },
   topCenter: {
@@ -268,9 +271,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: "rgba(0,0,0,0.6)",
     paddingTop: 16,
     paddingHorizontal: 16,
+    overflow: "hidden",
   },
   controlRow: {
     flexDirection: "row",

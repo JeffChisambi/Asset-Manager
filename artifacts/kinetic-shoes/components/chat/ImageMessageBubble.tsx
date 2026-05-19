@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   View,
+  ActivityIndicator,
 } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
@@ -19,6 +20,7 @@ interface ImageMessageBubbleProps {
   imageUri: string;
   isMine: boolean;
   timestamp: number;
+  status?: "sending" | "sent" | "failed";
 }
 
 function formatTime(ts: number) {
@@ -32,6 +34,7 @@ export function ImageMessageBubble({
   imageUri,
   isMine,
   timestamp,
+  status,
 }: ImageMessageBubbleProps) {
   const colors = useColors();
   const [expanded, setExpanded] = useState(false);
@@ -40,7 +43,7 @@ export function ImageMessageBubble({
     <>
       <View style={[styles.row, isMine ? styles.rowRight : styles.rowLeft]}>
         <Pressable
-          onPress={() => setExpanded(true)}
+          onPress={() => status !== "sending" && setExpanded(true)}
           style={[
             styles.bubble,
             isMine
@@ -49,11 +52,18 @@ export function ImageMessageBubble({
             { backgroundColor: isMine ? colors.primary : colors.muted },
           ]}
         >
-          <Image
-            source={{ uri: imageUri }}
-            style={styles.image}
-            resizeMode="cover"
-          />
+          <View style={{ position: "relative" }}>
+            <Image
+              source={{ uri: imageUri }}
+              style={styles.image}
+              resizeMode="cover"
+            />
+            {status === "sending" && (
+              <View style={[StyleSheet.absoluteFillObject, styles.uploadOverlay]}>
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              </View>
+            )}
+          </View>
           <Text
             style={[
               styles.time,
@@ -102,6 +112,12 @@ const styles = StyleSheet.create({
   image: {
     width: width * 0.6,
     height: width * 0.6,
+    borderRadius: 14,
+  },
+  uploadOverlay: {
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
     borderRadius: 14,
   },
   time: {

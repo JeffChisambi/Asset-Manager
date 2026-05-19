@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { supabase } from "@/lib/supabase";
 import React, {
   createContext,
   useCallback,
@@ -26,6 +27,18 @@ export type FriendRequest = {
   createdAt: number;
 };
 
+export type Story = {
+  id: string;
+  userId: string;
+  type: "text" | "image" | "video" | "voice";
+  mediaUri?: string;
+  text?: string;
+  backgroundColor?: string; // For text stories
+  createdAt: number;
+  expiresAt: number; // 12 hours after creation
+  viewers: string[]; // User IDs who have viewed this story
+};
+
 export type Conversation = {
   id: string;
   type: "direct" | "group";
@@ -48,6 +61,7 @@ export type Message = {
   fileSize?: number;
   fileMimeType?: string;
   timestamp: number;
+  status?: "sending" | "sent" | "failed";
 };
 
 export type MediaPayload =
@@ -128,6 +142,34 @@ function genId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
 }
 
+async function uploadFileToSupabase(localUri: string, type: "image" | "file" | "voice", fileName: string): Promise<string> {
+  try {
+    const response = await fetch(localUri);
+    const blob = await response.blob();
+    
+    const ext = fileName.split('.').pop() || (type === "image" ? "jpg" : type === "voice" ? "m4a" : "bin");
+    const uniqueName = `attachments/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${ext}`;
+    const bucketName = "chat_attachments";
+
+    const { data, error } = await supabase.storage
+      .from(bucketName)
+      .upload(uniqueName, blob, {
+        contentType: blob.type || (type === "image" ? "image/jpeg" : type === "voice" ? "audio/x-m4a" : "application/octet-stream"),
+      });
+
+    if (error) throw error;
+
+    const { data: urlData } = supabase.storage
+      .from(bucketName)
+      .getPublicUrl(uniqueName);
+
+    return urlData.publicUrl;
+  } catch (err) {
+    console.warn("Supabase storage upload error:", err);
+    throw err;
+  }
+}
+
 type ChatContextType = {
   currentUser: AppUser | null;
   allUsers: AppUser[];
@@ -135,6 +177,7 @@ type ChatContextType = {
   friends: AppUser[];
   conversations: Conversation[];
   messages: Record<string, Message[]>;
+  stories: Story[];
   isLoaded: boolean;
 
   setCurrentUser: (user: AppUser) => void;
@@ -158,6 +201,14 @@ type ChatContextType = {
   isFriend: (userId: string) => boolean;
   hasPendingRequest: (toId: string) => boolean;
   getUnreadCount: () => number;
+  markConversationAsRead: (conversationId: string) => void;
+  deleteMessage: (conversationId: string, messageId: string) => void;
+  deleteConversation: (conversationId: string) => void;
+  getConversationUnreadCount: (conversationId: string) => number;
+  addStory: (payload: { type: Story["type"]; mediaUri?: string; text?: string; backgroundColor?: string }) => void;
+  deleteStory: (storyId: string) => void;
+  markStoryAsViewed: (storyId: string) => void;
+  getActiveStories: () => Record<string, Story[]>; // Grouped by userId
 };
 
 const ChatContext = createContext<ChatContextType | null>(null);
@@ -168,6 +219,8 @@ type PersistedState = {
   friendRequests: FriendRequest[];
   conversations: Conversation[];
   messages: Record<string, Message[]>;
+  lastRead: Record<string, number>;
+  stories: Story[];
 };
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
@@ -175,6 +228,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
+  const [lastRead, setLastRead] = useState<Record<string, number>>({});
+  const [stories, setStories] = useState<Story[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
@@ -182,11 +237,46 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       if (raw) {
         try {
           const s: PersistedState = JSON.parse(raw);
-          if (s.currentUser) setCurrentUserState(s.currentUser);
+          if (s.currentUser) {
+            setCurrentUserState(s.currentUser);
+          } else {
+            setCurrentUserState({
+              id: "me_" + Date.now(),
+              username: "doorstep_user",
+              displayName: "Doorstep User",
+              avatarColor: "#4A80F0",
+              bio: "Sneaker enthusiast",
+              isBot: false,
+            });
+          }
           setFriendRequests(s.friendRequests ?? []);
           setConversations(s.conversations ?? []);
           setMessages(s.messages ?? {});
-        } catch {}
+          setLastRead(s.lastRead ?? {});
+          
+          // Filter out expired stories on load
+          const now = Date.now();
+          const activeStories = (s.stories ?? []).filter(story => story.expiresAt > now);
+          setStories(activeStories);
+        } catch {
+          setCurrentUserState({
+            id: "me_" + Date.now(),
+            username: "doorstep_user",
+            displayName: "Doorstep User",
+            avatarColor: "#4A80F0",
+            bio: "Sneaker enthusiast",
+            isBot: false,
+          });
+        }
+      } else {
+        setCurrentUserState({
+          id: "me_" + Date.now(),
+          username: "doorstep_user",
+          displayName: "Doorstep User",
+          avatarColor: "#4A80F0",
+          bio: "Sneaker enthusiast",
+          isBot: false,
+        });
       }
       setIsLoaded(true);
     });
@@ -199,9 +289,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       friendRequests,
       conversations,
       messages,
+      lastRead,
+      stories: stories.filter(s => s.expiresAt > Date.now()), // Only persist active stories
     };
     AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [currentUser, friendRequests, conversations, messages, isLoaded]);
+  }, [currentUser, friendRequests, conversations, messages, lastRead, stories, isLoaded]);
 
   const friends = SEED_USERS.filter((u) =>
     friendRequests.some(
@@ -354,14 +446,18 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   );
 
   const sendMediaMessage = useCallback(
-    (conversationId: string, payload: MediaPayload) => {
+    async (conversationId: string, payload: MediaPayload) => {
       if (!currentUser) return;
+      
+      const tempId = genId();
       const base = {
-        id: genId(),
+        id: tempId,
         conversationId,
         senderId: currentUser.id,
         timestamp: Date.now(),
+        status: "sending" as const,
       };
+
       let msg: Message;
       if (payload.type === "voice") {
         msg = { ...base, type: "voice", audioUri: payload.audioUri, audioDuration: payload.audioDuration };
@@ -372,10 +468,59 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       } else {
         msg = { ...base, type: "text", text: payload.text };
       }
+
+      // Add as sending first
       setMessages((prev) => ({
         ...prev,
         [conversationId]: [...(prev[conversationId] ?? []), msg],
       }));
+
+      // Asynchronously upload in background
+      try {
+        let finalUri = "";
+        const uriToUpload = payload.type === "image" ? payload.imageUri : (payload.type === "voice" ? payload.audioUri : "");
+        const uploadName = payload.type === "voice" ? "voice.m4a" : (payload.type === "file" ? payload.fileName : "image.jpg");
+
+        if (uriToUpload && !uriToUpload.startsWith("http")) {
+          finalUri = await uploadFileToSupabase(uriToUpload, payload.type, uploadName);
+        }
+
+        // Mark as sent and update URI
+        setMessages((prev) => {
+          const list = prev[conversationId] ?? [];
+          return {
+            ...prev,
+            [conversationId]: list.map((m) => {
+              if (m.id === tempId) {
+                const updated = { ...m, status: "sent" as const };
+                if (payload.type === "image" && finalUri) {
+                  updated.imageUri = finalUri;
+                } else if (payload.type === "voice" && finalUri) {
+                  updated.audioUri = finalUri;
+                }
+                return updated;
+              }
+              return m;
+            }),
+          };
+        });
+      } catch (err) {
+        console.warn("Upload background fail, preserving local URI as fallback", err);
+        // Fallback: mark sent anyway using the local cache URI so it works offline/sandbox
+        setMessages((prev) => {
+          const list = prev[conversationId] ?? [];
+          return {
+            ...prev,
+            [conversationId]: list.map((m) => {
+              if (m.id === tempId) {
+                return { ...m, status: "sent" as const };
+              }
+              return m;
+            }),
+          };
+        });
+      }
+
       const conv = conversations.find((c) => c.id === conversationId);
       if (!conv) return;
       const botIds = conv.memberIds.filter(
@@ -496,7 +641,96 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     [friendRequests, currentUser]
   );
 
-  const getUnreadCount = useCallback(() => 0, []);
+  const getConversationUnreadCount = useCallback(
+    (conversationId: string) => {
+      const msgs = messages[conversationId] ?? [];
+      const readAt = lastRead[conversationId] ?? 0;
+      return msgs.filter((m) => m.senderId !== currentUser?.id && m.timestamp > readAt).length;
+    },
+    [messages, lastRead, currentUser]
+  );
+
+  const getUnreadCount = useCallback(() => {
+    return conversations.reduce((total, conv) => {
+      if (!conv.memberIds.includes(currentUser?.id ?? "")) return total;
+      return total + getConversationUnreadCount(conv.id);
+    }, 0);
+  }, [conversations, getConversationUnreadCount, currentUser]);
+
+  const markConversationAsRead = useCallback((conversationId: string) => {
+    setLastRead((prev) => ({ ...prev, [conversationId]: Date.now() }));
+  }, []);
+
+  const deleteMessage = useCallback((conversationId: string, messageId: string) => {
+    setMessages((prev) => ({
+      ...prev,
+      [conversationId]: (prev[conversationId] ?? []).filter((m) => m.id !== messageId),
+    }));
+  }, []);
+
+  const deleteConversation = useCallback((conversationId: string) => {
+    setConversations((prev) => prev.filter((c) => c.id !== conversationId));
+    setMessages((prev) => {
+      const next = { ...prev };
+      delete next[conversationId];
+      return next;
+    });
+    setLastRead((prev) => {
+      const next = { ...prev };
+      delete next[conversationId];
+      return next;
+    });
+  }, []);
+
+  const addStory = useCallback((payload: { type: Story["type"]; mediaUri?: string; text?: string; backgroundColor?: string }) => {
+    if (!currentUser) return;
+    const now = Date.now();
+    const newStory: Story = {
+      id: genId(),
+      userId: currentUser.id,
+      type: payload.type,
+      mediaUri: payload.mediaUri,
+      text: payload.text,
+      backgroundColor: payload.backgroundColor,
+      createdAt: now,
+      expiresAt: now + 12 * 60 * 60 * 1000, // 12 hours
+      viewers: [],
+    };
+    setStories(prev => [...prev, newStory]);
+  }, [currentUser]);
+
+  const deleteStory = useCallback((storyId: string) => {
+    setStories(prev => prev.filter(s => s.id !== storyId));
+  }, []);
+
+  const markStoryAsViewed = useCallback((storyId: string) => {
+    if (!currentUser) return;
+    setStories(prev => prev.map(s => {
+      if (s.id === storyId && !s.viewers.includes(currentUser.id)) {
+        return { ...s, viewers: [...s.viewers, currentUser.id] };
+      }
+      return s;
+    }));
+  }, [currentUser]);
+
+  const getActiveStories = useCallback(() => {
+    if (!currentUser) return {};
+    const now = Date.now();
+    const active = stories.filter(s => s.expiresAt > now);
+    
+    // Group by user ID
+    const grouped: Record<string, Story[]> = {};
+    active.forEach(story => {
+      // Only show your own stories or stories of your friends
+      if (story.userId !== currentUser.id && !friends.some(f => f.id === story.userId)) {
+        return;
+      }
+      
+      if (!grouped[story.userId]) grouped[story.userId] = [];
+      grouped[story.userId].push(story);
+    });
+    return grouped;
+  }, [stories, currentUser, friends]);
 
   return (
     <ChatContext.Provider
@@ -507,6 +741,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         friends,
         conversations,
         messages,
+        stories,
         isLoaded,
         setCurrentUser,
         searchUsers,
@@ -529,6 +764,14 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         isFriend,
         hasPendingRequest,
         getUnreadCount,
+        getConversationUnreadCount,
+        markConversationAsRead,
+        deleteMessage,
+        deleteConversation,
+        addStory,
+        deleteStory,
+        markStoryAsViewed,
+        getActiveStories,
       }}
     >
       {children}

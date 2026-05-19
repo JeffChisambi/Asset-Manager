@@ -11,6 +11,7 @@ export default function UserProfileScreen() {
       userId={userId ?? ""}
       showBackButton
       onBack={() => router.back()}
+      onEditPress={() => router.push("/profile/edit")}
     />
   );
 }

@@ -143,7 +143,7 @@ export default function NewGroupScreen() {
 
         {/* Selected preview */}
         {selected.size > 0 && (
-          <View style={styles.selectedRow}>
+          <View style={[styles.selectedRow, { borderBottomColor: colors.border }]}>
             <FlatList
               horizontal
               data={selectedFriends}
@@ -163,7 +163,7 @@ export default function NewGroupScreen() {
                   <View
                     style={[styles.deselectBadge, { backgroundColor: colors.foreground }]}
                   >
-                    <Ionicons name="close" size={10} color="#FFF" />
+                    <Ionicons name="close" size={10} color={colors.background} />
                   </View>
                 </Pressable>
               )}

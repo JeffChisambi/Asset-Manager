@@ -23,16 +23,34 @@ import { useColors } from "@/hooks/useColors";
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = (width - 48) / 2;
 
-interface ProductCardProps {
+// Shop type badge colours
+const SHOP_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
+  "Super Store": { bg: "#4A80F0", text: "#FFFFFF" },
+  "Basic Store": { bg: "#11998E", text: "#FFFFFF" },
+  "Vendor":      { bg: "#F7971E", text: "#FFFFFF" },
+};
+
+export interface ProductCardProps {
   id: string;
   name: string;
   price: number;
   brand: string;
   image: ImageSourcePropType;
+  shopType?: "Super Store" | "Basic Store" | "Vendor";
+  shopName?: string;
+  availableItems?: number;
   onPress?: () => void;
 }
 
-export function ProductCard({ name, price, image, onPress }: ProductCardProps) {
+export function ProductCard({
+  name,
+  price,
+  image,
+  shopType = "Basic Store",
+  shopName,
+  availableItems,
+  onPress,
+}: ProductCardProps) {
   const colors = useColors();
   const [liked, setLiked] = useState(false);
   const heartScale = useSharedValue(1);
@@ -64,8 +82,10 @@ export function ProductCard({ name, price, image, onPress }: ProductCardProps) {
     cardScale.value = withSpring(1);
   };
 
+  const badgeColors = SHOP_TYPE_COLORS[shopType] ?? SHOP_TYPE_COLORS["Basic Store"];
+
   return (
-    <Animated.View style={[cardStyle]}>
+    <Animated.View style={cardStyle}>
       <Pressable
         onPress={onPress}
         onPressIn={handlePressIn}
@@ -79,28 +99,59 @@ export function ProductCard({ name, price, image, onPress }: ProductCardProps) {
           },
         ]}
       >
-        <View style={styles.imageContainer}>
+        {/* ── Product Image ── */}
+        <View style={[styles.imageContainer, { backgroundColor: colors.secondary }]}>
+          {/* Heart */}
           <Pressable onPress={handleLike} style={styles.heartBtn} hitSlop={8}>
             <Animated.View style={heartStyle}>
               <Ionicons
                 name={liked ? "heart" : "heart-outline"}
-                size={20}
+                size={18}
                 color={liked ? "#EF4444" : colors.mutedForeground}
               />
             </Animated.View>
           </Pressable>
+
+          {/* Shop type badge */}
+          <View style={[styles.badge, { backgroundColor: badgeColors.bg }]}>
+            <Text style={[styles.badgeText, { color: badgeColors.text }]}>
+              {shopType}
+            </Text>
+          </View>
+
           <Image source={image} style={styles.image} resizeMode="contain" />
         </View>
-        <View style={styles.info}>
-          <Text
-            style={[styles.name, { color: colors.foreground }]}
-            numberOfLines={1}
-          >
+
+        {/* ── Info ── */}
+        <View style={[styles.info, { borderTopColor: colors.border }]}>
+          {/* Shop name row */}
+          {shopName && (
+            <View style={styles.shopRow}>
+              <Ionicons name="storefront-outline" size={11} color={colors.mutedForeground} />
+              <Text style={[styles.shopName, { color: colors.mutedForeground }]} numberOfLines={1}>
+                {shopName}
+              </Text>
+            </View>
+          )}
+
+          {/* Product name */}
+          <Text style={[styles.name, { color: colors.foreground }]} numberOfLines={1}>
             {name}
           </Text>
-          <Text style={[styles.price, { color: colors.foreground }]}>
-            ${price.toFixed(2)}
-          </Text>
+
+          {/* Price + available items */}
+          <View style={styles.bottomRow}>
+            <Text style={[styles.price, { color: colors.primary }]}>
+              ${price.toFixed(2)}
+            </Text>
+            {availableItems !== undefined && (
+              <View style={[styles.stockPill, { backgroundColor: colors.muted }]}>
+                <Text style={[styles.stockText, { color: colors.mutedForeground }]}>
+                  {availableItems} left
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
       </Pressable>
     </Animated.View>
@@ -115,33 +166,74 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   imageContainer: {
-    backgroundColor: "#F8F9FF",
     padding: 8,
     alignItems: "center",
     justifyContent: "center",
-    height: 150,
+    height: 140,
   },
   heartBtn: {
     position: "absolute",
-    top: 10,
-    left: 10,
+    top: 8,
+    left: 8,
     zIndex: 10,
   },
+  badge: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    zIndex: 10,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: 0.3,
+    textTransform: "uppercase",
+  },
   image: {
-    width: "90%",
-    height: "90%",
+    width: "85%",
+    height: "85%",
   },
   info: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 10,
-    gap: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 3,
+  },
+  shopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  shopName: {
+    fontSize: 10,
+    fontFamily: "Inter_400Regular",
+    flex: 1,
   },
   name: {
     fontSize: 13,
-    fontFamily: "Inter_500Medium",
+    fontFamily: "Inter_600SemiBold",
+    lineHeight: 17,
+  },
+  bottomRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 2,
   },
   price: {
     fontSize: 14,
     fontFamily: "Inter_700Bold",
+  },
+  stockPill: {
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  stockText: {
+    fontSize: 10,
+    fontFamily: "Inter_500Medium",
   },
 });

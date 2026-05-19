@@ -1,6 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
+import { LinearGradient } from "expo-linear-gradient";
 import React, { useEffect, useRef, useState } from "react";
 import {
   Animated,
@@ -79,11 +80,15 @@ export default function VoiceCallScreen() {
     setTimeout(() => router.back(), 800);
   };
 
+  const [onHold, setOnHold] = useState(false);
   const avatarSize = 100;
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
   return (
-    <View style={[styles.root, { paddingTop: topPad }]}>
+    <LinearGradient
+      colors={["#0F0C29", "#302B63", "#24243E"]}
+      style={[styles.root, { paddingTop: topPad }]}
+    >
       {/* Back button */}
       <Pressable onPress={() => router.back()} style={[styles.backBtn, { top: topPad + 12 }]}>
         <Ionicons name="chevron-down" size={28} color="rgba(255,255,255,0.8)" />
@@ -166,8 +171,37 @@ export default function VoiceCallScreen() {
             <Text style={styles.controlLabel}>Speaker</Text>
           </View>
         </View>
+
+        <View style={[styles.controlRow, { marginTop: 24 }]}>
+          <View style={styles.controlItem}>
+            <Pressable
+              onPress={() => { setOnHold(!onHold); if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+              style={[styles.controlBtn, onHold && styles.controlBtnActive]}
+            >
+              <Ionicons name={onHold ? "play" : "pause"} size={24} color="#FFF" />
+            </Pressable>
+            <Text style={styles.controlLabel}>{onHold ? "Resume" : "Hold"}</Text>
+          </View>
+
+          <View style={styles.controlItem}>
+            <Pressable
+              onPress={() => router.replace(`/call/video?convId=${convId}`)}
+              style={styles.controlBtn}
+            >
+              <Ionicons name="videocam-outline" size={24} color="#FFF" />
+            </Pressable>
+            <Text style={styles.controlLabel}>Video</Text>
+          </View>
+
+          <View style={styles.controlItem}>
+            <Pressable style={styles.controlBtn}>
+              <Ionicons name="keypad-outline" size={24} color="#FFF" />
+            </Pressable>
+            <Text style={styles.controlLabel}>Keypad</Text>
+          </View>
+        </View>
       </View>
-    </View>
+    </LinearGradient>
   );
 }
 

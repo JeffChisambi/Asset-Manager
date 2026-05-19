@@ -16,7 +16,7 @@ function AddTabButton({ onPress }: { onPress?: () => void }) {
       onPress={onPress}
       style={[styles.addBtn, { backgroundColor: colors.foreground }]}
     >
-      <Ionicons name="add" size={26} color="#FFFFFF" />
+      <Ionicons name="cart" size={24} color={colors.background} />
     </Pressable>
   );
 }
@@ -29,12 +29,12 @@ function NativeTabLayout() {
         <Label>Home</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="messages">
-        <Icon sf={{ default: "envelope", selected: "envelope.fill" }} />
-        <Label>Messages</Label>
+        <Icon sf={{ default: "storefront", selected: "storefront.fill" }} />
+        <Label>Marketplace</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="add">
-        <Icon sf={{ default: "plus.circle", selected: "plus.circle.fill" }} />
-        <Label>Add</Label>
+        <Icon sf={{ default: "cart", selected: "cart.fill" }} />
+        <Label>Cart</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
         <Icon sf={{ default: "person", selected: "person.fill" }} />
@@ -103,9 +103,9 @@ function ClassicTabLayout() {
         options={{
           tabBarIcon: ({ color }) =>
             isIOS ? (
-              <SymbolView name="envelope" tintColor={color} size={24} />
+              <SymbolView name="storefront" tintColor={color} size={24} />
             ) : (
-              <MaterialCommunityIcons name="email-outline" size={24} color={color} />
+              <MaterialCommunityIcons name="storefront-outline" size={24} color={color} />
             ),
         }}
       />

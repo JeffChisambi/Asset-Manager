@@ -25,10 +25,11 @@ const TABS: { key: ProfileTab; label: string }[] = [
 interface ProfileTabsProps {
   activeTab: ProfileTab;
   onTabChange: (tab: ProfileTab) => void;
+  hasShop?: boolean;
 }
 
 export const ProfileTabs = memo(
-  ({ activeTab, onTabChange }: ProfileTabsProps) => {
+  ({ activeTab, onTabChange, hasShop }: ProfileTabsProps) => {
     const colors = useColors();
 
     return (
@@ -45,34 +46,33 @@ export const ProfileTabs = memo(
         >
           {TABS.map((tab) => {
             const isActive = tab.key === activeTab;
+            const displayLabel = (hasShop && tab.key === "collection") ? "Shop" : tab.label;
             return (
               <TouchableOpacity
                 key={tab.key}
                 onPress={() => onTabChange(tab.key)}
                 activeOpacity={0.7}
-                style={styles.tabBtn}
+                style={[
+                  styles.tabBtn,
+                  isActive && [
+                    styles.activeTabBtn,
+                    { backgroundColor: colors.primary, borderColor: colors.primary },
+                  ],
+                ]}
               >
                 <Text
                   style={[
                     styles.tabLabel,
                     {
-                      color: isActive ? colors.primary : colors.mutedForeground,
+                      color: isActive ? "#FFFFFF" : colors.mutedForeground,
                       fontFamily: isActive
-                        ? "Inter_600SemiBold"
-                        : "Inter_400Regular",
+                        ? "Inter_700Bold"
+                        : "Inter_500Medium",
                     },
                   ]}
                 >
-                  {tab.label}
+                  {displayLabel}
                 </Text>
-                {isActive && (
-                  <View
-                    style={[
-                      styles.indicator,
-                      { backgroundColor: colors.primary },
-                    ]}
-                  />
-                )}
               </TouchableOpacity>
             );
           })}
@@ -84,26 +84,30 @@ export const ProfileTabs = memo(
 
 const styles = StyleSheet.create({
   wrapper: {
-    borderBottomWidth: 1,
+    paddingVertical: 8,
   },
   scroll: {
     paddingHorizontal: 16,
+    paddingBottom: 4,
   },
   tabBtn: {
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    marginRight: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 18,
+    marginRight: 12,
+    borderRadius: 14,
+    borderWidth: 2,
+    borderColor: "transparent",
     alignItems: "center",
+    justifyContent: "center",
+  },
+  activeTabBtn: {
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
   },
   tabLabel: {
     fontSize: 14,
-  },
-  indicator: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 2.5,
-    borderRadius: 2,
   },
 });

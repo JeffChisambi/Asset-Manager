@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "Kinetic Shoes",
-    "slug": "kinetic-shoes",
+    "name": "Doorstep",
+    "slug": "doorstep",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
-    "scheme": "kinetic-shoes",
+    "icon": "./assets/logo and icon/doorsteplogo.png",
+    "scheme": "doorstep",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/icon.png",
+      "image": "./assets/logo and icon/doorsteplogo.png",
       "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
@@ -18,7 +18,7 @@
     },
     "android": {},
     "web": {
-      "favicon": "./assets/images/icon.png"
+      "favicon": "./assets/logo and icon/doorsteplogo.png"
     },
     "plugins": [
       [

@@ -1,22 +1,22 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Keyboard,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   TextInput,
-  TouchableWithoutFeedback,
   View,
+  Modal,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { BlurView } from "expo-blur";
+import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
 
 import { FriendRequestCard } from "@/components/chat/FriendRequestCard";
 import { ConversationRow } from "@/components/chat/ConversationRow";
@@ -33,115 +33,7 @@ function randomColor() {
   return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
 }
 
-function SetupScreen() {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const { setCurrentUser } = useChat();
-  const [displayName, setDisplayName] = useState("");
-  const [username, setUsername] = useState("");
-  const [error, setError] = useState("");
-
-  const handleCreate = () => {
-    const dn = displayName.trim();
-    const un = username.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
-    if (!dn || dn.length < 2) {
-      setError("Display name must be at least 2 characters.");
-      return;
-    }
-    if (!un || un.length < 3) {
-      setError("Username must be at least 3 characters (letters, numbers, _).");
-      return;
-    }
-    if (SEED_USERS.some((u) => u.username === un)) {
-      setError("That username is taken. Try another.");
-      return;
-    }
-    const user: AppUser = {
-      id: "me_" + Date.now(),
-      username: un,
-      displayName: dn,
-      avatarColor: randomColor(),
-      bio: "Sneaker enthusiast",
-      isBot: false,
-    };
-    setCurrentUser(user);
-  };
-
-  return (
-    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-      <View
-        style={[
-          styles.setupRoot,
-          {
-            backgroundColor: colors.background,
-            paddingTop: (Platform.OS === "web" ? 67 : insets.top) + 20,
-            paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 20,
-          },
-        ]}
-      >
-        <View style={styles.setupContent}>
-          <View style={[styles.setupIcon, { backgroundColor: colors.primary + "18" }]}>
-            <Ionicons name="chatbubbles" size={40} color={colors.primary} />
-          </View>
-          <Text style={[styles.setupTitle, { color: colors.foreground }]}>
-            Set up your profile
-          </Text>
-          <Text style={[styles.setupSub, { color: colors.mutedForeground }]}>
-            Choose a username to start finding friends and chatting about sneakers.
-          </Text>
-
-          <View style={styles.setupFields}>
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-                Display Name
-              </Text>
-              <TextInput
-                style={[
-                  styles.fieldInput,
-                  { backgroundColor: colors.muted, color: colors.foreground, borderColor: colors.border },
-                ]}
-                placeholder="e.g. Jordan Lee"
-                placeholderTextColor={colors.mutedForeground}
-                value={displayName}
-                onChangeText={(t) => { setDisplayName(t); setError(""); }}
-                autoCapitalize="words"
-              />
-            </View>
-            <View style={styles.fieldGroup}>
-              <Text style={[styles.fieldLabel, { color: colors.foreground }]}>
-                Username
-              </Text>
-              <TextInput
-                style={[
-                  styles.fieldInput,
-                  { backgroundColor: colors.muted, color: colors.foreground, borderColor: colors.border },
-                ]}
-                placeholder="e.g. sneakerking"
-                placeholderTextColor={colors.mutedForeground}
-                value={username}
-                onChangeText={(t) => { setUsername(t); setError(""); }}
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-            </View>
-            {!!error && (
-              <Text style={[styles.errorText, { color: colors.destructive }]}>
-                {error}
-              </Text>
-            )}
-          </View>
-
-          <Pressable
-            onPress={handleCreate}
-            style={[styles.setupBtn, { backgroundColor: colors.primary }]}
-          >
-            <Text style={styles.setupBtnText}>Get Started</Text>
-          </Pressable>
-        </View>
-      </View>
-    </TouchableWithoutFeedback>
-  );
-}
+// SetupScreen removed because profiles are auto-generated from signup
 
 function UserSearchModal({
   visible,
@@ -246,24 +138,32 @@ function UserSearchModal({
                   { backgroundColor: colors.card, borderColor: colors.border },
                 ]}
               >
-                <UserAvatar
-                  displayName={item.displayName}
-                  avatarColor={item.avatarColor}
-                  size={48}
-                />
-                <View style={styles.userInfo}>
-                  <Text style={[styles.userName, { color: colors.foreground }]}>
-                    {item.displayName}
-                  </Text>
-                  <Text style={[styles.userHandle, { color: colors.mutedForeground }]}>
-                    @{item.username}
-                  </Text>
-                  {!!item.bio && (
-                    <Text style={[styles.userBio, { color: colors.mutedForeground }]} numberOfLines={1}>
-                      {item.bio}
+                <Pressable
+                  style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 12 }}
+                  onPress={() => {
+                    handleClose();
+                    router.push(`/profile/${item.id}`);
+                  }}
+                >
+                  <UserAvatar
+                    displayName={item.displayName}
+                    avatarColor={item.avatarColor}
+                    size={48}
+                  />
+                  <View style={styles.userInfo}>
+                    <Text style={[styles.userName, { color: colors.foreground }]}>
+                      {item.displayName}
                     </Text>
-                  )}
-                </View>
+                    <Text style={[styles.userHandle, { color: colors.mutedForeground }]}>
+                      @{item.username}
+                    </Text>
+                    {!!item.bio && (
+                      <Text style={[styles.userBio, { color: colors.mutedForeground }]} numberOfLines={1}>
+                        {item.bio}
+                      </Text>
+                    )}
+                  </View>
+                </Pressable>
                 {alreadyFriend ? (
                   <View style={[styles.friendBadge, { backgroundColor: colors.primary + "18" }]}>
                     <Text style={[styles.friendBadgeText, { color: colors.primary }]}>
@@ -313,7 +213,6 @@ export default function ChatScreen() {
     currentUser,
     isLoaded,
     friends,
-    friendRequests,
     conversations,
     getLastMessage,
     getUser,
@@ -323,6 +222,10 @@ export default function ChatScreen() {
     cancelFriendRequest,
     getPendingReceivedRequests,
     getPendingSentRequests,
+    getUnreadCount,
+    getConversationUnreadCount,
+    markConversationAsRead,
+    getActiveStories,
   } = useChat();
 
   const [activeTab, setActiveTab] = useState<TabKey>("chats");
@@ -330,16 +233,12 @@ export default function ChatScreen() {
   const [filterText, setFilterText] = useState("");
   const topPad = Platform.OS === "web" ? 67 : insets.top;
 
-  if (!isLoaded) {
+  if (!isLoaded || !currentUser) {
     return (
       <View style={[styles.loadingRoot, { backgroundColor: colors.background }]}>
         <ActivityIndicator color={colors.primary} size="large" />
       </View>
     );
-  }
-
-  if (!currentUser) {
-    return <SetupScreen />;
   }
 
   const pendingReceived = getPendingReceivedRequests();
@@ -380,18 +279,47 @@ export default function ChatScreen() {
     return getUser(otherId)?.avatarColor ?? colors.primary;
   };
 
+  const unreadCount = getUnreadCount();
+  const activeStories = getActiveStories();
+  
+  // Convert grouped stories to an array for the ribbon
+  const storyUsers = Object.keys(activeStories).map(userId => {
+    const user = getUser(userId);
+    return {
+      userId,
+      user,
+      stories: activeStories[userId],
+      hasUnseen: activeStories[userId].some(s => !s.viewers.includes(currentUser.id))
+    };
+  }).filter(u => u.user); // Ensure user exists
+
+  // Put users with unseen stories first, then others
+  storyUsers.sort((a, b) => {
+    if (a.hasUnseen && !b.hasUnseen) return -1;
+    if (!a.hasUnseen && b.hasUnseen) return 1;
+    return b.stories[b.stories.length - 1].createdAt - a.stories[a.stories.length - 1].createdAt;
+  });
+
   return (
     <View style={[styles.root, { backgroundColor: colors.background }]}>
-      {/* Header */}
-      <View style={[styles.header, { paddingTop: topPad + 12 }]}>
+      {/* Premium Glass Header */}
+      <BlurView
+        intensity={80}
+        tint={colors.background === "#FFFFFF" ? "light" : "dark"}
+        style={[styles.header, { paddingTop: topPad + 12 }]}
+      >
         <View style={styles.headerTop}>
           <View>
-            <Text style={[styles.headerTitle, { color: colors.foreground }]}>
-              Messages
-            </Text>
-            <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>
-              @{currentUser.username}
-            </Text>
+            <Text style={[styles.headerTitle, { color: colors.foreground }]}>Messages</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6, marginTop: 2 }}>
+              <View style={[styles.onlineDot, { backgroundColor: "#22C55E" }]} />
+              <Text style={[styles.headerSub, { color: colors.mutedForeground }]}>@{currentUser.username}</Text>
+              {unreadCount > 0 && (
+                <View style={[styles.unreadPill, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.unreadPillText}>{unreadCount}</Text>
+                </View>
+              )}
+            </View>
           </View>
           <View style={styles.headerActions}>
             <Pressable
@@ -409,9 +337,8 @@ export default function ChatScreen() {
           </View>
         </View>
 
-        {/* Search conversations */}
         {activeTab === "chats" && (
-          <View style={[styles.filterBar, { backgroundColor: colors.muted }]}>
+          <View style={[styles.filterBar, { backgroundColor: colors.input, borderColor: colors.border }]}>
             <Feather name="search" size={15} color={colors.mutedForeground} />
             <TextInput
               style={[styles.filterInput, { color: colors.foreground }]}
@@ -420,10 +347,14 @@ export default function ChatScreen() {
               value={filterText}
               onChangeText={setFilterText}
             />
+            {filterText.length > 0 && (
+              <Pressable onPress={() => setFilterText("")}>
+                <Ionicons name="close-circle" size={16} color={colors.mutedForeground} />
+              </Pressable>
+            )}
           </View>
         )}
 
-        {/* Tabs */}
         <View style={[styles.tabs, { borderBottomColor: colors.border }]}>
           {(["chats", "friends"] as TabKey[]).map((tab) => {
             const active = activeTab === tab;
@@ -435,16 +366,11 @@ export default function ChatScreen() {
                 onPress={() => setActiveTab(tab)}
                 style={[styles.tab, active && [styles.tabActive, { borderBottomColor: colors.primary }]]}
               >
-                <Text
-                  style={[
-                    styles.tabText,
-                    { color: active ? colors.primary : colors.mutedForeground },
-                  ]}
-                >
+                <Text style={[styles.tabText, { color: active ? colors.primary : colors.mutedForeground }]}>
                   {label}
                 </Text>
                 {badge && (
-                  <View style={[styles.tabBadge, { backgroundColor: colors.primary }]}>
+                  <View style={[styles.tabBadge, { backgroundColor: "#EF4444" }]}>
                     <Text style={styles.tabBadgeText}>{badge}</Text>
                   </View>
                 )}
@@ -452,7 +378,7 @@ export default function ChatScreen() {
             );
           })}
         </View>
-      </View>
+      </BlurView>
 
       {/* Content */}
       {activeTab === "chats" && (
@@ -463,44 +389,105 @@ export default function ChatScreen() {
             styles.listContent,
             { paddingBottom: Platform.OS === "web" ? 34 : insets.bottom + 80 },
           ]}
-          renderItem={({ item }) => {
+          renderItem={({ item, index }) => {
             const lastMsg = getLastMessage(item.id);
             const lastSender = lastMsg ? getUser(lastMsg.senderId) : undefined;
             const lastText = lastMsg
-              ? lastMsg.senderId === currentUser.id
+              ? lastMsg.type === "voice" ? "🎤 Voice message"
+              : lastMsg.type === "image" ? "📷 Photo"
+              : lastMsg.type === "file" ? `📎 ${lastMsg.fileName ?? "File"}`
+              : lastMsg.senderId === currentUser.id
                 ? `You: ${lastMsg.text}`
                 : item.type === "group"
                 ? `${lastSender?.displayName.split(" ")[0]}: ${lastMsg.text}`
                 : lastMsg.text
               : undefined;
+            const unread = getConversationUnreadCount(item.id);
             return (
-              <ConversationRow
-                name={getConvName(item.id)}
-                avatarColor={getConvColor(item.id)}
-                lastMessage={lastText}
-                lastTime={lastMsg?.timestamp ?? item.createdAt}
-                isGroup={item.type === "group"}
-                memberCount={item.memberIds.length}
-                onPress={() => router.push(`/chat/${item.id}`)}
-              />
+              <Animated.View entering={FadeInDown.delay(index * 60).springify()}>
+                <Pressable
+                  style={({ pressed }) => [styles.convRow, { backgroundColor: pressed ? colors.muted : colors.background }]}
+                  onPress={() => { markConversationAsRead(item.id); router.push(`/chat/${item.id}`); }}
+                >
+                  <View style={{ position: "relative" }}>
+                    <UserAvatar displayName={getConvName(item.id)} avatarColor={getConvColor(item.id)} size={52} />
+                    {/* Online dot for bots */}
+                    {item.type === "direct" && (
+                      <View style={[styles.presenceDot, { backgroundColor: "#22C55E", borderColor: colors.background }]} />
+                    )}
+                  </View>
+                  <View style={styles.convInfo}>
+                    <View style={styles.convTopRow}>
+                      <Text style={[styles.convName, { color: colors.foreground }]} numberOfLines={1}>{getConvName(item.id)}</Text>
+                      <Text style={[styles.convTime, { color: unread > 0 ? colors.primary : colors.mutedForeground }]}>
+                        {lastMsg ? new Date(lastMsg.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : ""}
+                      </Text>
+                    </View>
+                    <View style={styles.convBottomRow}>
+                      <Text style={[styles.convLastMsg, { color: unread > 0 ? colors.foreground : colors.mutedForeground, fontFamily: unread > 0 ? "Inter_600SemiBold" : "Inter_400Regular" }]} numberOfLines={1}>
+                        {lastText ?? "Start a conversation…"}
+                      </Text>
+                      {unread > 0 && (
+                        <View style={[styles.unreadBadge, { backgroundColor: colors.primary }]}>
+                          <Text style={styles.unreadBadgeText}>{unread}</Text>
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </Pressable>
+              </Animated.View>
             );
           }}
-          ItemSeparatorComponent={() => (
-            <View style={[styles.separator, { backgroundColor: colors.border }]} />
-          )}
+          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: colors.border, marginLeft: 84 }]} />}
+          ListHeaderComponent={
+            <View style={styles.storiesContainer}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.storiesScroll}>
+                {/* My Story Node */}
+                <Pressable 
+                  style={styles.storyNode}
+                  onPress={() => {
+                    const myStories = activeStories[currentUser.id];
+                    if (myStories && myStories.length > 0) {
+                      router.push(`/chat/story/${currentUser.id}`);
+                    } else {
+                      router.push("/chat/create-story");
+                    }
+                  }}
+                >
+                  <View style={[styles.storyRing, { borderColor: colors.border }]}>
+                    <UserAvatar displayName={currentUser.displayName} avatarColor={currentUser.avatarColor} size={56} />
+                    <View style={[styles.addStoryBtn, { backgroundColor: colors.primary, borderColor: colors.background }]}>
+                      <Ionicons name="add" size={12} color="#FFF" />
+                    </View>
+                  </View>
+                  <Text style={[styles.storyName, { color: colors.foreground }]} numberOfLines={1}>Your Story</Text>
+                </Pressable>
+
+                {/* Friend Stories */}
+                {storyUsers.map((su, idx) => (
+                  <Animated.View key={su.userId} entering={FadeInRight.delay(idx * 50).springify()}>
+                    <Pressable 
+                      style={styles.storyNode}
+                      onPress={() => router.push(`/chat/story/${su.userId}`)}
+                    >
+                      <View style={[styles.storyRing, { borderColor: su.hasUnseen ? colors.primary : colors.border }]}>
+                        <UserAvatar displayName={su.user!.displayName} avatarColor={su.user!.avatarColor} size={56} />
+                      </View>
+                      <Text style={[styles.storyName, { color: colors.foreground, fontFamily: su.hasUnseen ? "Inter_600SemiBold" : "Inter_400Regular" }]} numberOfLines={1}>
+                        {su.user!.displayName.split(" ")[0]}
+                      </Text>
+                    </Pressable>
+                  </Animated.View>
+                ))}
+              </ScrollView>
+            </View>
+          }
           ListEmptyComponent={
             <View style={styles.emptyState}>
-              <Ionicons name="chatbubbles-outline" size={52} color={colors.mutedForeground} />
-              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-                No conversations yet
-              </Text>
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>
-                Add friends and start chatting about sneakers
-              </Text>
-              <Pressable
-                onPress={() => setSearchVisible(true)}
-                style={[styles.emptyBtn, { backgroundColor: colors.primary }]}
-              >
+              <Ionicons name="chatbubbles-outline" size={56} color={colors.mutedForeground} />
+              <Text style={[styles.emptyTitle, { color: colors.foreground }]}>No conversations yet</Text>
+              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>Add friends and start chatting</Text>
+              <Pressable onPress={() => setSearchVisible(true)} style={[styles.emptyBtn, { backgroundColor: colors.primary }]}>
                 <Ionicons name="person-add-outline" size={16} color="#FFF" />
                 <Text style={styles.emptyBtnText}>Find People</Text>
               </Pressable>
@@ -581,42 +568,52 @@ export default function ChatScreen() {
               </View>
             ) : (
               friends.map((friend) => (
-                <Pressable
+                <View
                   key={friend.id}
-                  onPress={() => {
-                    const convId = getOrCreateDirectConversation(friend.id);
-                    if (convId) router.push(`/chat/${convId}`);
-                  }}
-                  style={({ pressed }) => [
+                  style={[
                     styles.friendRow,
                     {
-                      backgroundColor: pressed ? colors.muted : colors.card,
+                      backgroundColor: colors.card,
                       borderColor: colors.border,
                     },
                   ]}
                 >
-                  <UserAvatar
-                    displayName={friend.displayName}
-                    avatarColor={friend.avatarColor}
-                    size={48}
-                  />
-                  <View style={styles.friendInfo}>
-                    <Text style={[styles.friendName, { color: colors.foreground }]}>
-                      {friend.displayName}
-                    </Text>
-                    <Text style={[styles.friendHandle, { color: colors.mutedForeground }]}>
-                      @{friend.username}
-                    </Text>
-                    {!!friend.bio && (
-                      <Text style={[styles.friendBio, { color: colors.mutedForeground }]} numberOfLines={1}>
-                        {friend.bio}
+                  <Pressable
+                    style={{ flexDirection: "row", alignItems: "center", flex: 1, gap: 12 }}
+                    onPress={() => router.push(`/profile/${friend.id}`)}
+                  >
+                    <UserAvatar
+                      displayName={friend.displayName}
+                      avatarColor={friend.avatarColor}
+                      size={48}
+                    />
+                    <View style={styles.friendInfo}>
+                      <Text style={[styles.friendName, { color: colors.foreground }]}>
+                        {friend.displayName}
                       </Text>
-                    )}
-                  </View>
-                  <View style={[styles.msgBtn, { backgroundColor: colors.primary + "15" }]}>
+                      <Text style={[styles.friendHandle, { color: colors.mutedForeground }]}>
+                        @{friend.username}
+                      </Text>
+                      {!!friend.bio && (
+                        <Text style={[styles.friendBio, { color: colors.mutedForeground }]} numberOfLines={1}>
+                          {friend.bio}
+                        </Text>
+                      )}
+                    </View>
+                  </Pressable>
+                  <Pressable 
+                    onPress={() => {
+                      const convId = getOrCreateDirectConversation(friend.id);
+                      if (convId) router.push(`/chat/${convId}`);
+                    }}
+                    style={({ pressed }) => [
+                      styles.msgBtn, 
+                      { backgroundColor: pressed ? colors.primary + "30" : colors.primary + "15" }
+                    ]}
+                  >
                     <Ionicons name="chatbubble-outline" size={18} color={colors.primary} />
-                  </View>
-                </Pressable>
+                  </Pressable>
+                </View>
               ))
             )}
           </View>
@@ -634,6 +631,9 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 16,
     paddingBottom: 0,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(0,0,0,0.08)",
+    zIndex: 10,
   },
   headerTop: {
     flexDirection: "row",
@@ -642,14 +642,16 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   headerTitle: {
-    fontSize: 26,
+    fontSize: 28,
     fontFamily: "Inter_700Bold",
-    lineHeight: 30,
+    letterSpacing: -0.5,
   },
+  onlineDot: { width: 8, height: 8, borderRadius: 4 },
+  unreadPill: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10 },
+  unreadPillText: { color: "#FFF", fontSize: 10, fontFamily: "Inter_700Bold" },
   headerSub: {
     fontSize: 13,
     fontFamily: "Inter_400Regular",
-    marginTop: 2,
   },
   headerActions: {
     flexDirection: "row",
@@ -657,9 +659,9 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   headerIconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -668,9 +670,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 12,
+    paddingVertical: 10,
+    borderRadius: 14,
     marginBottom: 12,
+    borderWidth: 1,
   },
   filterInput: {
     flex: 1,
@@ -686,30 +689,65 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 10,
+    paddingVertical: 12,
     gap: 6,
   },
-  tabActive: {
-    borderBottomWidth: 2,
+  tabActive: { borderBottomWidth: 2 },
+  tabText: { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  tabBadge: { width: 18, height: 18, borderRadius: 9, alignItems: "center", justifyContent: "center" },
+  tabBadgeText: { color: "#FFF", fontSize: 11, fontFamily: "Inter_700Bold" },
+  listContent: { paddingTop: 4 },
+  separator: { height: StyleSheet.hairlineWidth },
+  // Conversation row
+  convRow: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 12, gap: 12 },
+  presenceDot: { position: "absolute", bottom: 1, right: 1, width: 13, height: 13, borderRadius: 7, borderWidth: 2 },
+  convInfo: { flex: 1 },
+  convTopRow: { flexDirection: "row", justifyContent: "space-between", marginBottom: 4 },
+  convName: { fontSize: 15, fontFamily: "Inter_600SemiBold", flex: 1, marginRight: 8 },
+  convTime: { fontSize: 11, fontFamily: "Inter_500Medium" },
+  convBottomRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  convLastMsg: { flex: 1, fontSize: 13, lineHeight: 18 },
+  unreadBadge: { minWidth: 20, height: 20, borderRadius: 10, alignItems: "center", justifyContent: "center", paddingHorizontal: 5 },
+  unreadBadgeText: { color: "#FFF", fontSize: 11, fontFamily: "Inter_700Bold" },
+  // Stories
+  storiesContainer: {
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: "rgba(0,0,0,0.05)",
   },
-  tabText: {
-    fontSize: 15,
-    fontFamily: "Inter_600SemiBold",
+  storiesScroll: {
+    paddingHorizontal: 16,
+    gap: 16,
   },
-  tabBadge: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
+  storyNode: {
+    alignItems: "center",
+    width: 64,
+  },
+  storyRing: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  addStoryBtn: {
+    position: "absolute",
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
   },
-  tabBadgeText: {
-    color: "#FFF",
+  storyName: {
     fontSize: 11,
-    fontFamily: "Inter_700Bold",
+    fontFamily: "Inter_400Regular",
+    textAlign: "center",
   },
-  listContent: { paddingTop: 4 },
-  separator: { height: StyleSheet.hairlineWidth, marginLeft: 80 },
   emptyState: {
     alignItems: "center",
     paddingTop: 60,
