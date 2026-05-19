@@ -28,6 +28,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "house", selected: "house.fill" }} />
         <Label>Home</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="search">
+        <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
+        <Label>Search</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="messages">
         <Icon sf={{ default: "storefront", selected: "storefront.fill" }} />
         <Label>Marketplace</Label>
@@ -95,6 +99,17 @@ function ClassicTabLayout() {
               <SymbolView name="house.fill" tintColor={color} size={24} />
             ) : (
               <Feather name="home" size={24} color={color} />
+            ),
+        }}
+      />
+      <Tabs.Screen
+        name="search"
+        options={{
+          tabBarIcon: ({ color }) =>
+            isIOS ? (
+              <SymbolView name="magnifyingglass" tintColor={color} size={24} />
+            ) : (
+              <Feather name="search" size={24} color={color} />
             ),
         }}
       />

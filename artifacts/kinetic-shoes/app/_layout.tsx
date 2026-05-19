@@ -18,6 +18,7 @@ import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ChatProvider } from "@/context/ChatContext";
 import { CartProvider } from "@/context/CartContext";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { SearchProvider } from "@/context/SearchContext";
 import { LogBox } from "react-native";
 
 LogBox.ignoreLogs(["[expo-av]: Expo AV has been deprecated"]);
@@ -135,11 +136,13 @@ export default function RootLayout() {
           <QueryClientProvider client={queryClient}>
             <GestureHandlerRootView style={{ flex: 1 }}>
               <KeyboardProvider>
-                <ChatProvider>
-                  <CartProvider>
-                    <RootLayoutNav />
-                  </CartProvider>
-                </ChatProvider>
+                <SearchProvider>
+                  <ChatProvider>
+                    <CartProvider>
+                      <RootLayoutNav />
+                    </CartProvider>
+                  </ChatProvider>
+                </SearchProvider>
               </KeyboardProvider>
             </GestureHandlerRootView>
           </QueryClientProvider>
