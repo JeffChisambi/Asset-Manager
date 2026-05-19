@@ -16,8 +16,10 @@ import { useOrder, calcStage, calcEta, DELIVERY_STAGES as _STAGES } from "@/cont
 import Map from "@/components/Map";
 import DeliveryTimeline, { DELIVERY_STAGES } from "@/components/checkout/DeliveryTimeline";
 import PaymentStep, { PAYMENT_METHODS } from "@/components/checkout/PaymentStep";
+import LocationPickerModal from "@/components/checkout/LocationPickerModal";
 
 const { width } = Dimensions.get("window");
+const TAB_BAR_H = Platform.OS === "web" ? 84 : 70;
 const DELIVERY_FEE = 1.5;
 
 type CheckoutStep = "cart" | "details" | "payment" | "success" | "tracking";
@@ -94,7 +96,8 @@ export default function CartScreen() {
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("Delivery");
   const [address, setAddress]           = useState("Area 47, Lilongwe, Malawi");
   const [instructions, setInstructions] = useState("");
-  const [paymentId, setPaymentId]       = useState<string | null>(null);
+  const [paymentId, setPaymentId]                   = useState<string | null>(null);
+  const [locationPickerVisible, setLocationPickerVisible] = useState(false);
   const [currentOrderId, setCurrentOrderId] = useState("");
   const [snapshotItems, setSnapshotItems]   = useState<typeof cartItems>([]);
   const [driver] = useState(MOCK_DRIVERS[Math.floor(Math.random() * MOCK_DRIVERS.length)]);
@@ -626,10 +629,33 @@ export default function CartScreen() {
             {deliveryType === "Delivery" ? (
               <>
                 <Text style={[s.fieldLabel, { color: colors.foreground }]}>Delivery Address</Text>
-                <View style={[s.inputWrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
-                  <Ionicons name="location-outline" size={18} color={colors.primary} style={s.inputIcon} />
-                  <TextInput style={[s.input, { color: colors.foreground }]} value={address} onChangeText={setAddress} placeholder="Enter your address" placeholderTextColor={colors.mutedForeground} />
-                </View>
+
+                {/* Pressable address field — opens map picker */}
+                <Pressable
+                  style={[s.addressPressable, { backgroundColor: colors.muted, borderColor: colors.primary + "60" }]}
+                  onPress={() => { haptic("light"); setLocationPickerVisible(true); }}
+                >
+                  <View style={[s.addressIconWrap, { backgroundColor: colors.primary }]}>
+                    <Ionicons name="map" size={15} color="#fff" />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.addressValue, { color: colors.foreground }]} numberOfLines={1}>
+                      {address}
+                    </Text>
+                    <Text style={[s.addressHint, { color: colors.primary }]}>Tap to change on map</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={colors.primary} />
+                </Pressable>
+
+                {/* Location Picker Modal */}
+                <LocationPickerModal
+                  visible={locationPickerVisible}
+                  onClose={() => setLocationPickerVisible(false)}
+                  onSelect={(addr) => { setAddress(addr); }}
+                  currentAddress={address}
+                  colors={colors}
+                />
+
                 <Text style={[s.fieldLabel, { color: colors.foreground }]}>Delivery Instructions</Text>
                 <View style={[s.inputWrap, s.textAreaWrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                   <TextInput style={[s.input, s.textArea, { color: colors.foreground }]} value={instructions} onChangeText={setInstructions} placeholder="E.g. Gate code, landmarks, call when nearby..." placeholderTextColor={colors.mutedForeground} multiline numberOfLines={3} />
@@ -917,7 +943,7 @@ const s = StyleSheet.create({
   trackCta: { paddingHorizontal:12, paddingVertical:6, borderRadius:10 },
   trackCtaTxt: { fontSize:12, fontFamily:"Inter_700Bold", color:"#fff" },
   // ── Cart ──
-  listPad: { paddingHorizontal:16, paddingTop:4, paddingBottom:180, gap:14 },
+  listPad: { paddingHorizontal:16, paddingTop:4, paddingBottom:220, gap:14 },
   cartCard: { borderRadius:20, borderWidth:1, overflow:"hidden" },
   cartImg: { height:140, position:"relative" },
   img: { width:"100%", height:"100%", resizeMode:"cover" },
@@ -939,7 +965,7 @@ const s = StyleSheet.create({
   segmented: { flexDirection:"row", borderRadius:14, padding:4, gap:4 },
   seg: { flex:1, flexDirection:"row", alignItems:"center", justifyContent:"center", gap:6, paddingVertical:10, borderRadius:10 },
   segTxt: { fontSize:13, fontFamily:"Inter_600SemiBold" },
-  sticky: { position:"absolute", bottom:0, left:0, right:0, borderTopWidth:1, paddingHorizontal:20, paddingTop:14, gap:10 },
+  sticky: { position:"absolute", bottom:TAB_BAR_H, left:0, right:0, borderTopWidth:1, paddingHorizontal:20, paddingTop:14, gap:10 },
   stickyRow: { flexDirection:"row", justifyContent:"space-between", alignItems:"center" },
   stickyLabel: { fontSize:13, fontFamily:"Inter_400Regular" },
   stickyVal: { fontSize:22, fontFamily:"Inter_800ExtraBold" },
@@ -952,6 +978,10 @@ const s = StyleSheet.create({
   stepScroll: { paddingBottom:24 },
   stepFooter: { paddingHorizontal:20, paddingTop:14, borderTopWidth:1 },
   fieldLabel: { fontSize:13, fontFamily:"Inter_700Bold", marginBottom:8, marginTop:4 },
+  addressPressable: { flexDirection:"row", alignItems:"center", gap:12, borderRadius:16, borderWidth:1.5, padding:14, marginBottom:16 },
+  addressIconWrap: { width:34, height:34, borderRadius:10, alignItems:"center", justifyContent:"center" },
+  addressValue: { fontSize:14, fontFamily:"Inter_600SemiBold", marginBottom:2 },
+  addressHint: { fontSize:11, fontFamily:"Inter_500Medium" },
   inputWrap: { flexDirection:"row", alignItems:"center", borderRadius:14, borderWidth:1, paddingHorizontal:14, marginBottom:16 },
   inputIcon: { marginRight:8 },
   input: { flex:1, fontSize:14, fontFamily:"Inter_400Regular", paddingVertical:14 },
