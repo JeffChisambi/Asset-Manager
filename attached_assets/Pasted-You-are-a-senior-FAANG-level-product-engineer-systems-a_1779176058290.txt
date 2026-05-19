@@ -1,0 +1,369 @@
+You are a senior FAANG-level product engineer, systems architect, logistics platform designer, and elite React Native Expo developer.
+
+Your task is to COMPLETE and ELEVATE our marketplace cart, checkout, delivery tracking, and live-map logistics system into a WORLD-CLASS production-grade feature.
+
+The frontend cart page and map page already exist.
+
+Your responsibility is to:
+- audit the current architecture
+- identify EVERYTHING missing
+- redesign weak systems
+- complete all missing flows
+- implement elite production-grade logistics UX
+- maintain our existing brand identity and design language
+
+The final experience should feel comparable to:
+- Uber Eats
+- DoorDash
+- Glovo
+- Snapchat Maps
+- Amazon delivery tracking
+
+while being optimized specifically for:
+- Malawi
+- African internet conditions
+- low-end Android devices
+- slow mobile networks
+
+==================================================
+CORE SYSTEM OVERVIEW
+==================================================
+
+Current flow:
+1. User browses marketplace
+2. User adds products to cart
+3. Cart stores products
+4. User chooses to order
+5. User selects:
+   - payment method
+   - delivery location
+6. Payment includes:
+   - product total
+   - delivery fee
+7. After payment:
+   - user sees live map tracking
+   - user tracks delivery in realtime
+
+The cart page and map page already exist visually.
+
+You must now:
+- perform a complete production-grade feature audit
+- identify missing systems
+- complete the architecture
+- improve UX flows
+- improve backend design
+- improve realtime delivery infrastructure
+- improve security
+- improve reliability
+- improve scalability
+- improve visual polish
+
+==================================================
+DESIGN PHILOSOPHY
+==================================================
+
+The experience must feel:
+- premium
+- cinematic
+- smooth
+- emotionally satisfying
+- modern
+- alive
+- intelligent
+
+Animations should feel:
+- Snapchat-quality
+- Uber-quality
+- Apple-level fluid
+
+The system should NEVER feel like:
+- basic ecommerce
+- generic template UI
+- clunky African startup software
+
+==================================================
+MAP EXPERIENCE REQUIREMENTS
+==================================================
+
+The live delivery tracking map is CRITICAL.
+
+The map must:
+- specifically support Malawi
+- feel cinematic
+- feel smooth
+- feel premium
+- use beautiful transitions
+- maintain our brand identity
+
+Design inspiration:
+- Snapchat Map
+- Uber driver tracking
+- Tesla map UI
+
+==================================================
+MAP FEATURES
+==================================================
+
+Implement:
+- Real-time driver movement
+- Smooth animated marker movement
+- Delivery route lines
+- Estimated arrival time
+- Dynamic zooming
+- Dark/light branded map themes
+- Delivery pulse animations
+- Driver avatar markers
+- Store pickup point markers
+- Live status updates
+
+The map must support:
+- Lilongwe
+- Blantyre
+- Mzuzu
+- Zomba
+- Malawi roads and locations
+
+==================================================
+MAP STYLE REQUIREMENTS
+==================================================
+
+The map MUST:
+- preserve our brand colors
+- use custom branded map styling
+- feel minimal and elegant
+- avoid Google Maps default ugly appearance
+- use cinematic gradients
+- use soft shadows
+- use smooth floating cards
+- use elite glassmorphism where appropriate
+
+Create:
+- custom Malawi-themed map styling
+- premium dark mode
+- branded marker system
+- branded route colors
+
+==================================================
+DELIVERY TRACKING SYSTEM
+==================================================
+
+Design a FULL logistics tracking system.
+
+Delivery lifecycle:
+1. Order placed
+2. Payment verified
+3. Store confirms order
+4. Driver assigned
+5. Driver heading to store
+6. Driver picked order
+7. Driver en route
+8. Driver nearby
+9. Order delivered
+10. Delivery completed
+
+Each state must include:
+- realtime updates
+- animations
+- status timeline
+- notifications
+- timestamps
+
+==================================================
+MISSING FEATURE AUDIT
+==================================================
+
+Perform a FULL audit and identify missing systems including:
+
+CART SYSTEM
+- cart persistence
+- stock validation
+- quantity syncing
+- multi-vendor cart handling
+- abandoned cart recovery
+- offline support
+- cart caching
+- inventory locking
+
+CHECKOUT SYSTEM
+- address validation
+- delivery instructions
+- promo codes
+- taxes/fees
+- order summary
+- split payments
+- delivery scheduling
+- fraud prevention
+
+PAYMENT SYSTEM
+- payment verification
+- failed payment recovery
+- refunds
+- transaction history
+- webhook handling
+- payment retry flow
+- secure receipts
+
+DELIVERY SYSTEM
+- driver assignment
+- driver tracking
+- route optimization
+- delivery ETA engine
+- realtime synchronization
+- delivery status engine
+
+NOTIFICATIONS
+- push notifications
+- SMS fallback
+- realtime alerts
+- delivery updates
+- payment confirmations
+
+SECURITY
+- payment protection
+- fraud detection
+- rate limiting
+- location spoofing prevention
+- secure APIs
+
+SCALABILITY
+- websocket scaling
+- realtime event queues
+- caching
+- CDN optimization
+- queue systems
+
+==================================================
+PAYMENT METHODS
+==================================================
+
+Design support for Malawi-focused payments:
+- Airtel Money
+- TNM Mpamba
+- Card payments
+- Cash on delivery
+
+The architecture must support:
+- asynchronous payment verification
+- webhook handling
+- transaction reconciliation
+- retry systems
+
+==================================================
+REALTIME ARCHITECTURE
+==================================================
+
+Implement:
+- WebSockets
+OR
+- Socket.IO
+
+Realtime events:
+- driver movement
+- order status updates
+- payment confirmations
+- store confirmations
+
+==================================================
+BACKEND ARCHITECTURE
+==================================================
+
+Preferred stack:
+- Node.js
+- NestJS
+- PostgreSQL
+- Redis
+- Socket.IO
+- Typesense optional
+- Queue workers
+
+Implement:
+- clean architecture
+- modular services
+- scalable APIs
+- realtime event system
+
+==================================================
+FRONTEND REQUIREMENTS
+==================================================
+
+Frontend stack:
+- React Native Expo
+- TypeScript
+- Zustand/Redux Toolkit
+- React Query
+
+Requirements:
+- smooth animations
+- skeleton loading
+- optimistic UI
+- offline support
+- graceful failures
+- premium transitions
+
+==================================================
+UX REQUIREMENTS
+==================================================
+
+The flow must feel emotionally rewarding.
+
+Examples:
+- smooth checkout transitions
+- animated payment success
+- beautiful order confirmations
+- live driver movement
+- immersive tracking screen
+- elite microinteractions
+
+Every interaction should feel:
+- tactile
+- polished
+- responsive
+
+==================================================
+PRODUCTION REQUIREMENTS
+==================================================
+
+Generate:
+1. Full system audit
+2. Missing feature list
+3. Backend architecture
+4. Database schema
+5. Realtime architecture
+6. Delivery tracking engine
+7. Payment architecture
+8. Checkout flow redesign
+9. Map system implementation
+10. Malawi-specific map optimization
+11. UI/UX redesign improvements
+12. Security architecture
+13. Offline support architecture
+14. State management architecture
+15. API structure
+16. WebSocket event system
+17. Scalability strategy
+18. Performance optimization
+19. Production folder structure
+20. Full production-grade code
+
+==================================================
+IMPORTANT
+==================================================
+
+Do NOT generate beginner-level ecommerce architecture.
+
+Everything must feel:
+- elite
+- modern
+- scalable
+- world-class
+- cinematic
+- production-grade
+- startup unicorn quality
+
+The result should feel like a fusion of:
+- Uber Eats
+- Snapchat Maps
+- Amazon logistics
+- Apple-level interaction design
+
+while remaining optimized for Malawi and African mobile internet realities.
