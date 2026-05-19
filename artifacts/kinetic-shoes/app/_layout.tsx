@@ -17,6 +17,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { ChatProvider } from "@/context/ChatContext";
 import { CartProvider } from "@/context/CartContext";
+import { OrderProvider } from "@/context/OrderContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { SearchProvider } from "@/context/SearchContext";
 import { LogBox } from "react-native";
@@ -139,7 +140,9 @@ export default function RootLayout() {
                 <SearchProvider>
                   <ChatProvider>
                     <CartProvider>
-                      <RootLayoutNav />
+                      <OrderProvider>
+                        <RootLayoutNav />
+                      </OrderProvider>
                     </CartProvider>
                   </ChatProvider>
                 </SearchProvider>
