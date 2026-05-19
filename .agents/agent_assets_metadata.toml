@@ -36,3 +36,9 @@ id = "GcVM3da1E0BeUlwMRRXS6"
 uri = "file://artifacts/kinetic-shoes/assets/images/banner_shoe.png"
 type = "image"
 title = "banner shoe hero"
+
+[[generated]]
+id = "T3LInBn_PzbCRdGAXppf4"
+uri = "file://artifacts/sokoni-search/assets/images/icon.png"
+type = "image"
+title = "generated_image"

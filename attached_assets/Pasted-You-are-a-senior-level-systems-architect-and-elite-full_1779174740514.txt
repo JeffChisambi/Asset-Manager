@@ -1,0 +1,376 @@
+You are a senior-level systems architect and elite full-stack engineer.
+
+Your task is to design and implement a WORLD-CLASS production-grade intelligent search engine for our mobile platform built with React Native Expo.
+
+The platform contains:
+- Marketplace
+- Cart system
+- Chat system
+- User profiles
+- Service professionals
+- Super stores
+- Basic stores
+- Vendor shops
+
+The search engine MUST feel elite, intelligent, modern, scalable, and extremely fast even on slow African internet connections.
+
+========================
+CORE OBJECTIVE
+========================
+
+This is NOT basic keyword search.
+
+This is a unified multi-entity intelligent discovery engine.
+
+The system must intelligently search across:
+- products
+- stores
+- vendors
+- professionals
+- services
+- chats
+- categories
+- locations
+- trends
+
+The experience should feel similar to:
+- TikTok discovery
+- Instagram search
+- Amazon marketplace search
+- LinkedIn professional discovery
+- WhatsApp speed
+
+The search engine should understand intent, slang, typos, and local language behavior.
+
+========================
+TECH STACK REQUIREMENTS
+========================
+
+Frontend:
+- React Native Expo
+- TypeScript
+- Zustand or Redux Toolkit
+- React Query/TanStack Query
+
+Backend:
+- Node.js
+- NestJS preferred
+- PostgreSQL
+
+Search Engine:
+- Typesense (preferred)
+OR
+- Elasticsearch if necessary
+
+Caching:
+- Redis
+
+Realtime:
+- WebSockets
+
+========================
+SEARCH ARCHITECTURE
+========================
+
+Build the search engine using a multi-layer architecture.
+
+LAYER 1 — LOCAL INSTANT SEARCH
+- Recent searches
+- Cached results
+- Search suggestions
+- Fast local filtering
+- Offline-friendly behavior
+- SQLite/MMKV local indexing
+
+LAYER 2 — SERVER SEARCH
+- Full-text search
+- Typo tolerance
+- Ranking engine
+- Semantic grouping
+- Fast pagination
+- Relevance scoring
+
+LAYER 3 — AI/SEMANTIC SEARCH
+- Intent understanding
+- Embedding-ready architecture
+- Semantic similarity
+- Natural language understanding
+- Future-ready vector search support
+
+========================
+UNIFIED SEARCH EXPERIENCE
+========================
+
+Create ONE global search bar.
+
+Users should be able to type naturally:
+- “cheap phones”
+- “graphic designer”
+- “best chicken”
+- “laptop repair”
+- “shoes near me”
+- “someone who makes posters”
+
+The engine must intelligently determine:
+- product intent
+- service intent
+- professional intent
+- location intent
+- vendor intent
+
+========================
+SEARCH ENTITY SYSTEM
+========================
+
+Design a searchable entity system.
+
+Searchable entities include:
+- Product
+- Store
+- Vendor
+- Professional
+- Service
+- Category
+- Chat
+- User
+- Trend
+- Location
+
+Each entity must support:
+- title
+- tags
+- keywords
+- popularity score
+- geo coordinates
+- engagement metrics
+- timestamps
+- verification status
+- rating
+- semantic metadata
+
+========================
+SEARCH RANKING SYSTEM
+========================
+
+Design an elite ranking engine.
+
+Ranking should consider:
+- keyword relevance
+- semantic similarity
+- popularity
+- engagement
+- click-through rate
+- purchases
+- reviews
+- response speed
+- freshness
+- distance from user
+- personalization
+- trust score
+- verification status
+
+Search results must NOT rely only on exact keyword matches.
+
+========================
+TYPO TOLERANCE
+========================
+
+The engine must tolerate:
+- spelling mistakes
+- slang
+- mixed English + Chichewa
+- phonetic typing
+
+Examples:
+- “iphon”
+- “sumsang”
+- “foni”
+- “ma jeans”
+- “nsapato”
+
+Implement fuzzy matching and intelligent correction.
+
+========================
+LOCAL LANGUAGE INTELLIGENCE
+========================
+
+Build a Malawi-first language layer.
+
+Support:
+- English
+- Chichewa
+- slang mixing
+
+Design architecture for future:
+- Tumbuka
+- Yao
+
+Create a synonym mapping system.
+
+Example:
+- “foni” → phone
+- “nsapato” → shoes
+- “ka shop” → small store
+
+========================
+SEARCH UI/UX
+========================
+
+Design the UI at elite production quality.
+
+The search experience must include:
+
+SEARCH HOME
+- Trending searches
+- Recent searches
+- Nearby stores
+- Suggested professionals
+- Trending products
+
+LIVE SEARCH
+- Debounced requests
+- Instant suggestions
+- Real-time entity previews
+- Skeleton loading
+- Optimistic rendering
+
+SEARCH RESULTS
+- Tabs:
+  - All
+  - Products
+  - Services
+  - Stores
+  - Professionals
+
+- Infinite scrolling
+- Smart ranking
+- Highlight matched text
+- Beautiful empty states
+
+========================
+PERFORMANCE REQUIREMENTS
+========================
+
+The search engine must:
+- feel instant
+- support low-end Android phones
+- minimize data usage
+- cache aggressively
+- use request debouncing
+- support offline fallback
+- optimize network calls
+
+Target:
+- under 100ms local responses
+- under 500ms remote responses
+
+========================
+GEO SEARCH
+========================
+
+Implement geo-aware ranking.
+
+Prioritize:
+- nearby vendors
+- same city
+- same campus
+- delivery availability
+
+Support:
+- radius filtering
+- map-ready architecture
+- distance ranking
+
+========================
+TRUST & SAFETY
+========================
+
+Search should prioritize:
+- verified vendors
+- trusted professionals
+- highly rated sellers
+- active stores
+
+Down-rank:
+- spam
+- inactive vendors
+- suspicious accounts
+
+========================
+ANALYTICS SYSTEM
+========================
+
+Track:
+- search queries
+- failed searches
+- trending searches
+- click-through rate
+- conversion rate
+- abandoned searches
+
+Create architecture for:
+- recommendation systems
+- trend detection
+- personalization
+
+========================
+SCALABILITY
+========================
+
+Design the system for future scaling to millions of users.
+
+Requirements:
+- modular architecture
+- clean codebase
+- enterprise-grade patterns
+- horizontal scalability
+- search indexing pipelines
+- queue-based indexing
+- resilient infrastructure
+
+========================
+DELIVERABLES
+========================
+
+Generate:
+1. Full production architecture
+2. Database schema
+3. Search index schema
+4. API design
+5. Typesense configuration
+6. React Native frontend implementation
+7. Backend implementation
+8. Ranking algorithm logic
+9. Search optimization strategies
+10. Caching strategy
+11. Geo-search implementation
+12. Semantic-search-ready structure
+13. Security considerations
+14. Scalability considerations
+15. Complete folder structure
+16. Clean production-grade code
+17. UI/UX implementation details
+
+========================
+IMPORTANT
+========================
+
+Do NOT generate beginner-level code.
+
+Everything must feel:
+- FAANG-level
+- scalable
+- elegant
+- production-ready
+- startup unicorn quality
+
+Prioritize:
+- maintainability
+- performance
+- modularity
+- elite UX
+- clean architecture
+- low latency
+- African internet optimization
+
+The final implementation should feel like something built by a top Silicon Valley engineering team.
