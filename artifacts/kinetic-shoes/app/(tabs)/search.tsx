@@ -1,29 +1,17 @@
 import React, { useState, useRef, useCallback } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Pressable,
-  ScrollView,
-  FlatList,
-  Platform,
-  Keyboard,
-  KeyboardAvoidingView,
+  View, Text, StyleSheet, TextInput, Pressable,
+  ScrollView, FlatList, Platform, Keyboard,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  FadeIn,
-  FadeOut,
-  SlideInDown,
+  useSharedValue, useAnimatedStyle,
+  withTiming, withSpring,
+  FadeIn, FadeOut, SlideInDown,
 } from "react-native-reanimated";
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { router, useFocusEffect } from "expo-router";
+import { useFocusEffect } from "expo-router";
 
 import { useColors } from "@/hooks/useColors";
 import { useSearch } from "@/hooks/useSearch";
@@ -33,35 +21,33 @@ import { FilterTabs } from "@/components/search/FilterTabs";
 import { SearchResultCard } from "@/components/search/SearchResultCard";
 import { SearchSkeletonList } from "@/components/search/SkeletonCard";
 
-// ─── Trending Chip ─────────────────────────────────────────────────────────────
+// ─── Quick Categories ─────────────────────────────────────────────────────────
+const QUICK_CATEGORIES = [
+  { id: "electronics", label: "Electronics", icon: "phone-portrait-outline",  color: "#4A80F0" },
+  { id: "fashion",     label: "Fashion",      icon: "bag-handle-outline",      color: "#C850C0" },
+  { id: "food",        label: "Food",         icon: "restaurant-outline",       color: "#FF6B35" },
+  { id: "services",    label: "Services",     icon: "construct-outline",        color: "#667EEA" },
+  { id: "sports",      label: "Sports",       icon: "bicycle-outline",          color: "#11998E" },
+  { id: "beauty",      label: "Beauty",       icon: "sparkles-outline",         color: "#FC5C7D" },
+];
 
-function TrendingChip({
-  label,
-  onPress,
-  index,
-}: {
-  label: string;
-  onPress: () => void;
-  index: number;
-}) {
+// ─── Trending Chip ────────────────────────────────────────────────────────────
+function TrendingChip({ label, onPress, index }: { label: string; onPress: () => void; index: number }) {
   const colors = useColors();
   return (
-    <Animated.View entering={FadeIn.delay(index * 40).duration(300)}>
+    <Animated.View entering={FadeIn.delay(index * 40).duration(280)}>
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [
-          styles.chip,
+          ss.chip,
           {
-            backgroundColor: pressed ? colors.primary + "20" : colors.muted,
-            borderColor: pressed ? colors.primary + "60" : colors.border,
+            backgroundColor: pressed ? colors.primary + "18" : colors.card,
+            borderColor: pressed ? colors.primary + "50" : colors.border,
           },
         ]}
       >
-        <Ionicons name="trending-up" size={12} color={colors.primary} />
-        <Text
-          style={[styles.chipText, { color: colors.foreground }]}
-          numberOfLines={1}
-        >
+        <Ionicons name="trending-up" size={13} color={colors.primary} />
+        <Text style={[ss.chipText, { color: colors.foreground }]} numberOfLines={1}>
           {label}
         </Text>
       </Pressable>
@@ -69,207 +55,189 @@ function TrendingChip({
   );
 }
 
-// ─── Recent Search Row ─────────────────────────────────────────────────────────
-
-function RecentRow({
-  label,
-  onPress,
-  onRemove,
-}: {
-  label: string;
-  onPress: () => void;
-  onRemove: () => void;
+// ─── Recent Row ───────────────────────────────────────────────────────────────
+function RecentRow({ label, onPress, onRemove, index }: {
+  label: string; onPress: () => void; onRemove: () => void; index: number;
 }) {
   const colors = useColors();
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.recentRow,
-        { backgroundColor: pressed ? colors.muted : "transparent" },
-      ]}
-    >
-      <Feather name="clock" size={14} color={colors.mutedForeground} />
-      <Text
-        style={[styles.recentText, { color: colors.foreground }]}
-        numberOfLines={1}
-      >
-        {label}
-      </Text>
+    <Animated.View entering={FadeIn.delay(index * 35).duration(260)}>
       <Pressable
-        onPress={onRemove}
-        hitSlop={8}
-        style={styles.removeBtn}
+        onPress={onPress}
+        style={({ pressed }) => [
+          ss.recentRow,
+          {
+            backgroundColor: pressed ? colors.muted : colors.card,
+            borderColor: colors.border,
+          },
+        ]}
       >
-        <Feather name="x" size={14} color={colors.mutedForeground} />
+        <View style={[ss.recentIconWrap, { backgroundColor: colors.muted }]}>
+          <Ionicons name="time-outline" size={15} color={colors.mutedForeground} />
+        </View>
+        <Text style={[ss.recentText, { color: colors.foreground }]} numberOfLines={1}>
+          {label}
+        </Text>
+        <Pressable onPress={onRemove} hitSlop={10} style={[ss.removeBtn, { backgroundColor: colors.muted }]}>
+          <Ionicons name="close" size={13} color={colors.mutedForeground} />
+        </Pressable>
       </Pressable>
-    </Pressable>
-  );
-}
-
-// ─── Empty State ───────────────────────────────────────────────────────────────
-
-function EmptyResults({ query }: { query: string }) {
-  const colors = useColors();
-  return (
-    <Animated.View
-      entering={FadeIn.duration(300)}
-      style={styles.emptyContainer}
-    >
-      <Feather name="search" size={40} color={colors.border} />
-      <Text style={[styles.emptyTitle, { color: colors.foreground }]}>
-        No results for "{query}"
-      </Text>
-      <Text style={[styles.emptySubtitle, { color: colors.mutedForeground }]}>
-        Try different keywords, check the spelling, or use a Chichewa word
-      </Text>
     </Animated.View>
   );
 }
 
-// ─── Intent Banner ─────────────────────────────────────────────────────────────
+// ─── Empty State ──────────────────────────────────────────────────────────────
+function EmptyResults({ query }: { query: string }) {
+  const colors = useColors();
+  return (
+    <Animated.View entering={FadeIn.duration(300)} style={ss.emptyWrap}>
+      <View style={[ss.emptyIconBg, { backgroundColor: colors.muted }]}>
+        <Ionicons name="search-outline" size={48} color={colors.mutedForeground} />
+      </View>
+      <Text style={[ss.emptyTitle, { color: colors.foreground }]}>No results for "{query}"</Text>
+      <Text style={[ss.emptySub, { color: colors.mutedForeground }]}>
+        Try different keywords, check the spelling, or search in Chichewa
+      </Text>
+      <View style={[ss.emptyTip, { backgroundColor: colors.primary + "10", borderColor: colors.primary + "25" }]}>
+        <Ionicons name="bulb-outline" size={14} color={colors.primary} />
+        <Text style={[ss.emptyTipTxt, { color: colors.primary }]}>
+          Try: "nsapato" for shoes · "foni" for phones
+        </Text>
+      </View>
+    </Animated.View>
+  );
+}
 
+// ─── Intent Banner ────────────────────────────────────────────────────────────
 function IntentBanner({ text }: { text: string }) {
   const colors = useColors();
   return (
     <Animated.View
       entering={SlideInDown.duration(250)}
-      style={[styles.intentBanner, { backgroundColor: colors.primary + "15", borderColor: colors.primary + "30" }]}
+      style={[ss.intentBanner, { backgroundColor: colors.primary + "12", borderColor: colors.primary + "28" }]}
     >
-      <Ionicons name="bulb-outline" size={14} color={colors.primary} />
-      <Text style={[styles.intentText, { color: colors.primary }]}>{text}</Text>
+      <View style={[ss.intentIcon, { backgroundColor: colors.primary + "20" }]}>
+        <Ionicons name="bulb-outline" size={14} color={colors.primary} />
+      </View>
+      <Text style={[ss.intentText, { color: colors.primary }]}>{text}</Text>
     </Animated.View>
   );
 }
 
-// ─── Search Screen ─────────────────────────────────────────────────────────────
-
+// ─── Search Screen ────────────────────────────────────────────────────────────
 export default function SearchScreen() {
-  const colors = useColors();
-  const insets = useSafeAreaInsets();
-  const {
-    query,
-    setQuery,
-    results,
-    loading,
-    intent,
-    activeFilter,
-    setActiveFilter,
-    counts,
-  } = useSearch();
+  const colors  = useColors();
+  const insets  = useSafeAreaInsets();
+  const topPad  = Platform.OS === "web" ? 20 : insets.top;
 
-  const { recentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches } =
-    useSearchContext();
+  const { query, setQuery, results, loading, intent, activeFilter, setActiveFilter, counts } = useSearch();
+  const { recentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches } = useSearchContext();
 
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  // Search bar animation
-  const cancelWidth = useSharedValue(0);
+  const cancelWidth   = useSharedValue(0);
   const cancelOpacity = useSharedValue(0);
-
-  const cancelStyle = useAnimatedStyle(() => ({
-    width: cancelWidth.value,
-    opacity: cancelOpacity.value,
-  }));
+  const cancelStyle   = useAnimatedStyle(() => ({ width: cancelWidth.value, opacity: cancelOpacity.value }));
 
   const onFocus = useCallback(() => {
     setIsFocused(true);
-    cancelWidth.value = withSpring(68, { damping: 18, stiffness: 280 });
+    cancelWidth.value   = withSpring(72, { damping: 18, stiffness: 280 });
     cancelOpacity.value = withTiming(1, { duration: 200 });
-  }, [cancelWidth, cancelOpacity]);
+  }, []);
 
   const onBlur = useCallback(() => {
     if (query.length === 0) {
       setIsFocused(false);
-      cancelWidth.value = withSpring(0, { damping: 18, stiffness: 280 });
+      cancelWidth.value   = withSpring(0, { damping: 18, stiffness: 280 });
       cancelOpacity.value = withTiming(0, { duration: 150 });
     }
-  }, [query, cancelWidth, cancelOpacity]);
+  }, [query]);
 
   const handleCancel = useCallback(() => {
     Keyboard.dismiss();
     setQuery("");
     setIsFocused(false);
-    cancelWidth.value = withSpring(0, { damping: 18, stiffness: 280 });
+    cancelWidth.value   = withSpring(0, { damping: 18, stiffness: 280 });
     cancelOpacity.value = withTiming(0, { duration: 150 });
-  }, [setQuery, cancelWidth, cancelOpacity]);
+  }, [setQuery]);
 
-  const handleSearchSubmit = useCallback(() => {
-    if (query.trim().length > 0) {
+  const handleSubmit = useCallback(() => {
+    if (query.trim()) {
       addRecentSearch(query.trim());
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      }
+      if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
   }, [query, addRecentSearch]);
 
-  const handleChipPress = useCallback(
-    (label: string) => {
-      setQuery(label);
-      addRecentSearch(label);
-      if (Platform.OS !== "web") {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-      }
-      inputRef.current?.blur();
-    },
-    [setQuery, addRecentSearch]
-  );
+  const handleChip = useCallback((label: string) => {
+    setQuery(label);
+    addRecentSearch(label);
+    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    inputRef.current?.blur();
+  }, [setQuery, addRecentSearch]);
 
   const handleResultPress = useCallback(() => {
     if (query.trim()) addRecentSearch(query.trim());
   }, [query, addRecentSearch]);
 
-  // Refocus check
-  useFocusEffect(
-    useCallback(() => {
-      return () => {};
-    }, [])
-  );
+  useFocusEffect(useCallback(() => { return () => {}; }, []));
 
-  const topPad = Platform.OS === "web" ? 67 : insets.top;
   const isSearching = query.length > 0;
-  const hasResults = results.length > 0;
+  const hasResults  = results.length > 0;
 
-  // Build intent hint string
   let intentHint: string | null = null;
   if (intent && isSearching) {
-    if (intent.isGeo) intentHint = "Showing nearby results first";
+    if      (intent.isGeo)          intentHint = "Showing nearby results first";
     else if (intent.isProfessional) intentHint = "Found service professionals matching your search";
-    else if (intent.isService) intentHint = "Found services matching your needs";
+    else if (intent.isService)      intentHint = "Found services matching your needs";
     else if (intent.isPriceSensitive) intentHint = "Showing budget-friendly options first";
   }
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background }]}>
+    <View style={[ss.screen, { backgroundColor: colors.background }]}>
+
       {/* ── Header ── */}
-      <View style={[styles.header, { paddingTop: topPad + 8 }]}>
-        <View style={styles.searchRow}>
-          {/* Search Bar */}
-          <View
-            style={[
-              styles.searchBar,
-              {
-                backgroundColor: colors.input,
-                borderColor: isFocused ? colors.primary : colors.border,
-              },
-            ]}
-          >
-            <Feather
-              name="search"
-              size={17}
+      <View style={[ss.header, { paddingTop: topPad + 8 }]}>
+        {/* Title row — only shown when not focused and no query */}
+        {!isFocused && !isSearching && (
+          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={ss.titleRow}>
+            <View>
+              <Text style={[ss.screenTitle, { color: colors.foreground }]}>Discover</Text>
+              <Text style={[ss.screenSub, { color: colors.mutedForeground }]}>
+                Search products, stores &amp; services
+              </Text>
+            </View>
+            <View style={[ss.locationPill, { backgroundColor: colors.muted, borderColor: colors.border }]}>
+              <Ionicons name="location" size={13} color={colors.primary} />
+              <Text style={[ss.locationTxt, { color: colors.foreground }]}>Lilongwe</Text>
+            </View>
+          </Animated.View>
+        )}
+
+        {/* Search bar row */}
+        <View style={ss.searchRow}>
+          <View style={[
+            ss.searchBar,
+            {
+              backgroundColor: colors.card,
+              borderColor: isFocused ? colors.primary : colors.border,
+            },
+          ]}>
+            <Ionicons
+              name={isFocused ? "search" : "search-outline"}
+              size={18}
               color={isFocused ? colors.primary : colors.mutedForeground}
             />
             <TextInput
               ref={inputRef}
-              style={[styles.searchInput, { color: colors.foreground }]}
-              placeholder="Search products, stores, professionals..."
+              style={[ss.searchInput, { color: colors.foreground }]}
+              placeholder="Search products, stores, services…"
               placeholderTextColor={colors.mutedForeground}
               value={query}
               onChangeText={setQuery}
               onFocus={onFocus}
               onBlur={onBlur}
-              onSubmitEditing={handleSearchSubmit}
+              onSubmitEditing={handleSubmit}
               returnKeyType="search"
               autoCapitalize="none"
               autoCorrect={false}
@@ -277,18 +245,14 @@ export default function SearchScreen() {
             />
             {query.length > 0 && Platform.OS !== "ios" && (
               <Pressable onPress={() => setQuery("")} hitSlop={8}>
-                <Feather name="x-circle" size={16} color={colors.mutedForeground} />
+                <Ionicons name="close-circle" size={18} color={colors.mutedForeground} />
               </Pressable>
             )}
           </View>
 
-          {/* Cancel Button */}
-          <Animated.View style={cancelStyle}>
-            <Pressable onPress={handleCancel} style={styles.cancelBtn}>
-              <Text
-                style={[styles.cancelText, { color: colors.primary }]}
-                numberOfLines={1}
-              >
+          <Animated.View style={[cancelStyle, ss.cancelWrap]}>
+            <Pressable onPress={handleCancel} style={ss.cancelBtn}>
+              <Text style={[ss.cancelText, { color: colors.primary }]} numberOfLines={1}>
                 Cancel
               </Text>
             </Pressable>
@@ -298,166 +262,117 @@ export default function SearchScreen() {
 
       {/* ── Active Search ── */}
       {isSearching ? (
-        <View style={styles.resultsWrapper}>
-          {/* Filter Tabs */}
-          <FilterTabs
-            activeFilter={activeFilter}
-            onFilterChange={setActiveFilter}
-            counts={counts}
-          />
-
-          {/* Intent banner */}
+        <View style={{ flex: 1 }}>
+          <FilterTabs activeFilter={activeFilter} onFilterChange={setActiveFilter} counts={counts} />
           {intentHint && <IntentBanner text={intentHint} />}
 
-          {/* Results */}
           {loading ? (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingTop: 8, paddingBottom: 120 }}
-            >
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingTop: 8, paddingBottom: 120 }}>
               <SearchSkeletonList count={5} />
             </ScrollView>
           ) : hasResults ? (
             <FlatList
               data={results}
-              keyExtractor={(item) => item.id}
+              keyExtractor={item => item.id}
               renderItem={({ item, index }) => (
-                <Animated.View
-                  entering={FadeIn.delay(index * 30).duration(250)}
-                  style={{ marginBottom: 8 }}
-                >
-                  <SearchResultCard
-                    result={item}
-                    query={query}
-                    onPress={handleResultPress}
-                  />
+                <Animated.View entering={FadeIn.delay(index * 30).duration(250)} style={{ marginBottom: 10 }}>
+                  <SearchResultCard result={item} query={query} onPress={handleResultPress} />
                 </Animated.View>
               )}
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{
-                paddingTop: 8,
-                paddingBottom: 120,
-              }}
+              contentContainerStyle={{ paddingTop: 8, paddingBottom: 120, paddingHorizontal: 16 }}
               ListHeaderComponent={
-                <Text
-                  style={[
-                    styles.resultCount,
-                    { color: colors.mutedForeground },
-                  ]}
-                >
-                  {counts.all} result{counts.all !== 1 ? "s" : ""} for "{query}"
-                </Text>
+                <View style={[ss.resultCountRow, { borderColor: colors.border }]}>
+                  <Text style={[ss.resultCountNum, { color: colors.foreground }]}>{counts.all}</Text>
+                  <Text style={[ss.resultCountLabel, { color: colors.mutedForeground }]}>
+                    {counts.all === 1 ? "result" : "results"} for "{query}"
+                  </Text>
+                </View>
               }
             />
           ) : (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 120 }}
-            >
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
               <EmptyResults query={query} />
             </ScrollView>
           )}
         </View>
       ) : (
-        /* ── Home State ── */
+
+        /* ── Home / Discovery State ── */
         <ScrollView
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[
-            styles.homeContent,
-            { paddingBottom: Platform.OS === "web" ? 120 : 100 },
-          ]}
+          contentContainerStyle={[ss.homeContent, { paddingBottom: Platform.OS === "web" ? 120 : 100 }]}
         >
           {/* Recent Searches */}
           {recentSearches.length > 0 && (
             <Animated.View entering={FadeIn.duration(300)}>
-              <View style={styles.sectionHeader}>
-                <Text
-                  style={[styles.sectionTitle, { color: colors.foreground }]}
+              <View style={ss.sectionHeader}>
+                <Text style={[ss.sectionTitle, { color: colors.foreground }]}>Recent</Text>
+                <Pressable
+                  onPress={clearRecentSearches}
+                  style={[ss.clearBtn, { backgroundColor: colors.muted }]}
                 >
-                  Recent
-                </Text>
-                <Pressable onPress={clearRecentSearches}>
-                  <Text
-                    style={[
-                      styles.clearText,
-                      { color: colors.primary },
-                    ]}
-                  >
-                    Clear all
-                  </Text>
+                  <Text style={[ss.clearTxt, { color: colors.mutedForeground }]}>Clear all</Text>
                 </Pressable>
               </View>
-              {recentSearches.slice(0, 6).map((s) => (
-                <RecentRow
-                  key={s}
-                  label={s}
-                  onPress={() => handleChipPress(s)}
-                  onRemove={() => removeRecentSearch(s)}
-                />
-              ))}
+              <View style={ss.recentList}>
+                {recentSearches.slice(0, 6).map((s, i) => (
+                  <RecentRow
+                    key={s}
+                    label={s}
+                    index={i}
+                    onPress={() => handleChip(s)}
+                    onRemove={() => removeRecentSearch(s)}
+                  />
+                ))}
+              </View>
             </Animated.View>
           )}
 
           {/* Trending */}
           <Animated.View entering={FadeIn.delay(60).duration(300)}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                Trending now
-              </Text>
-              <Ionicons name="flame" size={15} color="#FF6B35" />
+            <View style={ss.sectionHeader}>
+              <Text style={[ss.sectionTitle, { color: colors.foreground }]}>Trending now</Text>
+              <View style={[ss.flamePill, { backgroundColor: "#FF6B3518" }]}>
+                <Ionicons name="flame" size={13} color="#FF6B35" />
+                <Text style={[ss.flameTxt, { color: "#FF6B35" }]}>Hot</Text>
+              </View>
             </View>
-            <View style={styles.chipsGrid}>
+            <View style={ss.chipsGrid}>
               {TRENDING_SEARCHES.map((label, i) => (
-                <TrendingChip
-                  key={label}
-                  label={label}
-                  index={i}
-                  onPress={() => handleChipPress(label)}
-                />
+                <TrendingChip key={label} label={label} index={i} onPress={() => handleChip(label)} />
               ))}
             </View>
           </Animated.View>
 
-          {/* Quick Category Access */}
+          {/* Category Grid */}
           <Animated.View entering={FadeIn.delay(120).duration(300)}>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-                Browse by category
-              </Text>
+            <View style={ss.sectionHeader}>
+              <Text style={[ss.sectionTitle, { color: colors.foreground }]}>Browse by category</Text>
             </View>
-            <View style={styles.categoryGrid}>
+            <View style={ss.categoryGrid}>
               {QUICK_CATEGORIES.map((cat, i) => (
                 <Animated.View
                   key={cat.id}
                   entering={FadeIn.delay(i * 50 + 120).duration(300)}
-                  style={{ flex: 1 }}
+                  style={ss.categoryCol}
                 >
                   <Pressable
-                    onPress={() => handleChipPress(cat.label)}
+                    onPress={() => handleChip(cat.label)}
                     style={({ pressed }) => [
-                      styles.categoryCard,
+                      ss.categoryCard,
                       {
-                        backgroundColor: pressed
-                          ? cat.color + "30"
-                          : cat.color + "15",
-                        borderColor: cat.color + "40",
+                        backgroundColor: pressed ? cat.color + "25" : cat.color + "12",
+                        borderColor: cat.color + "35",
                       },
                     ]}
                   >
-                    <Feather
-                      name={cat.icon as any}
-                      size={22}
-                      color={cat.color}
-                    />
-                    <Text
-                      style={[
-                        styles.categoryLabel,
-                        { color: colors.foreground },
-                      ]}
-                      numberOfLines={1}
-                    >
+                    <View style={[ss.categoryIconWrap, { backgroundColor: cat.color + "20" }]}>
+                      <Ionicons name={cat.icon as any} size={24} color={cat.color} />
+                    </View>
+                    <Text style={[ss.categoryLabel, { color: colors.foreground }]} numberOfLines={1}>
                       {cat.label}
                     </Text>
                   </Pressable>
@@ -466,27 +381,18 @@ export default function SearchScreen() {
             </View>
           </Animated.View>
 
-          {/* Tip Banner */}
-          <Animated.View entering={FadeIn.delay(200).duration(300)}>
-            <View
-              style={[
-                styles.tipBanner,
-                {
-                  backgroundColor: colors.primary + "10",
-                  borderColor: colors.primary + "25",
-                },
-              ]}
-            >
-              <Ionicons name="bulb-outline" size={16} color={colors.primary} />
-              <Text
-                style={[styles.tipText, { color: colors.mutedForeground }]}
-              >
-                Try searching in{" "}
-                <Text style={{ color: colors.primary, fontFamily: "Inter_600SemiBold" }}>
-                  Chichewa
+          {/* Chichewa Tip */}
+          <Animated.View entering={FadeIn.delay(200).duration(300)} style={{ paddingHorizontal: 20, marginTop: 8 }}>
+            <View style={[ss.tipCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[ss.tipIconWrap, { backgroundColor: colors.primary + "15" }]}>
+                <Ionicons name="language-outline" size={20} color={colors.primary} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[ss.tipTitle, { color: colors.foreground }]}>Search in Chichewa</Text>
+                <Text style={[ss.tipBody, { color: colors.mutedForeground }]}>
+                  "nsapato" for shoes · "foni" for phones · "chakudya" for food
                 </Text>
-                : "foni" for phones, "nsapato" for shoes, "chakudya" for food
-              </Text>
+              </View>
             </View>
           </Animated.View>
         </ScrollView>
@@ -495,190 +401,72 @@ export default function SearchScreen() {
   );
 }
 
-// ─── Quick Categories ──────────────────────────────────────────────────────────
+// ─── Styles ───────────────────────────────────────────────────────────────────
+const ss = StyleSheet.create({
+  screen:      { flex: 1 },
+  header:      { paddingHorizontal: 20, paddingBottom: 12 },
+  titleRow:    { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 },
+  screenTitle: { fontSize: 28, fontFamily: "Inter_800ExtraBold", lineHeight: 32 },
+  screenSub:   { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 3 },
+  locationPill:{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
+  locationTxt: { fontSize: 12, fontFamily: "Inter_600SemiBold" },
 
-const QUICK_CATEGORIES = [
-  { id: "electronics", label: "Electronics", icon: "smartphone", color: "#0F3460" },
-  { id: "fashion", label: "Fashion", icon: "shopping-bag", color: "#C850C0" },
-  { id: "food", label: "Food", icon: "coffee", color: "#FF6B35" },
-  { id: "services", label: "Services", icon: "tool", color: "#667EEA" },
-  { id: "sports", label: "Sports", icon: "activity", color: "#56CCF2" },
-  { id: "beauty", label: "Beauty", icon: "heart", color: "#FC5C7D" },
-];
+  searchRow:   { flexDirection: "row", alignItems: "center", gap: 10 },
+  searchBar:   { flex: 1, flexDirection: "row", alignItems: "center", height: 52, borderRadius: 16, paddingHorizontal: 14, gap: 10, borderWidth: 1.5 },
+  searchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", height: "100%", paddingVertical: 0 },
+  cancelWrap:  { overflow: "hidden" },
+  cancelBtn:   { paddingHorizontal: 4, paddingVertical: 10 },
+  cancelText:  { fontSize: 15, fontFamily: "Inter_600SemiBold" },
 
-// ─── Styles ────────────────────────────────────────────────────────────────────
+  homeContent: { paddingTop: 4, gap: 4 },
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-  },
-  header: {
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-  },
-  searchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    height: 46,
-    borderRadius: 14,
-    paddingHorizontal: 12,
-    gap: 8,
-    borderWidth: 1.5,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    height: "100%",
-    paddingVertical: 0,
-  },
-  cancelBtn: {
-    paddingHorizontal: 4,
-    paddingVertical: 10,
-    overflow: "hidden",
-  },
-  cancelText: {
-    fontSize: 15,
-    fontFamily: "Inter_500Medium",
-  },
-  resultsWrapper: {
-    flex: 1,
-  },
-  resultCount: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    paddingHorizontal: 20,
-    paddingBottom: 10,
-    paddingTop: 4,
-  },
-  homeContent: {
-    paddingTop: 8,
-    gap: 4,
-  },
-  sectionHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 10,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_700Bold",
-  },
-  clearText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-  },
-  recentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: 18,
-    paddingVertical: 11,
-    gap: 12,
-  },
-  recentText: {
-    flex: 1,
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-  },
-  removeBtn: {
-    padding: 2,
-  },
-  chipsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 14,
-    gap: 8,
-  },
-  chip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    borderWidth: 1,
-  },
-  chipText: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-  },
-  categoryGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 14,
-    gap: 10,
-  },
-  categoryCard: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 16,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 8,
-    minWidth: 90,
-  },
-  categoryLabel: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-    textAlign: "center",
-  },
-  tipBanner: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginHorizontal: 16,
-    marginTop: 16,
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    gap: 10,
-  },
-  tipText: {
-    flex: 1,
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    lineHeight: 19,
-  },
-  intentBanner: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginHorizontal: 16,
-    marginVertical: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    borderWidth: 1,
-    gap: 8,
-  },
-  intentText: {
-    fontSize: 12,
-    fontFamily: "Inter_500Medium",
-  },
-  emptyContainer: {
-    alignItems: "center",
-    paddingTop: 64,
-    paddingHorizontal: 40,
-    gap: 12,
-  },
-  emptyTitle: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-    textAlign: "center",
-    marginTop: 8,
-  },
-  emptySubtitle: {
-    fontSize: 13,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-    lineHeight: 20,
-  },
+  sectionHeader:{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 },
+  sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  clearBtn:     { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
+  clearTxt:     { fontSize: 12, fontFamily: "Inter_500Medium" },
+  flamePill:    { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  flameTxt:     { fontSize: 12, fontFamily: "Inter_700Bold" },
+
+  // Recent rows
+  recentList:  { paddingHorizontal: 20, gap: 8 },
+  recentRow:   { flexDirection: "row", alignItems: "center", borderRadius: 16, borderWidth: 1, padding: 12, gap: 12 },
+  recentIconWrap:{ width: 34, height: 34, borderRadius: 10, alignItems: "center", justifyContent: "center" },
+  recentText:  { flex: 1, fontSize: 14, fontFamily: "Inter_400Regular" },
+  removeBtn:   { width: 26, height: 26, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+
+  // Trending chips
+  chipsGrid:   { flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 20, gap: 8 },
+  chip:        { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1 },
+  chipText:    { fontSize: 13, fontFamily: "Inter_500Medium" },
+
+  // Category grid
+  categoryGrid:{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: 20, gap: 10 },
+  categoryCol: { width: "30%", flexGrow: 1 },
+  categoryCard:{ alignItems: "center", justifyContent: "center", paddingVertical: 18, paddingHorizontal: 8, borderRadius: 20, borderWidth: 1, gap: 10 },
+  categoryIconWrap:{ width: 48, height: 48, borderRadius: 14, alignItems: "center", justifyContent: "center" },
+  categoryLabel:{ fontSize: 12, fontFamily: "Inter_600SemiBold", textAlign: "center" },
+
+  // Tip card
+  tipCard:     { flexDirection: "row", alignItems: "center", gap: 14, borderRadius: 20, borderWidth: 1, padding: 16 },
+  tipIconWrap: { width: 44, height: 44, borderRadius: 13, alignItems: "center", justifyContent: "center" },
+  tipTitle:    { fontSize: 14, fontFamily: "Inter_700Bold", marginBottom: 3 },
+  tipBody:     { fontSize: 12, fontFamily: "Inter_400Regular", lineHeight: 18 },
+
+  // Intent banner
+  intentBanner:{ flexDirection: "row", alignItems: "center", marginHorizontal: 20, marginVertical: 6, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, borderWidth: 1, gap: 10 },
+  intentIcon:  { width: 28, height: 28, borderRadius: 8, alignItems: "center", justifyContent: "center" },
+  intentText:  { fontSize: 12, fontFamily: "Inter_600SemiBold", flex: 1 },
+
+  // Result count
+  resultCountRow:{ flexDirection: "row", alignItems: "center", gap: 6, paddingBottom: 12, paddingTop: 4 },
+  resultCountNum:{ fontSize: 22, fontFamily: "Inter_800ExtraBold" },
+  resultCountLabel:{ fontSize: 14, fontFamily: "Inter_400Regular" },
+
+  // Empty state
+  emptyWrap:   { alignItems: "center", paddingTop: 60, paddingHorizontal: 40, gap: 14 },
+  emptyIconBg: { width: 96, height: 96, borderRadius: 28, alignItems: "center", justifyContent: "center" },
+  emptyTitle:  { fontSize: 20, fontFamily: "Inter_700Bold", textAlign: "center", marginTop: 4 },
+  emptySub:    { fontSize: 14, fontFamily: "Inter_400Regular", textAlign: "center", lineHeight: 20 },
+  emptyTip:    { flexDirection: "row", alignItems: "center", gap: 8, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, marginTop: 4 },
+  emptyTipTxt: { fontSize: 12, fontFamily: "Inter_500Medium", flex: 1 },
 });
