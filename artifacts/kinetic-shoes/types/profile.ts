@@ -47,9 +47,18 @@ export interface Post {
   };
 }
 
+export interface WishlistItem {
+  id: string;
+  productName: string;
+  brand: string;
+  price: number;
+  imageUrl?: string;
+  category: string;
+  addedAt: string;
+}
+
 export type ProfileTab =
   | "posts"
   | "collection"
   | "wishlist"
-  | "reviews"
   | "about";

@@ -18,7 +18,6 @@ const TABS: { key: ProfileTab; label: string }[] = [
   { key: "posts", label: "Posts" },
   { key: "collection", label: "Collection" },
   { key: "wishlist", label: "Wishlist" },
-  { key: "reviews", label: "Reviews" },
   { key: "about", label: "About" },
 ];
 

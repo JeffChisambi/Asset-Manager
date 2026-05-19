@@ -5,6 +5,7 @@ import {
   FlatList,
   Platform,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -36,7 +37,7 @@ import { ProfileStats } from "./ProfileStats";
 import { ProfileTabs } from "./ProfileTabs";
 import { ProfilePostCard } from "./ProfilePostCard";
 import { useProfile } from "@/hooks/profile/useProfile";
-import { Post, ProfileTab, User } from "@/types/profile";
+import { Post, ProfileTab, User, WishlistItem } from "@/types/profile";
 import { Store, MerchantType } from "@/types/store";
 import { useChat } from "@/context/ChatContext";
 import * as ImagePicker from "expo-image-picker";
@@ -1428,6 +1429,209 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
   );
 }
 
+// ─── Mock Wishlist Data ───────────────────────────────────────────────────────
+
+const INITIAL_WISHLIST: WishlistItem[] = [
+  { id: "w1", productName: "Nike Air Max 90", brand: "Nike", price: 225.00, category: "Running", addedAt: "2d ago" },
+  { id: "w2", productName: "Adidas Yeezy 350 V2", brand: "Adidas", price: 320.00, category: "Lifestyle", addedAt: "5d ago" },
+  { id: "w3", productName: "Jordan 1 Retro High OG", brand: "Jordan", price: 180.00, category: "Basketball", addedAt: "1w ago" },
+  { id: "w4", productName: "New Balance 990v5", brand: "New Balance", price: 185.00, category: "Running", addedAt: "2w ago" },
+];
+
+// ─── Create Post Modal ────────────────────────────────────────────────────────
+
+interface CreatePostModalProps {
+  visible: boolean;
+  onClose: () => void;
+  onPost: (post: Post) => void;
+  userId: string;
+}
+
+function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalProps) {
+  const colors = useColors();
+  const insets = useSafeAreaInsets();
+  const [content, setContent] = useState("");
+  const [tagsRaw, setTagsRaw] = useState("");
+  const [posting, setPosting] = useState(false);
+
+  const handlePost = async () => {
+    const trimmed = content.trim();
+    if (!trimmed) {
+      Alert.alert("Empty Post", "Write something before posting.");
+      return;
+    }
+    setPosting(true);
+    await new Promise((r) => setTimeout(r, 400));
+    const tags = tagsRaw
+      .split(/[\s,#]+/)
+      .map((t) => t.trim().replace(/^#/, ""))
+      .filter(Boolean);
+    const newPost: Post = {
+      id: `post_${Date.now()}`,
+      userId,
+      content: trimmed,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      isLiked: false,
+      isSaved: false,
+      createdAt: "Just now",
+      tags,
+    };
+    onPost(newPost);
+    setContent("");
+    setTagsRaw("");
+    setPosting(false);
+    onClose();
+  };
+
+  const handleClose = () => {
+    if (content.trim()) {
+      Alert.alert("Discard Post?", "Your draft will be lost.", [
+        { text: "Keep Editing", style: "cancel" },
+        { text: "Discard", style: "destructive", onPress: () => { setContent(""); setTagsRaw(""); onClose(); } },
+      ]);
+    } else {
+      onClose();
+    }
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
+      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+        <View style={[
+          createPostStyles.sheet,
+          { backgroundColor: colors.card, paddingBottom: insets.bottom + 16 }
+        ]}>
+          {/* Header */}
+          <View style={[createPostStyles.header, { borderBottomColor: colors.border }]}>
+            <TouchableOpacity onPress={handleClose} style={createPostStyles.cancelBtn}>
+              <Text style={[createPostStyles.cancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+            </TouchableOpacity>
+            <Text style={[createPostStyles.title, { color: colors.foreground }]}>New Post</Text>
+            <TouchableOpacity
+              style={[createPostStyles.postBtn, { backgroundColor: colors.primary, opacity: posting || !content.trim() ? 0.6 : 1 }]}
+              onPress={handlePost}
+              disabled={posting || !content.trim()}
+            >
+              {posting ? (
+                <ActivityIndicator size="small" color="#fff" />
+              ) : (
+                <Text style={createPostStyles.postBtnText}>Post</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Content input */}
+          <TextInput
+            style={[createPostStyles.contentInput, { color: colors.foreground }]}
+            placeholder="What's on your mind? Share a look, drop, or review..."
+            placeholderTextColor={colors.mutedForeground}
+            multiline
+            maxLength={500}
+            value={content}
+            onChangeText={setContent}
+            autoFocus
+          />
+
+          <Text style={[createPostStyles.charCount, { color: colors.mutedForeground }]}>
+            {content.length}/500
+          </Text>
+
+          {/* Tags input */}
+          <View style={[createPostStyles.tagsRow, { borderTopColor: colors.border, borderColor: colors.border, backgroundColor: colors.input }]}>
+            <Ionicons name="pricetag-outline" size={16} color={colors.mutedForeground} />
+            <TextInput
+              style={[createPostStyles.tagsInput, { color: colors.foreground }]}
+              placeholder="Add tags, e.g. Nike AirMax Hype"
+              placeholderTextColor={colors.mutedForeground}
+              value={tagsRaw}
+              onChangeText={setTagsRaw}
+              returnKeyType="done"
+            />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const createPostStyles = StyleSheet.create({
+  sheet: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    minHeight: 320,
+    paddingTop: 8,
+  },
+  header: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  title: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+  },
+  cancelBtn: {
+    paddingVertical: 4,
+    paddingRight: 8,
+  },
+  cancelText: {
+    fontSize: 15,
+    fontFamily: "Inter_500Medium",
+  },
+  postBtn: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 20,
+    minWidth: 60,
+    alignItems: "center",
+  },
+  postBtnText: {
+    color: "#fff",
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+  },
+  contentInput: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    fontSize: 16,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 24,
+    minHeight: 120,
+    textAlignVertical: "top",
+  },
+  charCount: {
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+    textAlign: "right",
+    paddingRight: 20,
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  tagsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  tagsInput: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+});
+
 // ─── Main ProfileScreen ───────────────────────────────────────────────────────
 
 interface ProfileScreenProps {
@@ -1453,6 +1657,44 @@ export function ProfileScreen({ userId, showBackButton, onBack, onEditPress }: P
   const [modalVisible, setModalVisible] = useState(false);
   const [professionModalVisible, setProfessionModalVisible] = useState(false);
 
+  // Local posts state — supports create + delete without refetching
+  const [localPosts, setLocalPosts] = useState<Post[]>([]);
+  const [postsReady, setPostsReady] = useState(false);
+  const [createPostVisible, setCreatePostVisible] = useState(false);
+
+  // Wishlist state
+  const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>(
+    isOwn ? INITIAL_WISHLIST : []
+  );
+
+  // Sync remote posts → local state on first load
+  useEffect(() => {
+    if (posts.length > 0 || (!isLoading && !postsReady)) {
+      setLocalPosts(posts);
+      setPostsReady(true);
+    }
+  }, [posts, isLoading]);
+
+  const handleDeletePost = useCallback((postId: string) => {
+    setLocalPosts((prev) => prev.filter((p) => p.id !== postId));
+  }, []);
+
+  const handleCreatePost = useCallback((newPost: Post) => {
+    setLocalPosts((prev) => [newPost, ...prev]);
+  }, []);
+
+  const handleShare = useCallback(async () => {
+    if (!user) return;
+    try {
+      const profileUrl = `https://kinetic.app/profile/${user.username}`;
+      await Share.share({
+        title: `${user.displayName} on Kinetic`,
+        message: `Check out ${user.displayName}'s profile on Kinetic Shoes 👟\n${profileUrl}`,
+        url: profileUrl,
+      });
+    } catch {}
+  }, [user]);
+
   const handleRefresh = useCallback(() => {
     refresh();
     refreshStore();
@@ -1466,8 +1708,14 @@ export function ProfileScreen({ userId, showBackButton, onBack, onEditPress }: P
   );
 
   const renderPost = useCallback(
-    ({ item }: { item: Post }) => <ProfilePostCard post={item} />,
-    []
+    ({ item }: { item: Post }) => (
+      <ProfilePostCard
+        post={item}
+        isOwn={isOwn}
+        onDelete={() => handleDeletePost(item.id)}
+      />
+    ),
+    [isOwn, handleDeletePost]
   );
 
   const keyExtractor = useCallback((item: Post) => item.id, []);
@@ -1705,20 +1953,76 @@ export function ProfileScreen({ userId, showBackButton, onBack, onEditPress }: P
           </View>
         );
       case "wishlist":
+        if (wishlistItems.length === 0) {
+          return (
+            <View style={{ padding: 16 }}>
+              <EmptyTab
+                icon="heart-outline"
+                title="Wishlist is Empty"
+                subtitle={isOwn ? "Browse the marketplace and save items you love" : "This user hasn't added items to their wishlist yet"}
+              />
+            </View>
+          );
+        }
         return (
-          <EmptyTab
-            icon="heart-outline"
-            title="Wishlist is Empty"
-            subtitle="Save items you want to get"
-          />
-        );
-      case "reviews":
-        return (
-          <EmptyTab
-            icon="star-outline"
-            title="No Reviews Yet"
-            subtitle="Your reviews will appear here"
-          />
+          <View style={{ padding: 16, gap: 12 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+              <Text style={{ color: colors.foreground, fontSize: 16, fontFamily: "Inter_700Bold" }}>
+                Saved Items
+              </Text>
+              <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_500Medium" }}>
+                {wishlistItems.length} {wishlistItems.length === 1 ? "item" : "items"}
+              </Text>
+            </View>
+            {wishlistItems.map((item) => (
+              <View
+                key={item.id}
+                style={[
+                  styles.wishlistCard,
+                  { backgroundColor: colors.card, borderColor: colors.border }
+                ]}
+              >
+                {/* Product icon placeholder */}
+                <View style={[styles.wishlistImgPlaceholder, { backgroundColor: colors.muted }]}>
+                  <Ionicons name="footsteps-outline" size={28} color={colors.mutedForeground} />
+                </View>
+                {/* Details */}
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>
+                    {item.brand} · {item.category}
+                  </Text>
+                  <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_700Bold" }} numberOfLines={1}>
+                    {item.productName}
+                  </Text>
+                  <Text style={{ color: colors.primary, fontSize: 15, fontFamily: "Inter_800ExtraBold" }}>
+                    ${item.price.toFixed(2)}
+                  </Text>
+                  <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_400Regular" }}>
+                    Added {item.addedAt}
+                  </Text>
+                </View>
+                {/* Actions */}
+                <View style={{ gap: 8, alignItems: "center" }}>
+                  <TouchableOpacity
+                    style={[styles.wishlistActionBtn, { backgroundColor: colors.primary }]}
+                    onPress={() => {}}
+                  >
+                    <Ionicons name="cart-outline" size={16} color="#fff" />
+                  </TouchableOpacity>
+                  {isOwn && (
+                    <TouchableOpacity
+                      style={[styles.wishlistActionBtn, { backgroundColor: "#EF444415", borderWidth: 1, borderColor: "#EF444430" }]}
+                      onPress={() =>
+                        setWishlistItems((prev) => prev.filter((w) => w.id !== item.id))
+                      }
+                    >
+                      <Ionicons name="heart-dislike-outline" size={16} color="#EF4444" />
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
         );
       case "about":
         return <AboutTab user={user} />;
@@ -1754,6 +2058,7 @@ export function ProfileScreen({ userId, showBackButton, onBack, onEditPress }: P
         user={user}
         isOwn={isOwn}
         onEditPress={onEditPress}
+        onSharePress={handleShare}
       />
       <ProfileStats
         posts={user.postsCount}
@@ -1769,21 +2074,40 @@ export function ProfileScreen({ userId, showBackButton, onBack, onEditPress }: P
     return (
       <View style={[styles.container, { backgroundColor: colors.background }]}>
         <FlatList
-          data={posts}
+          data={localPosts}
           renderItem={renderPost}
           keyExtractor={keyExtractor}
           ListHeaderComponent={
             <>
               {headerContent}
               <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} hasShop={hasShop} />
-              <View style={{ height: 14 }} />
+              {/* Create Post button — own profile only */}
+              {isOwn && (
+                <TouchableOpacity
+                  style={[styles.createPostBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => setCreatePostVisible(true)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.createPostAvatar, { backgroundColor: colors.muted }]}>
+                    <Ionicons name="person-outline" size={18} color={colors.mutedForeground} />
+                  </View>
+                  <Text style={[styles.createPostPlaceholder, { color: colors.mutedForeground }]}>
+                    Share a drop, review, or find...
+                  </Text>
+                  <View style={[styles.createPostPillBtn, { backgroundColor: colors.primary }]}>
+                    <Ionicons name="add" size={16} color="#fff" />
+                    <Text style={styles.createPostPillText}>Post</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+              <View style={{ height: 6 }} />
             </>
           }
           ListEmptyComponent={
             <EmptyTab
               icon="newspaper-outline"
               title="No Posts Yet"
-              subtitle="Posts will appear here"
+              subtitle={isOwn ? "Be the first to share something!" : "This user hasn't posted yet"}
             />
           }
           showsVerticalScrollIndicator={false}
@@ -1804,6 +2128,12 @@ export function ProfileScreen({ userId, showBackButton, onBack, onEditPress }: P
           user={user}
           store={store}
           onSuccess={handleRefresh}
+        />
+        <CreatePostModal
+          visible={createPostVisible}
+          onClose={() => setCreatePostVisible(false)}
+          onPost={handleCreatePost}
+          userId={userId}
         />
       </View>
     );
@@ -2331,5 +2661,75 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_500Medium",
     textAlign: "center",
     lineHeight: 18,
+  },
+  // ── Create Post Bar ───────────────────────────────────────────────────────────
+  createPostBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 6,
+    padding: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    elevation: 4,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+  },
+  createPostAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  createPostPlaceholder: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_400Regular",
+  },
+  createPostPillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+  createPostPillText: {
+    color: "#fff",
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  // ── Wishlist Card ─────────────────────────────────────────────────────────────
+  wishlistCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+  },
+  wishlistImgPlaceholder: {
+    width: 72,
+    height: 72,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  wishlistActionBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

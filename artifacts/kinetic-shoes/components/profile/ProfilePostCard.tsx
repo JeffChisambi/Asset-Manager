@@ -1,7 +1,16 @@
 import { Feather, Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import React, { memo, useState } from "react";
-import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -54,15 +63,62 @@ const ActionButton = memo(
   }
 );
 
-interface ProfilePostCardProps {
-  post: Post;
+interface PostOptionsMenuProps {
+  visible: boolean;
+  onClose: () => void;
+  onDelete: () => void;
 }
 
-export const ProfilePostCard = memo(({ post }: ProfilePostCardProps) => {
+const PostOptionsMenu = memo(({ visible, onClose, onDelete }: PostOptionsMenuProps) => {
+  const colors = useColors();
+  if (!visible) return null;
+  return (
+    <Modal transparent visible animationType="fade" onRequestClose={onClose}>
+      <Pressable style={styles.optionsBackdrop} onPress={onClose}>
+        <View style={[styles.optionsSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <Text style={[styles.optionsTitle, { color: colors.mutedForeground }]}>Post Options</Text>
+          <TouchableOpacity
+            style={[styles.optionsRow, { borderTopColor: colors.border }]}
+            onPress={() => {
+              onClose();
+              Alert.alert(
+                "Delete Post",
+                "Are you sure you want to permanently delete this post?",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Delete", style: "destructive", onPress: onDelete },
+                ]
+              );
+            }}
+          >
+            <Ionicons name="trash-outline" size={18} color="#EF4444" />
+            <Text style={styles.optionsDeleteText}>Delete Post</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.optionsRow, { borderTopColor: colors.border }]}
+            onPress={onClose}
+          >
+            <Ionicons name="close-outline" size={18} color={colors.mutedForeground} />
+            <Text style={[styles.optionsCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </Pressable>
+    </Modal>
+  );
+});
+
+interface ProfilePostCardProps {
+  post: Post;
+  isOwn?: boolean;
+  onDelete?: () => void;
+}
+
+export const ProfilePostCard = memo(({ post, isOwn, onDelete }: ProfilePostCardProps) => {
   const colors = useColors();
   const [liked, setLiked] = useState(post.isLiked);
   const [saved, setSaved] = useState(post.isSaved);
   const [likeCount, setLikeCount] = useState(post.likes);
+  const [optionsVisible, setOptionsVisible] = useState(false);
 
   const handleLike = () => {
     const next = !liked;
@@ -85,6 +141,22 @@ export const ProfilePostCard = memo(({ post }: ProfilePostCardProps) => {
         { backgroundColor: colors.card, borderColor: colors.border },
       ]}
     >
+      {/* Header row — timestamp + options button for own posts */}
+      <View style={styles.cardHeader}>
+        <Text style={[styles.time, { color: colors.mutedForeground }]}>
+          {post.createdAt}
+        </Text>
+        {isOwn && (
+          <TouchableOpacity
+            style={[styles.moreBtn, { backgroundColor: colors.muted }]}
+            onPress={() => setOptionsVisible(true)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Feather name="more-horizontal" size={16} color={colors.mutedForeground} />
+          </TouchableOpacity>
+        )}
+      </View>
+
       <Text style={[styles.content, { color: colors.foreground }]}>
         {post.content}
       </Text>
@@ -149,9 +221,11 @@ export const ProfilePostCard = memo(({ post }: ProfilePostCardProps) => {
         />
       </View>
 
-      <Text style={[styles.time, { color: colors.mutedForeground }]}>
-        {post.createdAt}
-      </Text>
+      <PostOptionsMenu
+        visible={optionsVisible}
+        onClose={() => setOptionsVisible(false)}
+        onDelete={() => onDelete?.()}
+      />
     </View>
   );
 });
@@ -168,6 +242,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.1,
     shadowRadius: 10,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  moreBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    alignItems: "center",
+    justifyContent: "center",
   },
   content: {
     fontSize: 15,
@@ -230,6 +317,43 @@ const styles = StyleSheet.create({
   time: {
     fontSize: 12,
     fontFamily: "Inter_500Medium",
-    marginTop: 12,
+  },
+  // Options menu
+  optionsBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "flex-end",
+  },
+  optionsSheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderWidth: 1,
+    paddingBottom: 32,
+    overflow: "hidden",
+  },
+  optionsTitle: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+    textAlign: "center",
+    paddingVertical: 14,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  optionsRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  optionsDeleteText: {
+    fontSize: 16,
+    fontFamily: "Inter_600SemiBold",
+    color: "#EF4444",
+  },
+  optionsCancelText: {
+    fontSize: 16,
+    fontFamily: "Inter_500Medium",
   },
 });

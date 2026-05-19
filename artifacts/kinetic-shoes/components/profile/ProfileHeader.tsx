@@ -1,13 +1,17 @@
 import { Feather, Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import React, { memo } from "react";
+import React, { memo, useState } from "react";
 import {
   Image,
   Linking,
+  Modal,
   Platform,
   Pressable,
+  Share,
+  StatusBar,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { FollowButton } from "./FollowButton";
@@ -58,6 +62,44 @@ const ProfileCompletionBar = memo(({ percent }: ProfileCompletionBarProps) => {
   );
 });
 
+interface PhotoViewerProps {
+  visible: boolean;
+  uri?: string;
+  fallbackColor?: string;
+  initials?: string;
+  onClose: () => void;
+}
+
+const PhotoViewer = memo(({ visible, uri, fallbackColor, initials, onClose }: PhotoViewerProps) => {
+  if (!visible) return null;
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      onRequestClose={onClose}
+    >
+      <Pressable style={styles.photoViewerBackdrop} onPress={onClose}>
+        <TouchableOpacity style={styles.photoViewerClose} onPress={onClose} activeOpacity={0.8}>
+          <Ionicons name="close" size={22} color="#fff" />
+        </TouchableOpacity>
+        {uri ? (
+          <Image
+            source={{ uri }}
+            style={styles.photoViewerImage}
+            resizeMode="contain"
+          />
+        ) : (
+          <View style={[styles.photoViewerFallback, { backgroundColor: fallbackColor || "#4A80F0" }]}>
+            <Text style={styles.photoViewerInitials}>{initials || "?"}</Text>
+          </View>
+        )}
+      </Pressable>
+    </Modal>
+  );
+});
+
 interface ProfileHeaderProps {
   user: User;
   isOwn: boolean;
@@ -80,6 +122,9 @@ export const ProfileHeader = memo(
     const { isFollowing, toggle: toggleFollow } = useFollow(user.id);
     const friendship = useFriendship(user.id);
 
+    const [avatarViewerVisible, setAvatarViewerVisible] = useState(false);
+    const [coverViewerVisible, setCoverViewerVisible] = useState(false);
+
     const handleLink = () => {
       if (user.website) {
         const url = user.website.startsWith("http")
@@ -94,10 +139,32 @@ export const ProfileHeader = memo(
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     };
 
+    const handleShare = async () => {
+      haptic();
+      if (onSharePress) {
+        onSharePress();
+        return;
+      }
+      try {
+        const profileUrl = `https://kinetic.app/profile/${user.username}`;
+        await Share.share({
+          title: `${user.displayName} on Kinetic`,
+          message: `Check out ${user.displayName}'s profile on Kinetic Shoes 👟\n${profileUrl}`,
+          url: profileUrl,
+        });
+      } catch {}
+    };
+
     return (
       <View>
-        {/* Cover photo */}
-        <View style={[styles.cover, { backgroundColor: user.coverColor }]}>
+        {/* Cover photo — tappable to view fullscreen */}
+        <Pressable
+          onPress={() => {
+            haptic();
+            setCoverViewerVisible(true);
+          }}
+          style={[styles.cover, { backgroundColor: user.coverColor }]}
+        >
           {user.coverUrl ? (
             <Image
               source={{ uri: user.coverUrl }}
@@ -106,6 +173,12 @@ export const ProfileHeader = memo(
             />
           ) : null}
           <View style={styles.coverOverlay} />
+
+          {/* Tap-to-view hint */}
+          <View style={styles.coverViewHint}>
+            <Ionicons name="expand-outline" size={13} color="rgba(255,255,255,0.8)" />
+          </View>
+
           {!isOwn && (
             <View style={styles.coverMutualBadge}>
               <Ionicons name="people-outline" size={12} color="#fff" />
@@ -114,11 +187,18 @@ export const ProfileHeader = memo(
               </Text>
             </View>
           )}
-        </View>
+        </Pressable>
 
         {/* Avatar row */}
         <View style={styles.avatarRow}>
-          <View style={styles.avatarWrap}>
+          {/* Avatar — tappable to view fullscreen */}
+          <Pressable
+            onPress={() => {
+              haptic();
+              setAvatarViewerVisible(true);
+            }}
+            style={styles.avatarWrap}
+          >
             <View style={[styles.avatarCircle, { backgroundColor: user.avatarColor }]}>
               {user.avatarUrl ? (
                 <Image
@@ -131,7 +211,11 @@ export const ProfileHeader = memo(
               )}
             </View>
             {user.isOnline && <View style={styles.onlineDot} />}
-          </View>
+            {/* Camera icon overlay hint */}
+            <View style={styles.avatarViewHint}>
+              <Ionicons name="eye-outline" size={10} color="#fff" />
+            </View>
+          </Pressable>
 
           {/* Action buttons */}
           {isOwn ? (
@@ -150,7 +234,7 @@ export const ProfileHeader = memo(
               </Pressable>
               <Pressable
                 style={[styles.iconBtn, { borderColor: colors.border, backgroundColor: colors.card }]}
-                onPress={() => { haptic(); onSharePress?.(); }}
+                onPress={handleShare}
               >
                 <Feather name="share-2" size={16} color={colors.foreground} />
               </Pressable>
@@ -271,6 +355,21 @@ export const ProfileHeader = memo(
           {/* Profile completion (own only) */}
           {isOwn && <ProfileCompletionBar percent={user.profileCompletion} />}
         </View>
+
+        {/* Photo Viewers */}
+        <PhotoViewer
+          visible={avatarViewerVisible}
+          uri={user.avatarUrl}
+          fallbackColor={user.avatarColor}
+          initials={getInitials(user.displayName)}
+          onClose={() => setAvatarViewerVisible(false)}
+        />
+        <PhotoViewer
+          visible={coverViewerVisible}
+          uri={user.coverUrl}
+          fallbackColor={user.coverColor}
+          onClose={() => setCoverViewerVisible(false)}
+        />
       </View>
     );
   }
@@ -285,6 +384,14 @@ const styles = StyleSheet.create({
   coverOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.22)",
+  },
+  coverViewHint: {
+    position: "absolute",
+    top: 10,
+    left: 14,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    borderRadius: 20,
+    padding: 5,
   },
   coverMutualBadge: {
     position: "absolute",
@@ -349,6 +456,14 @@ const styles = StyleSheet.create({
     backgroundColor: "#22C55E",
     borderWidth: 2,
     borderColor: "#fff",
+  },
+  avatarViewHint: {
+    position: "absolute",
+    bottom: 6,
+    left: 6,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 10,
+    padding: 3,
   },
   ownActions: {
     flexDirection: "row",
@@ -481,5 +596,40 @@ const styles = StyleSheet.create({
   completionFill: {
     height: "100%",
     borderRadius: 4,
+  },
+  // Photo Viewer
+  photoViewerBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.92)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoViewerClose: {
+    position: "absolute",
+    top: 52,
+    right: 20,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: 10,
+  },
+  photoViewerImage: {
+    width: "100%",
+    height: "80%",
+  },
+  photoViewerFallback: {
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  photoViewerInitials: {
+    color: "#fff",
+    fontSize: 72,
+    fontFamily: "Inter_700Bold",
   },
 });
