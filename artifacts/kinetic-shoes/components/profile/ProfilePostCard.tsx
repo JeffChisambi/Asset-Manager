@@ -3,6 +3,7 @@ import * as Haptics from "expo-haptics";
 import React, { memo, useState } from "react";
 import {
   Alert,
+  Image,
   Modal,
   Platform,
   Pressable,
@@ -16,6 +17,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { Audio } from "expo-av";
 import { Post } from "@/types/profile";
 import { useColors } from "@/hooks/useColors";
 
@@ -120,6 +122,96 @@ export const ProfilePostCard = memo(({ post, isOwn, onDelete }: ProfilePostCardP
   const [likeCount, setLikeCount] = useState(post.likes);
   const [optionsVisible, setOptionsVisible] = useState(false);
 
+  // Audio Playback State
+  const [sound, setSound] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [position, setPosition] = useState(0);
+  const [duration, setDuration] = useState(1);
+
+  // Parse type-prefixed media URLs: "image::url", "music::url", "voice::url"
+  // Falls back to legacy heuristic detection for backwards compatibility.
+  const parseMediaUrls = (urls?: string[]) => {
+    if (!urls?.length) return { imageUrl: undefined, audioUrl: undefined, voiceUrl: undefined };
+    let imageUrl: string | undefined;
+    let audioUrl: string | undefined;
+    let voiceUrl: string | undefined;
+
+    for (const raw of urls) {
+      if (raw.startsWith('image::')) {
+        imageUrl = raw.slice('image::'.length);
+      } else if (raw.startsWith('music::')) {
+        audioUrl = raw.slice('music::'.length);
+      } else if (raw.startsWith('voice::')) {
+        voiceUrl = raw.slice('voice::'.length);
+      } else {
+        // Legacy fallback for posts created before the prefix scheme
+        const lower = raw.toLowerCase();
+        if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp')) {
+          imageUrl = imageUrl ?? raw;
+        } else if (lower.includes('music') || lower.endsWith('.mp3')) {
+          audioUrl = audioUrl ?? raw;
+        } else if (lower.includes('voice') || lower.endsWith('.m4a') || lower.endsWith('.aac')) {
+          voiceUrl = voiceUrl ?? raw;
+        } else {
+          // Unknown — treat as image if no image found yet
+          imageUrl = imageUrl ?? raw;
+        }
+      }
+    }
+    return { imageUrl, audioUrl, voiceUrl };
+  };
+
+  const { imageUrl, audioUrl, voiceUrl } = parseMediaUrls(post.mediaUrls);
+
+  const playPauseAudio = async (url: string) => {
+    if (sound) {
+      if (isPlaying) {
+        await sound.pauseAsync();
+        setIsPlaying(false);
+      } else {
+        await sound.playAsync();
+        setIsPlaying(true);
+      }
+    } else {
+      try {
+        const { sound: newSound } = await Audio.Sound.createAsync(
+          { uri: url },
+          { shouldPlay: true }
+        );
+        
+        newSound.setOnPlaybackStatusUpdate(async (status) => {
+          if (status.isLoaded) {
+            setPosition(status.positionMillis);
+            setDuration(Math.min(status.durationMillis || 1, 60000));
+            
+            if (status.positionMillis >= 60000) {
+              await newSound.stopAsync();
+              setIsPlaying(false);
+              setSound(null);
+            } else if (status.didJustFinish) {
+              setIsPlaying(false);
+              setSound(null);
+            }
+          }
+        });
+        
+        setSound(newSound);
+        setIsPlaying(true);
+      } catch (err) {
+        console.warn("Playback error", err);
+        Alert.alert("Playback Error", "Could not play audio.");
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    return () => {
+      if (sound) {
+        sound.unloadAsync();
+      }
+    };
+  }, [sound]);
+
   const handleLike = () => {
     const next = !liked;
     setLiked(next);
@@ -161,6 +253,58 @@ export const ProfilePostCard = memo(({ post, isOwn, onDelete }: ProfilePostCardP
         {post.content}
       </Text>
 
+      {/* Attached image preview with optional music track */}
+      {imageUrl && (
+        <View style={styles.imageWrapper}>
+          <Image
+            source={{ uri: imageUrl }}
+            style={styles.mediaImage}
+            resizeMode="cover"
+          />
+          {audioUrl && (
+            <TouchableOpacity
+              onPress={() => playPauseAudio(audioUrl)}
+              style={[styles.musicBadgeOverlay, { backgroundColor: "rgba(0, 0, 0, 0.6)" }]}
+            >
+              <Ionicons name={isPlaying && sound ? "pause" : "musical-notes"} size={14} color="#fff" />
+              <Text style={styles.musicOverlayText}>
+                {isPlaying ? "Playing Music" : "Attached Track"}
+              </Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {/* Standalone music preview when no image is attached */}
+      {!imageUrl && audioUrl && (
+        <View style={[styles.audioCard, { backgroundColor: colors.border + "22", borderColor: colors.border }]}>
+          <TouchableOpacity onPress={() => playPauseAudio(audioUrl)} style={[styles.playBtn, { backgroundColor: colors.primary }]}>
+            <Ionicons name={isPlaying && sound ? "pause" : "musical-notes"} size={16} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.audioDetails}>
+            <Text style={[styles.audioLabel, { color: colors.foreground }]}>Attached Audio Track</Text>
+            <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+              <View style={[styles.progressBarFill, { width: `${(position / duration) * 100}%`, backgroundColor: colors.primary }]} />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* Attached Voice Note */}
+      {voiceUrl && (
+        <View style={[styles.audioCard, { backgroundColor: colors.border + "22", borderColor: colors.border }]}>
+          <TouchableOpacity onPress={() => playPauseAudio(voiceUrl)} style={[styles.playBtn, { backgroundColor: colors.primary }]}>
+            <Ionicons name={isPlaying && sound ? "pause" : "mic"} size={16} color="#fff" />
+          </TouchableOpacity>
+          <View style={styles.audioDetails}>
+            <Text style={[styles.audioLabel, { color: colors.foreground }]}>Voice Note</Text>
+            <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+              <View style={[styles.progressBarFill, { width: `${(position / duration) * 100}%`, backgroundColor: colors.primary }]} />
+            </View>
+          </View>
+        </View>
+      )}
+
       {post.productTag && (
         <View
           style={[
@@ -178,9 +322,9 @@ export const ProfilePostCard = memo(({ post, isOwn, onDelete }: ProfilePostCardP
         </View>
       )}
 
-      {post.tags.length > 0 && (
+      {(post.tags?.length ?? 0) > 0 && (
         <View style={styles.tags}>
-          {post.tags.map((tag) => (
+          {post.tags!.map((tag) => (
             <Text
               key={tag}
               style={[styles.tag, { color: colors.primary }]}
@@ -279,6 +423,12 @@ const styles = StyleSheet.create({
   productTagPrice: {
     fontFamily: "Inter_800ExtraBold",
   },
+  mediaImage: {
+    width: "100%",
+    height: 180,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
   tags: {
     flexDirection: "row",
     flexWrap: "wrap",
@@ -355,5 +505,63 @@ const styles = StyleSheet.create({
   optionsCancelText: {
     fontSize: 16,
     fontFamily: "Inter_500Medium",
+  },
+  imageWrapper: {
+    width: "100%",
+    height: 180,
+    borderRadius: 12,
+    overflow: "hidden",
+    position: "relative",
+    marginBottom: 12,
+  },
+  musicBadgeOverlay: {
+    position: "absolute",
+    bottom: 8,
+    left: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  musicOverlayText: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  audioCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  playBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  audioDetails: {
+    flex: 1,
+    gap: 6,
+  },
+  audioLabel: {
+    fontSize: 12,
+    fontFamily: "Inter_600SemiBold",
+  },
+  progressBarBg: {
+    height: 4,
+    borderRadius: 2,
+    width: "100%",
+    overflow: "hidden",
+  },
+  progressBarFill: {
+    height: "100%",
+    borderRadius: 2,
   },
 });

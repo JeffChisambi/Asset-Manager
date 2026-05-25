@@ -16,7 +16,7 @@ interface Props {
 // ─── Type Badge ───────────────────────────────────────────────────────────────
 const TYPE_CONFIG: Record<SearchResult["type"], { label: string; color: string; icon: string; lib: "ion" | "mci" }> = {
   product:      { label: "Product",      color: "#FF6B35", icon: "cube-outline",        lib: "ion" },
-  store:        { label: "Store",        color: "#4A80F0", icon: "storefront-outline",  lib: "mci" },
+  store:        { label: "Store",        color: "#13B734", icon: "storefront-outline",  lib: "mci" },
   professional: { label: "Pro",          color: "#667EEA", icon: "person-circle-outline", lib: "ion" },
   service:      { label: "Service",      color: "#11998E", icon: "construct-outline",   lib: "ion" },
   category:     { label: "Category",    color: "#F7971E", icon: "grid-outline",         lib: "ion" },

@@ -91,7 +91,7 @@ const PhotoViewer = memo(({ visible, uri, fallbackColor, initials, onClose }: Ph
             resizeMode="contain"
           />
         ) : (
-          <View style={[styles.photoViewerFallback, { backgroundColor: fallbackColor || "#4A80F0" }]}>
+          <View style={[styles.photoViewerFallback, { backgroundColor: fallbackColor || "#13B734" }]}>
             <Text style={styles.photoViewerInitials}>{initials || "?"}</Text>
           </View>
         )}
@@ -148,8 +148,8 @@ export const ProfileHeader = memo(
       try {
         const profileUrl = `https://kinetic.app/profile/${user.username}`;
         await Share.share({
-          title: `${user.displayName} on Kinetic`,
-          message: `Check out ${user.displayName}'s profile on Kinetic Shoes 👟\n${profileUrl}`,
+          title: `${user.displayName} on Doorstep`,
+          message: `Check out ${user.displayName}'s profile on Doorstep\n${profileUrl}`,
           url: profileUrl,
         });
       } catch {}

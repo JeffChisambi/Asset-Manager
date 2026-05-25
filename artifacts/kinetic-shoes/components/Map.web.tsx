@@ -1,181 +1,183 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Dimensions, StyleSheet, Text, View } from "react-native";
+import { Animated, StyleSheet, View, Text } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import Svg, { Path, Circle, Line, Defs, LinearGradient, Stop } from "react-native-svg";
+import { LatLng, getCoordinateAtProgress } from "@/lib/routing";
 
-const { width, height } = Dimensions.get("window");
-const H = Math.max(height, 600);
-
-// SVG pixel positions (store → driver → dest)
-const STORE_PX  = { x: width * 0.28, y: H * 0.60 };
-const DEST_PX   = { x: width * 0.78, y: H * 0.34 };
-
-// Route arc control point
-const CP = { x: width * 0.50, y: H * 0.30 };
-
-function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
-
-interface MapProps {
+export interface MapProps {
   colors: any;
   isDark?: boolean;
-  onProgressUpdate?: (p: number) => void;
+  route: LatLng[];
+  placedAt?: number;
+  destination: LatLng;
+  vehicleType?: "bike" | "car";
 }
 
-export default function Map({ colors, isDark = false, onProgressUpdate }: MapProps) {
-  const [progress, setProgress] = useState(0);
-  const progressRef = useRef(0);
-  const pulseAnim = useRef(new Animated.Value(0.6)).current;
-  const pulseOpacity = useRef(new Animated.Value(0.8)).current;
-  const driverBounce = useRef(new Animated.Value(0)).current;
+let MapContainer: any, TileLayer: any, Marker: any, Polyline: any, L: any;
+let isLeafletLoaded = false;
+
+if (typeof window !== "undefined") {
+  try {
+    const ReactLeaflet = require("react-leaflet");
+    MapContainer = ReactLeaflet.MapContainer;
+    TileLayer = ReactLeaflet.TileLayer;
+    Marker = ReactLeaflet.Marker;
+    Polyline = ReactLeaflet.Polyline;
+    L = require("leaflet");
+    require("leaflet/dist/leaflet.css");
+    isLeafletLoaded = true;
+
+    // Fix missing icon issues in Leaflet
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
+      iconUrl: require("leaflet/dist/images/marker-icon.png"),
+      shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
+    });
+  } catch (e) {
+    console.warn("Failed to load leaflet", e);
+  }
+}
+
+// Custom Leaflet Icons mapped from our styling
+function getCustomIcon(type: "store" | "driver" | "dest", isDark: boolean, vehicleType: "bike" | "car" = "bike") {
+  if (!L) return null;
+  const color = type === "store" ? "#FF6B35" : "#13B734";
+  let emoji = "📍";
+  if (type === "store") emoji = "🏪";
+  if (type === "driver") emoji = vehicleType === "car" ? "🚗" : "🚴";
+  
+  const size = type === "driver" ? 46 : 38;
+  const fontSize = type === "driver" ? 24 : 18;
+
+  const html = `
+    <div style="
+      background: ${type === 'driver' ? 'rgba(255,255,255,0.9)' : color};
+      border: ${type === 'driver' ? '2px solid #13B734' : 'none'};
+      width: ${size}px;
+      height: ${size}px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+      font-size: ${fontSize}px;
+    ">
+      ${emoji}
+    </div>
+  `;
+
+  return L.divIcon({
+    html,
+    className: "custom-leaflet-icon",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}
+
+export default function Map({ colors, isDark = false, route, placedAt, destination, vehicleType = "bike" }: MapProps) {
+  const [driverCoord, setDriverCoord] = useState<LatLng>(route.length > 0 ? route[0] : { latitude: 0, longitude: 0 });
+  const [traveledRoute, setTraveledRoute] = useState<LatLng[]>([]);
+  const [remainingRoute, setRemainingRoute] = useState<LatLng[]>([]);
+  const mapRef = useRef<any>(null);
 
   useEffect(() => {
-    Animated.loop(
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(pulseAnim,    { toValue: 2.0, duration: 1100, useNativeDriver: true }),
-          Animated.timing(pulseAnim,    { toValue: 0.6, duration: 1100, useNativeDriver: true }),
-        ]),
-        Animated.sequence([
-          Animated.timing(pulseOpacity, { toValue: 0.1, duration: 1100, useNativeDriver: true }),
-          Animated.timing(pulseOpacity, { toValue: 0.8, duration: 1100, useNativeDriver: true }),
-        ]),
-      ])
-    ).start();
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(driverBounce, { toValue: -5, duration: 500, useNativeDriver: true }),
-        Animated.timing(driverBounce, { toValue: 0,  duration: 500, useNativeDriver: true }),
-      ])
-    ).start();
-    const tick = setInterval(() => {
-      progressRef.current = Math.min(progressRef.current + 0.005, 1);
-      setProgress(progressRef.current);
-      onProgressUpdate?.(progressRef.current);
-      if (progressRef.current >= 1) clearInterval(tick);
-    }, 400);
-    return () => clearInterval(tick);
-  }, []);
+    if (route.length > 0 && mapRef.current && L) {
+      const bounds = L.latLngBounds(route.map(p => [p.latitude, p.longitude]));
+      mapRef.current.fitBounds(bounds, { padding: [50, 50], animate: true });
+    }
+  }, [route]);
 
-  // Quadratic bezier point
-  function bezier(t: number) {
-    const x = (1 - t) * (1 - t) * STORE_PX.x + 2 * (1 - t) * t * CP.x + t * t * DEST_PX.x;
-    const y = (1 - t) * (1 - t) * STORE_PX.y + 2 * (1 - t) * t * CP.y + t * t * DEST_PX.y;
-    return { x, y };
+  // Smooth driver movement logic using requestAnimationFrame
+  useEffect(() => {
+    if (route.length === 0) return;
+
+    if (!placedAt) {
+      // Static preview mode: no driver, just show the whole route
+      setTraveledRoute([]);
+      setRemainingRoute(route);
+      return;
+    }
+
+    let reqId: number;
+    const durationMs = 30000; // 30s per stage
+    const TOTAL_STAGES = 10;
+    const totalDuration = (TOTAL_STAGES - 1) * durationMs;
+
+    const animate = () => {
+      const elapsed = Date.now() - placedAt;
+      const p = Math.min(1, Math.max(0, elapsed / totalDuration));
+      
+      const pos = getCoordinateAtProgress(route, p);
+      setDriverCoord(pos);
+
+      const sliceIdx = Math.floor(p * (route.length - 1));
+      const traveled = [...route.slice(0, sliceIdx + 1), pos];
+      const remaining = [pos, ...route.slice(sliceIdx + 1)];
+      
+      setTraveledRoute(traveled);
+      setRemainingRoute(remaining);
+
+      if (p < 1) {
+        reqId = requestAnimationFrame(animate);
+      }
+    };
+    
+    reqId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(reqId);
+  }, [placedAt, route]);
+
+  if (!isLeafletLoaded) {
+    return (
+      <View style={[StyleSheet.absoluteFill, styles.loadingWrap, { backgroundColor: isDark ? "#1a1f2e" : "#f8f9ff" }]}>
+        <Text style={{ color: colors.mutedForeground }}>Loading Map...</Text>
+      </View>
+    );
   }
-  const driverPos = bezier(progress);
 
-  const bgColor  = isDark ? "#1a1f2e" : "#f0f3ff";
-  const roadColor = isDark ? "#2a3050" : "#dce3ff";
-  const roadAlt   = isDark ? "#232840" : "#e8ecff";
+  const PRIMARY = "#13B734";
+  const storeCoord = route.length > 0 ? route[0] : { latitude: 0, longitude: 0 };
+  
+  // Convert LatLng[] to [lat, lng][] for Leaflet
+  const toLeafletRoute = (pts: LatLng[]) => pts.map(p => [p.latitude, p.longitude] as [number, number]);
 
   return (
-    <View style={[StyleSheet.absoluteFill, { backgroundColor: bgColor, overflow: "hidden" }]}>
-      {/* Grid roads */}
-      <Svg style={StyleSheet.absoluteFill} width={width} height={H}>
-        {/* horizontal roads */}
-        {[0.2, 0.35, 0.50, 0.65, 0.80].map((yf, i) => (
-          <Line key={`hr${i}`} x1={0} y1={H * yf} x2={width} y2={H * yf} stroke={roadColor} strokeWidth={i % 2 === 0 ? 16 : 8} />
-        ))}
-        {/* vertical roads */}
-        {[0.15, 0.30, 0.45, 0.60, 0.75, 0.88].map((xf, i) => (
-          <Line key={`vr${i}`} x1={width * xf} y1={0} x2={width * xf} y2={H} stroke={i % 2 === 0 ? roadColor : roadAlt} strokeWidth={i % 2 === 0 ? 14 : 6} />
-        ))}
-
-        {/* Route: full path dashed */}
-        <Path
-          d={`M ${STORE_PX.x} ${STORE_PX.y} Q ${CP.x} ${CP.y} ${DEST_PX.x} ${DEST_PX.y}`}
-          fill="none"
-          stroke="#4A80F0"
-          strokeOpacity={0.25}
-          strokeWidth={6}
-          strokeDasharray="10,8"
-          strokeLinecap="round"
+    <View style={StyleSheet.absoluteFill}>
+      <MapContainer 
+        ref={mapRef}
+        center={[storeCoord.latitude, storeCoord.longitude]} 
+        zoom={13} 
+        style={{ width: "100%", height: "100%" }}
+        zoomControl={false}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url={isDark 
+            ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+            : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"}
         />
-        {/* Route: traveled portion (solid) */}
-        {progress > 0.02 && (
-          <Path
-            d={`M ${STORE_PX.x} ${STORE_PX.y} Q ${CP.x} ${CP.y} ${driverPos.x} ${driverPos.y}`}
-            fill="none"
-            stroke="#4A80F0"
-            strokeWidth={6}
-            strokeLinecap="round"
-          />
+
+        {route.length > 0 && (
+          <>
+            {/* Traveled Route */}
+            <Polyline positions={toLeafletRoute(traveledRoute)} pathOptions={{ color: PRIMARY, weight: 5, lineCap: "round" }} />
+            
+            {/* Remaining Route */}
+            <Polyline positions={toLeafletRoute(remainingRoute)} pathOptions={{ color: PRIMARY, weight: 5, dashArray: "8, 8", lineCap: "round", opacity: 0.6 }} />
+
+            <Marker position={[storeCoord.latitude, storeCoord.longitude]} icon={getCustomIcon("store", isDark)} />
+            
+            {placedAt && (
+              <Marker position={[driverCoord.latitude, driverCoord.longitude]} icon={getCustomIcon("driver", isDark, vehicleType)} />
+            )}
+            
+            <Marker position={[destination.latitude, destination.longitude]} icon={getCustomIcon("dest", isDark)} />
+          </>
         )}
-      </Svg>
-
-      {/* Store pin */}
-      <View style={[styles.storePinWrap, { left: STORE_PX.x - 19, top: STORE_PX.y - 46 }]}>
-        <View style={[styles.storePin, { backgroundColor: "#FF6B35" }]}>
-          <Ionicons name="storefront" size={15} color="#fff" />
-        </View>
-        <View style={[styles.pinTriangle, { borderTopColor: "#FF6B35" }]} />
-      </View>
-
-      {/* Destination pulse */}
-      <Animated.View style={[
-        styles.destPulse,
-        { left: DEST_PX.x - 20, top: DEST_PX.y - 20, backgroundColor: "#4A80F020",
-          transform: [{ scale: pulseAnim }], opacity: pulseOpacity },
-      ]} />
-      <View style={[styles.destCore, { left: DEST_PX.x - 9, top: DEST_PX.y - 9, backgroundColor: "#4A80F0" }]} />
-
-      {/* Driver marker */}
-      <Animated.View style={[
-        styles.driverWrap,
-        { left: driverPos.x - 23, top: driverPos.y - 23, transform: [{ translateY: driverBounce }] },
-      ]}>
-        <View style={[styles.driverRing, { borderColor: "#4A80F0" }]}>
-          <View style={[styles.driverCore, { backgroundColor: "#4A80F0" }]}>
-            <Ionicons name="bicycle" size={14} color="#fff" />
-          </View>
-        </View>
-      </Animated.View>
-
-      {/* Lilongwe label */}
-      <Text style={[styles.cityLabel, { color: isDark ? "#ffffff30" : "#00000018" }]}>
-        LILONGWE
-      </Text>
+      </MapContainer>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  storePinWrap: { position: "absolute", alignItems: "center" },
-  storePin: {
-    width: 36, height: 36, borderRadius: 10,
-    alignItems: "center", justifyContent: "center",
-    shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 6,
-    shadowOffset: { width: 0, height: 3 }, elevation: 6,
-  },
-  pinTriangle: {
-    width: 0, height: 0,
-    borderLeftWidth: 5, borderRightWidth: 5, borderTopWidth: 7,
-    borderLeftColor: "transparent", borderRightColor: "transparent",
-    marginTop: -1,
-  },
-  destPulse: {
-    position: "absolute", width: 40, height: 40, borderRadius: 20,
-  },
-  destCore: {
-    position: "absolute", width: 18, height: 18, borderRadius: 9,
-    borderWidth: 3, borderColor: "#fff",
-    shadowColor: "#4A80F0", shadowOpacity: 0.5, shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 }, elevation: 6,
-  },
-  driverWrap: { position: "absolute" },
-  driverRing: {
-    width: 46, height: 46, borderRadius: 23, borderWidth: 2.5,
-    alignItems: "center", justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.92)",
-    shadowColor: "#4A80F0", shadowOpacity: 0.4, shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 }, elevation: 8,
-  },
-  driverCore: {
-    width: 34, height: 34, borderRadius: 17,
-    alignItems: "center", justifyContent: "center",
-  },
-  cityLabel: {
-    position: "absolute", bottom: 120, alignSelf: "center",
-    fontSize: 48, fontFamily: "Inter_800ExtraBold", letterSpacing: 12,
-  },
+  loadingWrap: { alignItems: "center", justifyContent: "center" },
 });

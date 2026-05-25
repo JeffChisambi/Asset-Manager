@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { ALL_ENTITIES, SearchEntity, EntityType } from "@/data/searchData";
 import { expandQuery } from "@/data/synonyms";
+import { StoreService } from "@/services/store/store.service";
 
 // ─── Levenshtein Distance ─────────────────────────────────────────────────────
 
@@ -181,6 +182,8 @@ export function useSearch(): UseSearchReturn {
   const [intent, setIntent] = useState<SearchIntent | null>(null);
 
   useEffect(() => {
+    let active = true;
+
     if (!debouncedQuery) {
       setAllResults([]);
       setLoading(false);
@@ -188,29 +191,88 @@ export function useSearch(): UseSearchReturn {
       return;
     }
 
-    const expandedTerms = expandQuery(debouncedQuery);
-    const detectedIntent = detectIntent(debouncedQuery, expandedTerms);
-    setIntent(detectedIntent);
+    async function doSearch() {
+      const expandedTerms = expandQuery(debouncedQuery);
+      const detectedIntent = detectIntent(debouncedQuery, expandedTerms);
+      if (!active) return;
+      setIntent(detectedIntent);
 
-    const scored: SearchResult[] = [];
+      const scored: SearchResult[] = [];
 
-    for (const entity of ALL_ENTITIES) {
-      const s = scoreEntity(entity, expandedTerms);
-      if (s > 8) {
-        scored.push({ ...entity, score: s });
+      for (const entity of ALL_ENTITIES) {
+        const s = scoreEntity(entity, expandedTerms);
+        if (s > 8) {
+          scored.push({ ...entity, score: s });
+        }
       }
+
+      try {
+        const dbStores = await StoreService.searchStores(debouncedQuery);
+        for (const store of dbStores) {
+          const storeEntity: SearchEntity = {
+            id: store.id,
+            type: "store",
+            title: store.name,
+            subtitle: store.tagline || "Store",
+            tags: [store.name],
+            keywords: [store.name],
+            popularityScore: 60,
+            rating: 5.0,
+            reviewCount: 0,
+            isVerified: true,
+            isFeatured: false,
+            imageUrl: store.cover_image_url || undefined,
+            accentColor: store.accent_color,
+            badge: store.merchant_type === "basic_shop" ? "Basic Store" : "Vendor",
+            route: `/store/${store.id}`
+          };
+          const ss = scoreEntity(storeEntity, expandedTerms);
+          if (ss > 0) scored.push({ ...storeEntity, score: ss });
+
+          if (store.products) {
+            for (const p of store.products) {
+              const prodEntity: SearchEntity = {
+                id: p.id,
+                type: "product",
+                title: p.name,
+                subtitle: store.name,
+                tags: [p.name, p.category || ""],
+                keywords: [p.name],
+                popularityScore: 60,
+                rating: p.rating || 5.0,
+                reviewCount: 0,
+                isVerified: true,
+                isFeatured: false,
+                price: p.price,
+                imageUrl: p.image_url || store.cover_image_url || undefined,
+                badge: store.merchant_type === "basic_shop" ? "Basic Store" : "Vendor",
+                route: `/product/${p.id}`
+              };
+              const ps = scoreEntity(prodEntity, expandedTerms);
+              if (ps > 0) scored.push({ ...prodEntity, score: ps });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn("DB search failed", err);
+      }
+
+      if (!active) return;
+
+      // Sort: score descending, then popularity, then rating
+      scored.sort((a, b) => {
+        if (b.score !== a.score) return b.score - a.score;
+        if (b.popularityScore !== a.popularityScore)
+          return b.popularityScore - a.popularityScore;
+        return b.rating - a.rating;
+      });
+
+      setAllResults(scored);
+      setLoading(false);
     }
 
-    // Sort: score descending, then popularity, then rating
-    scored.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      if (b.popularityScore !== a.popularityScore)
-        return b.popularityScore - a.popularityScore;
-      return b.rating - a.rating;
-    });
-
-    setAllResults(scored);
-    setLoading(false);
+    doSearch();
+    return () => { active = false; };
   }, [debouncedQuery]);
 
   // Filter by active type

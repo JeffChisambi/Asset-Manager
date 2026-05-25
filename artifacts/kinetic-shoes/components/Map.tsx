@@ -2,24 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, StyleSheet, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import MapView, { Marker, Polyline, PROVIDER_DEFAULT } from "react-native-maps";
-
-// ─── Malawi / Lilongwe Coordinates ──────────────────────────────────────────
-const STORE_COORD  = { latitude: -13.9626, longitude: 33.7741 }; // Old Town Market
-const DEST_COORD   = { latitude: -13.9501, longitude: 33.7970 }; // Area 47
-const MAP_INITIAL  = {
-  latitude:      -13.9563,
-  longitude:      33.7855,
-  latitudeDelta:  0.028,
-  longitudeDelta: 0.028,
-};
-
-const ROUTE_WAYPOINTS = [
-  STORE_COORD,
-  { latitude: -13.9600, longitude: 33.7790 },
-  { latitude: -13.9575, longitude: 33.7840 },
-  { latitude: -13.9540, longitude: 33.7905 },
-  DEST_COORD,
-];
+import { LatLng, getCoordinateAtProgress } from "@/lib/routing";
 
 // ─── Branded Map Styles ──────────────────────────────────────────────────────
 const LIGHT_MAP_STYLE = [
@@ -49,33 +32,35 @@ const DARK_MAP_STYLE = [
   { featureType: "transit",        stylers: [{ visibility: "off" }] },
 ];
 
-// ─── Helper: interpolate position along multi-segment route ─────────────────
-function interpolateRoute(waypoints: typeof ROUTE_WAYPOINTS, t: number) {
-  const n = waypoints.length - 1;
-  const scaled = t * n;
-  const seg = Math.min(Math.floor(scaled), n - 1);
-  const segT = scaled - seg;
-  const from = waypoints[seg];
-  const to   = waypoints[seg + 1];
-  return {
-    latitude:  from.latitude  + (to.latitude  - from.latitude)  * segT,
-    longitude: from.longitude + (to.longitude - from.longitude) * segT,
-  };
-}
-
-// ─── Component ───────────────────────────────────────────────────────────────
-interface MapProps {
+export interface MapProps {
   colors: any;
   isDark?: boolean;
-  onProgressUpdate?: (progress: number) => void;
+  route: LatLng[];
+  placedAt?: number;
+  destination: LatLng;
+  vehicleType?: "bike" | "car";
 }
 
-export default function Map({ colors, isDark = false, onProgressUpdate }: MapProps) {
-  const [driverCoord, setDriverCoord] = useState(ROUTE_WAYPOINTS[0]);
-  const progressRef = useRef(0);
+export default function Map({ colors, isDark = false, route, placedAt, destination, vehicleType = "bike" }: MapProps) {
+  const mapRef = useRef<MapView>(null);
+  
+  const [driverCoord, setDriverCoord] = useState<LatLng>(route.length > 0 ? route[0] : { latitude: 0, longitude: 0 });
+  const [traveledRoute, setTraveledRoute] = useState<LatLng[]>([]);
+  const [remainingRoute, setRemainingRoute] = useState<LatLng[]>([]);
+
   const pulseAnim = useRef(new Animated.Value(0.6)).current;
   const pulseOpacity = useRef(new Animated.Value(0.8)).current;
   const driverAnim = useRef(new Animated.Value(0)).current;
+
+  // Fit map to route when it changes
+  useEffect(() => {
+    if (route.length > 0 && mapRef.current) {
+      mapRef.current.fitToCoordinates(route, {
+        edgePadding: { top: 100, right: 50, bottom: 400, left: 50 }, // account for bottom panel
+        animated: true,
+      });
+    }
+  }, [route]);
 
   // Pulse the destination marker
   useEffect(() => {
@@ -103,32 +88,56 @@ export default function Map({ colors, isDark = false, onProgressUpdate }: MapPro
     ).start();
   }, []);
 
-  // Move driver along route
+  // Smooth driver movement logic using requestAnimationFrame
   useEffect(() => {
-    const tick = setInterval(() => {
-      progressRef.current = Math.min(progressRef.current + 0.004, 1);
-      const pos = interpolateRoute(ROUTE_WAYPOINTS, progressRef.current);
+    if (route.length === 0) return;
+
+    if (!placedAt) {
+      // Static preview mode: no driver, just show the whole route
+      setTraveledRoute([]);
+      setRemainingRoute(route);
+      return;
+    }
+
+    let reqId: number;
+    const durationMs = 30000; // 30s per stage
+    const TOTAL_STAGES = 10;
+    const totalDuration = (TOTAL_STAGES - 1) * durationMs;
+
+    const animate = () => {
+      const elapsed = Date.now() - placedAt;
+      const p = Math.min(1, Math.max(0, elapsed / totalDuration));
+      
+      const pos = getCoordinateAtProgress(route, p);
       setDriverCoord(pos);
-      onProgressUpdate?.(progressRef.current);
-      if (progressRef.current >= 1) clearInterval(tick);
-    }, 400);
-    return () => clearInterval(tick);
-  }, []);
+
+      const sliceIdx = Math.floor(p * (route.length - 1));
+      
+      const traveled = [...route.slice(0, sliceIdx + 1), pos];
+      const remaining = [pos, ...route.slice(sliceIdx + 1)];
+      
+      setTraveledRoute(traveled);
+      setRemainingRoute(remaining);
+
+      if (p < 1) {
+        reqId = requestAnimationFrame(animate);
+      }
+    };
+    
+    reqId = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(reqId);
+  }, [placedAt, route]);
 
   const mapStyle = isDark ? DARK_MAP_STYLE : LIGHT_MAP_STYLE;
-  const PRIMARY = "#4A80F0";
+  const PRIMARY = "#13B734";
 
-  // Build route so far (store → current driver position)
-  const traveledRoute = [STORE_COORD, driverCoord];
-  const remainingRoute = [driverCoord, ...ROUTE_WAYPOINTS.slice(
-    Math.max(1, Math.min(Math.floor(progressRef.current * (ROUTE_WAYPOINTS.length - 1)), ROUTE_WAYPOINTS.length - 2))
-  )];
+  const storeCoord = route.length > 0 ? route[0] : { latitude: 0, longitude: 0 };
 
   return (
     <MapView
+      ref={mapRef}
       style={StyleSheet.absoluteFill}
       provider={PROVIDER_DEFAULT}
-      initialRegion={MAP_INITIAL}
       customMapStyle={mapStyle}
       userInterfaceStyle={isDark ? "dark" : "light"}
       showsCompass={false}
@@ -136,56 +145,62 @@ export default function Map({ colors, isDark = false, onProgressUpdate }: MapPro
       pitchEnabled={false}
       toolbarEnabled={false}
     >
-      {/* Route: traveled (solid blue) */}
-      <Polyline
-        coordinates={traveledRoute}
-        strokeColor={PRIMARY}
-        strokeWidth={5}
-        lineCap="round"
-        lineJoin="round"
-      />
+      {route.length > 0 && (
+        <>
+          {/* Route: traveled (solid blue) */}
+          <Polyline
+            coordinates={traveledRoute}
+            strokeColor={PRIMARY}
+            strokeWidth={5}
+            lineCap="round"
+            lineJoin="round"
+          />
 
-      {/* Route: remaining (dashed blue) */}
-      <Polyline
-        coordinates={remainingRoute}
-        strokeColor={PRIMARY + "60"}
-        strokeWidth={5}
-        lineDashPattern={[8, 8]}
-        lineCap="round"
-        lineJoin="round"
-      />
+          {/* Route: remaining (dashed blue) */}
+          <Polyline
+            coordinates={remainingRoute}
+            strokeColor={PRIMARY + "60"}
+            strokeWidth={5}
+            lineDashPattern={[8, 8]}
+            lineCap="round"
+            lineJoin="round"
+          />
 
-      {/* Store Marker */}
-      <Marker coordinate={STORE_COORD} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
-        <View style={styles.storePinWrap}>
-          <View style={[styles.storePin, { backgroundColor: "#FF6B35" }]}>
-            <Ionicons name="storefront" size={16} color="#fff" />
-          </View>
-          <View style={[styles.pinTriangle, { borderTopColor: "#FF6B35" }]} />
-        </View>
-      </Marker>
-
-      {/* Driver Marker */}
-      <Marker coordinate={driverCoord} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={true}>
-        <Animated.View style={[styles.driverWrap, { transform: [{ translateY: driverAnim }] }]}>
-          <View style={[styles.driverRing, { borderColor: PRIMARY }]}>
-            <View style={[styles.driverCore, { backgroundColor: PRIMARY }]}>
-              <Ionicons name="bicycle" size={16} color="#fff" />
+          {/* Store Marker */}
+          <Marker coordinate={storeCoord} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
+            <View style={styles.storePinWrap}>
+              <View style={[styles.storePin, { backgroundColor: "#FF6B35" }]}>
+                <Ionicons name="storefront" size={16} color="#fff" />
+              </View>
+              <View style={[styles.pinTriangle, { borderTopColor: "#FF6B35" }]} />
             </View>
-          </View>
-        </Animated.View>
-      </Marker>
+          </Marker>
 
-      {/* Destination Marker — pulsing */}
-      <Marker coordinate={DEST_COORD} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-        <View style={styles.destWrap}>
-          <Animated.View style={[
-            styles.destPulse,
-            { backgroundColor: PRIMARY + "35", transform: [{ scale: pulseAnim }], opacity: pulseOpacity },
-          ]} />
-          <View style={[styles.destCore, { backgroundColor: PRIMARY, borderColor: "#fff" }]} />
-        </View>
-      </Marker>
+          {/* Driver Marker */}
+          {placedAt && (
+            <Marker coordinate={driverCoord} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={true}>
+              <Animated.View style={[styles.driverWrap, { transform: [{ translateY: driverAnim }] }]}>
+                <View style={[styles.driverRing, { borderColor: PRIMARY }]}>
+                  <View style={[styles.driverCore, { backgroundColor: PRIMARY }]}>
+                    <Ionicons name={vehicleType === "car" ? "car-sport" : "bicycle"} size={16} color="#fff" />
+                  </View>
+                </View>
+              </Animated.View>
+            </Marker>
+          )}
+
+          {/* Destination Marker — pulsing */}
+          <Marker coordinate={destination} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+            <View style={styles.destWrap}>
+              <Animated.View style={[
+                styles.destPulse,
+                { backgroundColor: PRIMARY + "35", transform: [{ scale: pulseAnim }], opacity: pulseOpacity },
+              ]} />
+              <View style={[styles.destCore, { backgroundColor: PRIMARY, borderColor: "#fff" }]} />
+            </View>
+          </Marker>
+        </>
+      )}
     </MapView>
   );
 }
@@ -198,7 +213,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
+    shadowColor: "#13B734",
     shadowOpacity: 0.25,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 3 },
@@ -223,7 +238,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "rgba(255,255,255,0.9)",
-    shadowColor: "#4A80F0",
+    shadowColor: "#13B734",
     shadowOpacity: 0.4,
     shadowRadius: 10,
     shadowOffset: { width: 0, height: 4 },
@@ -253,7 +268,7 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 9,
     borderWidth: 3,
-    shadowColor: "#4A80F0",
+    shadowColor: "#13B734",
     shadowOpacity: 0.5,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },

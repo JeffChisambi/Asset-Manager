@@ -1,8 +1,8 @@
-import { Feather, Ionicons } from "@expo/vector-icons";
+import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import { router, useFocusEffect } from "expo-router";
 import { useCallback } from "react";
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState } from "react";
 import {
   Animated,
   Image,
@@ -12,77 +12,56 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Reanimated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  withDelay,
-  FadeInDown,
-  Easing,
-} from "react-native-reanimated";
 
 import { ProductCard } from "@/components/ProductCard";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
-import { SUPER_STORES } from "@/data/superstores";
 import { StoreService } from "@/services/store/store.service";
 import { Store } from "@/types/store";
 import { LinearGradient } from "expo-linear-gradient";
 
-// ─── Images ───────────────────────────────────────────────────────────────────
 const doorstepLogo           = require("@/assets/logo and icon/doorsteplogo.png");
-const categoryFoodImg        = require("@/assets/images/category_food.png");
-const categoryFashionImg     = require("@/assets/images/category_fashion.png");
-const categoryHousingImg     = require("@/assets/images/category_housing.png");
-const categoryFurnitureImg   = require("@/assets/images/category_furniture.png");
-const categoryElectronicsImg = require("@/assets/images/category_electronics.png");
-const nikeAir90 = require("@/assets/images/nike_air90.png");
-const airJordan3 = require("@/assets/images/air_jordan3.png");
-const nikeDunk = require("@/assets/images/nike_dunk.png");
-const adidasNmd = require("@/assets/images/adidas_nmd.png");
-const bannerShoe = require("@/assets/images/banner_shoe.png");
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
+type IoniconName = React.ComponentProps<typeof Ionicons>["name"];
+
 type Category = {
   id: string;
   label: string;
-  emoji: string;
+  icon: IoniconName;
   color: string;
-  image?: ReturnType<typeof require>;
 };
 
 const CATEGORIES: Category[] = [
-  { id: "food",           label: "Food",                    emoji: "🍔", color: "#FF6B35", image: categoryFoodImg        },
-  { id: "fashion",        label: "Clothing & Fashion",      emoji: "👗", color: "#C850C0", image: categoryFashionImg     },
-  { id: "housing",        label: "Housing & Home",          emoji: "🏠", color: "#4776E6", image: categoryHousingImg     },
-  { id: "furniture",      label: "Furniture",               emoji: "🛋️", color: "#8B6914", image: categoryFurnitureImg   },
-  { id: "electronics",    label: "Electronics",             emoji: "📱", color: "#0F3460", image: categoryElectronicsImg },
-  { id: "transportation", label: "Transportation",          emoji: "🚗", color: "#1A6B4A" },
-  { id: "health",         label: "Health",                  emoji: "💊", color: "#E84393" },
-  { id: "beauty",         label: "Beauty & Personal Care",  emoji: "💄", color: "#F953C6" },
-  { id: "education",      label: "Education",               emoji: "📚", color: "#4A80F0" },
-  { id: "entertainment",  label: "Entertainment",           emoji: "🎮", color: "#6C3483" },
-  { id: "travel",         label: "Travel",                  emoji: "✈️", color: "#00C6FF" },
-  { id: "financial",      label: "Financial Services",      emoji: "💳", color: "#1A2980" },
-  { id: "pets",           label: "Pets",                    emoji: "🐾", color: "#F7971E" },
-  { id: "baby",           label: "Baby & Parenting",        emoji: "🍼", color: "#FC5C7D" },
-  { id: "sports",         label: "Sports & Fitness",        emoji: "🏋️", color: "#56CCF2" },
-  { id: "business",       label: "Business & Industrial",   emoji: "🏭", color: "#485563" },
-  { id: "agriculture",    label: "Agriculture",             emoji: "🌾", color: "#4CAF50" },
-  { id: "construction",   label: "Construction",            emoji: "🔨", color: "#E65C00" },
-  { id: "energy",         label: "Energy & Utilities",      emoji: "⚡", color: "#F9D423" },
-  { id: "digital",        label: "Digital Products",        emoji: "💻", color: "#4776E6" },
-  { id: "communication",  label: "Communication",           emoji: "📡", color: "#11998E" },
-  { id: "security",       label: "Security",                emoji: "🔒", color: "#373B44" },
-  { id: "gifts",          label: "Gifts & Luxury",          emoji: "🎁", color: "#C6426E" },
-  { id: "services",       label: "Services",                emoji: "🛠️", color: "#667EEA" },
+  { id: "food",           label: "Food",                   icon: "fast-food-outline",        color: "#FF6B35" },
+  { id: "fashion",        label: "Clothing & Fashion",     icon: "shirt-outline",            color: "#C850C0" },
+  { id: "housing",        label: "Housing & Home",         icon: "home-outline",             color: "#4776E6" },
+  { id: "furniture",      label: "Furniture",              icon: "bed-outline",              color: "#8B6914" },
+  { id: "electronics",    label: "Electronics",            icon: "phone-portrait-outline",   color: "#0F3460" },
+  { id: "transportation", label: "Transportation",         icon: "car-outline",              color: "#1A6B4A" },
+  { id: "health",         label: "Health",                 icon: "medical-outline",          color: "#E84393" },
+  { id: "beauty",         label: "Beauty & Personal Care", icon: "color-palette-outline",    color: "#F953C6" },
+  { id: "education",      label: "Education",              icon: "school-outline",           color: "#13B734" },
+  { id: "entertainment",  label: "Entertainment",          icon: "game-controller-outline",  color: "#6C3483" },
+  { id: "travel",         label: "Travel",                 icon: "airplane-outline",         color: "#00C6FF" },
+  { id: "financial",      label: "Financial Services",     icon: "card-outline",             color: "#1A2980" },
+  { id: "pets",           label: "Pets",                   icon: "paw-outline",              color: "#F7971E" },
+  { id: "baby",           label: "Baby & Parenting",       icon: "happy-outline",            color: "#FC5C7D" },
+  { id: "sports",         label: "Sports & Fitness",       icon: "barbell-outline",          color: "#56CCF2" },
+  { id: "business",       label: "Business & Industrial",  icon: "business-outline",         color: "#485563" },
+  { id: "agriculture",    label: "Agriculture",            icon: "leaf-outline",             color: "#4CAF50" },
+  { id: "construction",   label: "Construction",           icon: "construct-outline",        color: "#E65C00" },
+  { id: "energy",         label: "Energy & Utilities",     icon: "flash-outline",            color: "#F9D423" },
+  { id: "digital",        label: "Digital Products",       icon: "laptop-outline",           color: "#4776E6" },
+  { id: "communication",  label: "Communication",          icon: "chatbubbles-outline",      color: "#11998E" },
+  { id: "security",       label: "Security",               icon: "shield-checkmark-outline", color: "#373B44" },
+  { id: "gifts",          label: "Gifts & Luxury",         icon: "gift-outline",             color: "#C6426E" },
+  { id: "services",       label: "Services",               icon: "briefcase-outline",        color: "#667EEA" },
 ];
 
 type Product = {
@@ -90,86 +69,12 @@ type Product = {
   name: string;
   price: number;
   brand: string;
-  image: ReturnType<typeof require>;
-  shopType: "Super Store" | "Basic Store" | "Vendor";
+  imageUrl?: string;
+  category?: string;
+  shopType: string;
   shopName: string;
   shopId?: string;
   availableItems: number;
-};
-
-const DEFAULT_PRODUCTS: Product[] = [
-  { id: "sm-1", name: "Nike Air 90",    price: 225.0, brand: "Nike",   image: nikeAir90,  shopType: "Super Store", shopName: "SportsMega Mall",   shopId: "sportsmega", availableItems: 14 },
-  { id: "2",    name: "Air Jordan 3",   price: 200.0, brand: "Nike",   image: airJordan3, shopType: "Basic Store", shopName: "KickZone Store",    availableItems: 7  },
-  { id: "sm-3", name: "Nike Dunk Low",  price: 180.0, brand: "Nike",   image: nikeDunk,   shopType: "Super Store", shopName: "SportsMega Mall",   shopId: "sportsmega", availableItems: 22 },
-  { id: "4",    name: "Adidas NMD R1",  price: 165.0, brand: "Adidas", image: adidasNmd,  shopType: "Basic Store", shopName: "StepUp Boutique",   availableItems: 9  },
-  { id: "sm-5", name: "Nike Air Force", price: 140.0, brand: "Nike",   image: nikeAir90,  shopType: "Super Store", shopName: "SportsMega Mall",   shopId: "sportsmega", availableItems: 22 },
-  { id: "6",    name: "Adidas Ultra",   price: 190.0, brand: "Adidas", image: adidasNmd,  shopType: "Vendor",      shopName: "AdiWorld Seller",   availableItems: 5  },
-  { id: "7",    name: "Jordan Retro",   price: 210.0, brand: "Nike",   image: airJordan3, shopType: "Basic Store", shopName: "RetroKicks Shop",   availableItems: 11 },
-  { id: "tw-2", name: "Nike Dunk High", price: 175.0, brand: "Nike",   image: nikeDunk,   shopType: "Super Store", shopName: "TechWorld Mall",    shopId: "techworld", availableItems: 18 },
-];
-
-// Per-category product overrides
-const CATEGORY_PRODUCTS: Record<string, Product[]> = {
-  food: [
-    { id: "f1", name: "Organic Bundle",   price: 29.99, brand: "FreshMart",  image: categoryFoodImg, shopType: "Super Store", shopName: "FreshMart Hypermarket", availableItems: 80 },
-    { id: "f2", name: "Spice Pack",       price: 14.99, brand: "SpiceWorld", image: categoryFoodImg, shopType: "Vendor",      shopName: "Mama Spices",           availableItems: 42 },
-    { id: "f3", name: "Bakery Box",       price: 19.99, brand: "BakeCo",     image: categoryFoodImg, shopType: "Basic Store", shopName: "Golden Bakery",         availableItems: 15 },
-    { id: "f4", name: "Dairy Essentials", price: 22.50, brand: "FarmFresh",  image: categoryFoodImg, shopType: "Basic Store", shopName: "Farm2Door Shop",        availableItems: 30 },
-  ],
-  fashion: [
-    { id: "c1", name: "Summer Dress",  price: 89.99,  brand: "Zara",    image: categoryFashionImg, shopType: "Super Store", shopName: "Zara Flagship Mall",  availableItems: 20 },
-    { id: "c2", name: "Denim Jacket",  price: 120.0,  brand: "Levi's",  image: categoryFashionImg, shopType: "Basic Store", shopName: "Levi's Corner Store", availableItems: 8  },
-    { id: "c3", name: "Slim Chinos",   price: 65.00,  brand: "H&M",     image: categoryFashionImg, shopType: "Super Store", shopName: "H&M City Center",     availableItems: 35 },
-    { id: "c4", name: "Graphic Tee",   price: 35.00,  brand: "Supreme", image: categoryFashionImg, shopType: "Vendor",      shopName: "UrbanDrip Vendor",    availableItems: 4  },
-  ],
-  housing: [
-    { id: "hw1", name: "Smart Doorbell",   price: 89.99,  brand: "Ring",       image: categoryHousingImg, shopType: "Basic Store", shopName: "HomeSecure Shop",     availableItems: 12 },
-    { id: "hw2", name: "LED Ceiling Light",price: 45.00,  brand: "Philips",    image: categoryHousingImg, shopType: "Super Store", shopName: "HomePro Hypermarket", availableItems: 30 },
-    { id: "hw3", name: "Window Blind Set", price: 75.00,  brand: "Decora",     image: categoryHousingImg, shopType: "Vendor",      shopName: "HomeDecor Vendor",    availableItems: 5  },
-    { id: "hw4", name: "Wall Paint 5L",    price: 38.00,  brand: "Dulux",      image: categoryHousingImg, shopType: "Basic Store", shopName: "PaintWorld Store",    availableItems: 20 },
-  ],
-  furniture: [
-    { id: "fu1", name: "3-Seat Sofa",       price: 599.0, brand: "IKEA",     image: categoryFurnitureImg, shopType: "Super Store", shopName: "FurnitureMega Mall",  availableItems: 4  },
-    { id: "fu2", name: "Dining Table Set",  price: 420.0, brand: "Woood",    image: categoryFurnitureImg, shopType: "Basic Store", shopName: "TimberCraft Store",   availableItems: 2  },
-    { id: "fu3", name: "Bookshelf 5-Tier",  price: 180.0, brand: "IKEA",     image: categoryFurnitureImg, shopType: "Super Store", shopName: "FurnitureMega Mall",  availableItems: 9  },
-    { id: "fu4", name: "Office Chair",      price: 250.0, brand: "Ergohuman", image: categoryFurnitureImg, shopType: "Vendor",      shopName: "SitRight Vendor",     availableItems: 3  },
-  ],
-  electronics: [
-    { id: "e1", name: "Wireless Buds", price: 149.99, brand: "Sony",    image: categoryElectronicsImg, shopType: "Super Store", shopName: "TechWorld Mall",      availableItems: 25 },
-    { id: "e2", name: "Smart Watch",   price: 299.99, brand: "Samsung", image: categoryElectronicsImg, shopType: "Super Store", shopName: "Samsung Experience",  availableItems: 10 },
-    { id: "e3", name: "Power Bank",    price: 49.99,  brand: "Anker",   image: categoryElectronicsImg, shopType: "Basic Store", shopName: "GadgetZone Shop",     availableItems: 50 },
-    { id: "e4", name: "USB-C Hub",     price: 39.99,  brand: "Belkin",  image: categoryElectronicsImg, shopType: "Vendor",      shopName: "TechParts Vendor",    availableItems: 7  },
-  ],
-  sports: [
-    { id: "s1", name: "Running Shoes", price: 110.0,  brand: "Nike",      image: categoryFashionImg, shopType: "Super Store", shopName: "SportsMega Mall",    availableItems: 18 },
-    { id: "s2", name: "Gym Gloves",    price: 25.00,  brand: "Adidas",    image: categoryFashionImg, shopType: "Vendor",      shopName: "FitGear Vendor",     availableItems: 11 },
-    { id: "s3", name: "Yoga Mat",      price: 45.00,  brand: "Lululemon", image: categoryFashionImg, shopType: "Basic Store", shopName: "ActiveLife Store",   availableItems: 6  },
-    { id: "s4", name: "Protein Shake", price: 55.00,  brand: "Optimum",   image: categoryFoodImg,    shopType: "Basic Store", shopName: "NutriShop",          availableItems: 30 },
-  ],
-  beauty: [
-    { id: "b1", name: "Face Serum",   price: 79.99, brand: "CeraVe",  image: categoryFoodImg, shopType: "Basic Store", shopName: "Beauty Essentials",  availableItems: 14 },
-    { id: "b2", name: "Lip Palette",  price: 42.00, brand: "MAC",     image: categoryFoodImg, shopType: "Super Store", shopName: "Beauty Mega Store",  availableItems: 22 },
-    { id: "b3", name: "Hair Mask",    price: 28.00, brand: "OGX",     image: categoryFoodImg, shopType: "Vendor",      shopName: "GlowUp Vendor",      availableItems: 5  },
-    { id: "b4", name: "Perfume 50ml", price: 95.00, brand: "Chanel",  image: categoryFoodImg, shopType: "Super Store", shopName: "Luxury Scents Mall", availableItems: 3  },
-  ],
-  health: [
-    { id: "h1", name: "Vitamin C 1000",   price: 18.99, brand: "Nature's",  image: categoryHousingImg, shopType: "Basic Store", shopName: "HealthPlus Pharmacy", availableItems: 60 },
-    { id: "h2", name: "Blood Pressure M", price: 55.00, brand: "Omron",     image: categoryElectronicsImg, shopType: "Super Store", shopName: "MedCare Superstore",  availableItems: 9  },
-    { id: "h3", name: "First Aid Kit",    price: 35.00, brand: "Johnson's", image: categoryHousingImg, shopType: "Basic Store", shopName: "SafetyFirst Shop",    availableItems: 17 },
-    { id: "h4", name: "Thermometer",      price: 22.00, brand: "Braun",     image: categoryElectronicsImg, shopType: "Vendor",      shopName: "MediGadget Vendor",   availableItems: 4  },
-  ],
-  pets: [
-    { id: "p1", name: "Dog Food 5kg", price: 38.00, brand: "Pedigree", image: categoryFoodImg,      shopType: "Super Store", shopName: "PetWorld Hypermarket", availableItems: 45 },
-    { id: "p2", name: "Cat Toy Set",  price: 15.99, brand: "PetSmart", image: categoryFurnitureImg, shopType: "Basic Store", shopName: "Happy Paws Shop",       availableItems: 12 },
-    { id: "p3", name: "Pet Shampoo",  price: 12.99, brand: "Hartz",    image: categoryFoodImg,      shopType: "Vendor",      shopName: "PetCare Vendor",        availableItems: 8  },
-    { id: "p4", name: "Flea Collar",  price: 20.00, brand: "Seresto",  image: categoryHousingImg,   shopType: "Basic Store", shopName: "VetSupplies Store",     availableItems: 19 },
-  ],
-  gifts: [
-    { id: "g1", name: "Gift Hamper",    price: 150.0,  brand: "Premium Co", image: categoryFoodImg,        shopType: "Super Store", shopName: "LuxGifts Mall",      availableItems: 6  },
-    { id: "g2", name: "Scented Candle", price: 45.00,  brand: "Yankee",     image: categoryHousingImg,     shopType: "Basic Store", shopName: "Aroma & Co Shop",    availableItems: 23 },
-    { id: "g3", name: "Jewellery Box",  price: 220.0,  brand: "Tiffany",    image: categoryFurnitureImg,   shopType: "Super Store", shopName: "Prestige Jewellers", availableItems: 2  },
-    { id: "g4", name: "Watch Box Set",  price: 310.0,  brand: "Fossil",     image: categoryElectronicsImg, shopType: "Vendor",      shopName: "TimeKeeper Vendor",  availableItems: 1  },
-  ],
 };
 
 // ─── CategoryChip ──────────────────────────────────────────────────────────────
@@ -179,10 +84,11 @@ function CategoryChip({
   onPress,
 }: {
   item: Category;
-  index: number;
   active: boolean;
   onPress: () => void;
 }) {
+  const colors = useColors();
+
   return (
     <Pressable
       onPress={() => {
@@ -192,14 +98,19 @@ function CategoryChip({
       style={[
         styles.chip,
         {
-          backgroundColor: active ? item.color : item.color + "18",
-          borderColor: active ? item.color : item.color + "55",
+          backgroundColor: active ? colors.primary : colors.card,
+          borderColor: active ? colors.primary : colors.border,
         },
+        active && styles.chipActive,
       ]}
     >
-      <Text style={styles.chipEmoji}>{item.emoji}</Text>
+      <Ionicons
+        name={item.icon}
+        size={15}
+        color={active ? "#FFFFFF" : item.color}
+      />
       <Text
-        style={[styles.chipLabel, { color: active ? "#FFFFFF" : item.color }]}
+        style={[styles.chipLabel, { color: active ? "#FFFFFF" : colors.foreground }]}
         numberOfLines={1}
       >
         {item.label}
@@ -374,11 +285,154 @@ function PopupMenu({
 
 
 // ─── HomeScreen ────────────────────────────────────────────────────────────────
+function getStoreMeta(merchantType?: Store["merchant_type"]) {
+  const meta: Record<string, { label: string; icon: IoniconName; accent: string }> = {
+    super_store: { label: "Super Store", icon: "business-outline", accent: "#FF9F43" },
+    basic_shop: { label: "Basic Store", icon: "storefront-outline", accent: "#13B734" },
+    vendor: { label: "Vendor", icon: "cube-outline", accent: "#F7971E" },
+    professional: { label: "Professional", icon: "briefcase-outline", accent: "#667EEA" },
+  };
+
+  return meta[merchantType || "basic_shop"] ?? meta.basic_shop;
+}
+
+function SectionHeading({
+  title,
+  icon,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  icon: IoniconName;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  const colors = useColors();
+
+  return (
+    <View style={styles.sectionHeader}>
+      <View style={styles.sectionTitleRow}>
+        <View
+          style={[
+            styles.sectionIconBadge,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
+          <Ionicons name={icon} size={14} color={colors.primary} />
+        </View>
+        <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
+          {title}
+        </Text>
+      </View>
+      {actionLabel && onAction ? (
+        <Pressable onPress={onAction} style={styles.sectionAction}>
+          <Text style={[styles.seeAll, { color: colors.primary }]}>{actionLabel}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+function StoreSummaryCard({ store }: { store: Store }) {
+  const colors = useColors();
+  const meta = getStoreMeta(store.merchant_type);
+  const accent = store.accent_color || meta.accent;
+  const gradientColors: [string, string] = [
+    store.cover_gradient_start || accent,
+    store.cover_gradient_end || accent,
+  ];
+  const rating = typeof store.rating === "number" ? store.rating : 5;
+
+  return (
+    <Pressable
+      onPress={() => {
+        if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        router.push({ pathname: "/store/[id]", params: { id: store.id } });
+      }}
+      style={[
+        styles.storeCard,
+        { backgroundColor: colors.card, borderColor: colors.border },
+      ]}
+    >
+      <View style={[styles.storeCover, { backgroundColor: accent }]}>
+        {store.cover_image_url ? (
+          <Image
+            source={{ uri: store.cover_image_url }}
+            style={styles.storeCoverImg}
+            resizeMode="cover"
+            fadeDuration={300}
+          />
+        ) : (
+          <LinearGradient
+            colors={gradientColors}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFill}
+          />
+        )}
+        <View style={styles.storeCoverOverlay} />
+        <View style={styles.storeBadge}>
+          <Ionicons name={meta.icon} size={12} color="#FFFFFF" />
+          <Text style={styles.storeBadgeText}>{meta.label}</Text>
+        </View>
+      </View>
+
+      <View style={styles.storeInfo}>
+        <Text style={[styles.storeName, { color: colors.foreground }]} numberOfLines={1}>
+          {store.name}
+        </Text>
+        <Text style={[styles.storeTagline, { color: colors.mutedForeground }]} numberOfLines={1}>
+          {store.tagline || `${meta.label} on Doorstep`}
+        </Text>
+        <View style={styles.storeMetaRow}>
+          <Ionicons name="star" size={11} color="#FFB300" />
+          <Text style={[styles.storeRating, { color: colors.foreground }]}>
+            {rating.toFixed(1)}
+          </Text>
+          <View style={[styles.statusPill, { backgroundColor: colors.secondary }]}>
+            <View style={[styles.openDot, { backgroundColor: "#22C55E" }]} />
+            <Text style={styles.statusText}>Open</Text>
+          </View>
+        </View>
+      </View>
+    </Pressable>
+  );
+}
+
+function StoreRail({
+  title,
+  icon,
+  stores,
+}: {
+  title: string;
+  icon: IoniconName;
+  stores: Store[];
+}) {
+  if (stores.length === 0) return null;
+
+  return (
+    <>
+      <SectionHeading title={title} icon={icon} />
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.storeRail}
+        style={{ marginBottom: 24 }}
+      >
+        {stores.map((store) => (
+          <StoreSummaryCard key={store.id} store={store} />
+        ))}
+      </ScrollView>
+    </>
+  );
+}
+
 export default function HomeScreen() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [basicShops, setBasicShops] = useState<Store[]>([]);
   const [vendorShops, setVendorShops] = useState<Store[]>([]);
+  const [superStores, setSuperStores] = useState<Store[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -386,8 +440,10 @@ export default function HomeScreen() {
         try {
           const basics = await StoreService.searchStores(undefined, "basic_shop");
           const vendors = await StoreService.searchStores(undefined, "vendor");
+          const supers = await StoreService.searchStores(undefined, "super_store");
           setBasicShops(basics);
           setVendorShops(vendors);
+          setSuperStores(supers);
         } catch (err) {
           console.warn("Failed to load DB stores:", err);
         }
@@ -398,20 +454,31 @@ export default function HomeScreen() {
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const [searchText, setSearchText] = useState("");
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
   // Position the popup just below the header icon
   const menuAnchorTop = topPad + 52;
 
-  const baseProducts: Product[] =
-    activeCategory && CATEGORY_PRODUCTS[activeCategory]
-      ? CATEGORY_PRODUCTS[activeCategory]
-      : DEFAULT_PRODUCTS;
+  const allDbProducts = [...superStores, ...basicShops, ...vendorShops].flatMap((store) =>
+    (store.products || []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      price: p.price,
+      brand: p.brand || "",
+      imageUrl: p.image_url,
+      category: p.category,
+      shopType: getStoreMeta(store.merchant_type).label,
+      shopName: store.name,
+      shopId: store.id,
+      availableItems: p.availableItems ?? p.stock ?? 0,
+    }))
+  );
 
-  const displayed = searchText
-    ? baseProducts.filter((p) => p.name.toLowerCase().includes(searchText.toLowerCase()))
-    : baseProducts;
+  const baseProducts = activeCategory
+    ? allDbProducts.filter((p) => p.category === activeCategory)
+    : allDbProducts;
+
+  const displayed = baseProducts;
 
 
   const pairs: Product[][] = [];
@@ -433,7 +500,7 @@ export default function HomeScreen() {
         {/* ── Header ── */}
         <View style={styles.header}>
           <Pressable
-            style={styles.iconBtn}
+            style={[styles.iconBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
             onPress={() => {
               if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               setMenuVisible(true);
@@ -451,220 +518,52 @@ export default function HomeScreen() {
               Doorstep
             </Text>
           </View>
-          <Pressable 
-            style={styles.iconBtn}
-            onPress={() => router.push("/notifications")}
-          >
-            <Ionicons name="notifications-outline" size={24} color={colors.foreground} />
-          </Pressable>
+          <View style={styles.headerActions}>
+            <Pressable
+              style={[styles.iconBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => router.push("/search")}
+            >
+              <Ionicons name="search-outline" size={24} color={colors.foreground} />
+            </Pressable>
+            <Pressable
+              style={[styles.iconBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+              onPress={() => router.push("/notifications")}
+            >
+              <Ionicons name="notifications-outline" size={24} color={colors.foreground} />
+            </Pressable>
+          </View>
         </View>
 
-        {/* ── Search Bar ── */}
-        <View style={styles.searchRow}>
-          <View style={[styles.searchBar, { backgroundColor: colors.muted }]}>
-            <Feather name="search" size={18} color={colors.mutedForeground} />
-            <TextInput
-              style={[styles.searchInput, { color: colors.foreground }]}
-              placeholder="Search"
-              placeholderTextColor={colors.mutedForeground}
-              value={searchText}
-              onChangeText={setSearchText}
-            />
-          </View>
-          <Pressable
-            style={[styles.filterBtn, { backgroundColor: colors.foreground }]}
-            onPress={() => {
-              if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              router.push("/services");
-            }}
-          >
-            <Ionicons name="grid-outline" size={20} color={colors.background} />
-          </Pressable>
-        </View>
 
         {/* ── Sale Banner ── */}
-        <View style={[styles.banner, { backgroundColor: colors.banner }]}>
+        <View
+          style={[
+            styles.banner,
+            { backgroundColor: colors.card, borderColor: colors.border },
+          ]}
+        >
           <View style={styles.bannerContent}>
-            <Text style={[styles.bannerTitle, { color: colors.bannerText }]}>Year-End Sale</Text>
-            <Text style={[styles.bannerSub, { color: colors.mutedForeground }]}>Get up to 90% off</Text>
-            <Pressable style={[styles.shopNowBtn, { backgroundColor: colors.foreground }]}>
-              <Text style={[styles.shopNowText, { color: colors.background }]}>Shop Now</Text>
+            <Text style={[styles.bannerTitle, { color: colors.foreground }]}>Shop local on Doorstep</Text>
+            <Text style={[styles.bannerSub, { color: colors.mutedForeground }]}>Discover live products from verified merchants near you.</Text>
+            <Pressable
+              onPress={() => router.push("/search")}
+              style={[styles.shopNowBtn, { backgroundColor: colors.primary }]}
+            >
+              <Ionicons name="search-outline" size={14} color="#FFFFFF" />
+              <Text style={styles.shopNowText}>Browse</Text>
             </Pressable>
           </View>
-          <Image source={bannerShoe} style={styles.bannerImg} resizeMode="contain" />
+          <View style={[styles.bannerMark, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+            <Image source={doorstepLogo} style={styles.bannerImg} resizeMode="contain" />
+          </View>
         </View>
 
-        {/* ── Super Store Section ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>🏬 Super Stores</Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.superStoreScroll}
-          style={{ marginBottom: 24 }}
-        >
-          {SUPER_STORES.map((store) => (
-            <Pressable
-              key={store.id}
-              onPress={() => {
-                if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                router.push({ pathname: "/superstore/[id]", params: { id: store.id } });
-              }}
-              style={[styles.superStoreCard, { borderColor: store.accentColor + "55" }]}
-            >
-              {/* Card header: cover image (top half) or solid accent */}
-              <View style={[styles.superStoreGradient, { backgroundColor: store.accentColor, overflow: "hidden" }]}>
-                {store.coverImage ? (
-                  <Image
-                    source={store.coverImage}
-                    style={styles.superStoreCoverImg}
-                    resizeMode="cover"
-                    fadeDuration={300}
-                    {...(Platform.OS === "web" ? ({ loading: "lazy" } as any) : {})}
-                  />
-                ) : null}
-                <View style={styles.superStoreScrim} />
-              </View>
-              <View style={styles.superStoreInfo}>
-                <Text style={[styles.superStoreName, { color: colors.foreground }]} numberOfLines={1}>{store.name}</Text>
-                <Text style={[styles.superStoreCategory, { color: colors.mutedForeground }]} numberOfLines={1}>{store.category}</Text>
-                <View style={styles.superStoreRow}>
-                  <Ionicons name="star" size={11} color="#FFB300" />
-                  <Text style={[styles.superStoreRating, { color: colors.foreground }]}>{store.rating}</Text>
-                  <View style={[styles.openDot, { backgroundColor: store.openNow ? "#22C55E" : "#EF4444" }]} />
-                  <Text style={[styles.superStoreOpen, { color: store.openNow ? "#22C55E" : "#EF4444" }]}>
-                    {store.openNow ? "Open" : "Closed"}
-                  </Text>
-                </View>
-              </View>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        {/* ── Basic Stores Section ── */}
-        {basicShops.length > 0 && (
-          <>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>🏪 Basic Stores</Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.superStoreScroll}
-              style={{ marginBottom: 24 }}
-            >
-              {basicShops.map((store) => (
-                <Pressable
-                  key={store.id}
-                  onPress={() => {
-                    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push({ pathname: "/store/[id]", params: { id: store.id } });
-                  }}
-                  style={[styles.superStoreCard, { borderColor: (store.accent_color || "#4A80F0") + "55" }]}
-                >
-                  <View style={[styles.superStoreGradient, { backgroundColor: store.accent_color || "#4A80F0", overflow: "hidden" }]}>
-                    {store.cover_image_url ? (
-                      <Image
-                        source={{ uri: store.cover_image_url }}
-                        style={styles.superStoreCoverImg}
-                        resizeMode="cover"
-                        fadeDuration={300}
-                      />
-                    ) : (
-                      <LinearGradient
-                        colors={[store.cover_gradient_start || store.accent_color || "#4A80F0", store.cover_gradient_end || store.accent_color || "#4A80F0"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={StyleSheet.absoluteFill}
-                      />
-                    )}
-                    <View style={styles.superStoreScrim} />
-                    <View style={{ position: "absolute", bottom: -10, right: 10 }}>
-                      <Text style={{ fontSize: 44 }}>{store.emoji || "🏪"}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.superStoreInfo}>
-                    <Text style={[styles.superStoreName, { color: colors.foreground }]} numberOfLines={1}>{store.name}</Text>
-                    <Text style={[styles.superStoreCategory, { color: colors.mutedForeground }]} numberOfLines={1}>{store.tagline || "Basic Store"}</Text>
-                    <View style={styles.superStoreRow}>
-                      <Ionicons name="star" size={11} color="#FFB300" />
-                      <Text style={[styles.superStoreRating, { color: colors.foreground }]}>5.0</Text>
-                      <View style={[styles.openDot, { backgroundColor: "#22C55E" }]} />
-                      <Text style={[styles.superStoreOpen, { color: "#22C55E" }]}>Open</Text>
-                    </View>
-                  </View>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </>
-        )}
-
-        {/* ── Vendor Shops Section ── */}
-        {vendorShops.length > 0 && (
-          <>
-            <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: colors.foreground }]}>📦 Vendor Shops</Text>
-            </View>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.superStoreScroll}
-              style={{ marginBottom: 24 }}
-            >
-              {vendorShops.map((store) => (
-                <Pressable
-                  key={store.id}
-                  onPress={() => {
-                    if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    router.push({ pathname: "/store/[id]", params: { id: store.id } });
-                  }}
-                  style={[styles.superStoreCard, { borderColor: (store.accent_color || "#F7971E") + "55" }]}
-                >
-                  <View style={[styles.superStoreGradient, { backgroundColor: store.accent_color || "#F7971E", overflow: "hidden" }]}>
-                    {store.cover_image_url ? (
-                      <Image
-                        source={{ uri: store.cover_image_url }}
-                        style={styles.superStoreCoverImg}
-                        resizeMode="cover"
-                        fadeDuration={300}
-                      />
-                    ) : (
-                      <LinearGradient
-                        colors={[store.cover_gradient_start || store.accent_color || "#F7971E", store.cover_gradient_end || store.accent_color || "#F7971E"]}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 1 }}
-                        style={StyleSheet.absoluteFill}
-                      />
-                    )}
-                    <View style={styles.superStoreScrim} />
-                    <View style={{ position: "absolute", bottom: -10, right: 10 }}>
-                      <Text style={{ fontSize: 44 }}>{store.emoji || "📦"}</Text>
-                    </View>
-                  </View>
-                  <View style={styles.superStoreInfo}>
-                    <Text style={[styles.superStoreName, { color: colors.foreground }]} numberOfLines={1}>{store.name}</Text>
-                    <Text style={[styles.superStoreCategory, { color: colors.mutedForeground }]} numberOfLines={1}>{store.tagline || "Vendor Shop"}</Text>
-                    <View style={styles.superStoreRow}>
-                      <Ionicons name="star" size={11} color="#FFB300" />
-                      <Text style={[styles.superStoreRating, { color: colors.foreground }]}>5.0</Text>
-                      <View style={[styles.openDot, { backgroundColor: "#22C55E" }]} />
-                      <Text style={[styles.superStoreOpen, { color: "#22C55E" }]}>Open</Text>
-                    </View>
-                  </View>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </>
-        )}
+        <StoreRail title="Super Stores" icon="business-outline" stores={superStores} />
+        <StoreRail title="Basic Stores" icon="storefront-outline" stores={basicShops} />
+        <StoreRail title="Vendor Shops" icon="cube-outline" stores={vendorShops} />
 
         {/* ── Category Section ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>Category</Text>
-          <Pressable>
-            <Text style={[styles.seeAll, { color: colors.primary }]}>See all</Text>
-          </Pressable>
-        </View>
+        <SectionHeading title="Categories" icon="grid-outline" />
 
         {/* Category horizontal scroll */}
         <ScrollView
@@ -673,7 +572,7 @@ export default function HomeScreen() {
           contentContainerStyle={styles.categoryScroll}
           style={{ marginBottom: 24 }}
         >
-          {CATEGORIES.map((item, _index) => (
+          {CATEGORIES.map((item) => (
             <CategoryChip
               key={item.id}
               item={item}
@@ -686,18 +585,16 @@ export default function HomeScreen() {
         </ScrollView>
 
         {/* ── Products for selected category ── */}
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.foreground }]}>
-            {activeCategory
+        <SectionHeading
+          title={
+            activeCategory
               ? CATEGORIES.find((c) => c.id === activeCategory)?.label ?? "Products"
-              : "Featured"}
-          </Text>
-          {activeCategory && (
-            <Pressable onPress={() => setActiveCategory(null)}>
-              <Text style={[styles.seeAll, { color: colors.primary }]}>Clear</Text>
-            </Pressable>
-          )}
-        </View>
+              : "Featured"
+          }
+          icon={activeCategory ? "pricetag-outline" : "star-outline"}
+          actionLabel={activeCategory ? "Clear" : undefined}
+          onAction={activeCategory ? () => setActiveCategory(null) : undefined}
+        />
 
         {/* Products Grid */}
         <View style={styles.grid}>
@@ -710,8 +607,8 @@ export default function HomeScreen() {
                   name={product.name}
                   price={product.price}
                   brand={product.brand}
-                  image={product.image}
-                  shopType={product.shopType}
+                  image={product.imageUrl ? { uri: product.imageUrl } : doorstepLogo}
+                  shopType={product.shopType as any}
                   shopName={product.shopName}
                   availableItems={product.availableItems}
                   onPress={() => router.push({ pathname: "/product/[id]", params: { id: product.id } })}
@@ -721,9 +618,17 @@ export default function HomeScreen() {
             </View>
           ))}
           {displayed.length === 0 && (
-            <View style={styles.emptyState}>
+            <View
+              style={[
+                styles.emptyState,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
               <Ionicons name="search-outline" size={40} color={colors.mutedForeground} />
-              <Text style={[styles.emptyText, { color: colors.mutedForeground }]}>No shoes found</Text>
+              <Text style={[styles.emptyText, { color: colors.foreground }]}>No live products found</Text>
+              <Text style={[styles.emptySubText, { color: colors.mutedForeground }]}>
+                Products appear here after a merchant imports or creates them.
+              </Text>
             </View>
           )}
         </View>
@@ -744,55 +649,63 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 16,
   },
-  iconBtn: { padding: 4 },
-  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
-
-  // Search
-  searchRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginBottom: 16,
-    alignItems: "center",
-  },
-  searchBar: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-  },
-  searchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
-  filterBtn: {
-    width: 46,
-    height: 46,
-    borderRadius: 12,
+  iconBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 16,
+    borderWidth: 2,
     alignItems: "center",
     justifyContent: "center",
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
+  headerActions: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  headerTitle: { fontSize: 22, fontFamily: "Inter_700Bold" },
 
   // Banner
   banner: {
-    borderRadius: 20,
+    borderRadius: 16,
+    borderWidth: 2,
     flexDirection: "row",
-    paddingLeft: 20,
-    paddingVertical: 20,
+    padding: 16,
     marginBottom: 24,
     overflow: "hidden",
     alignItems: "center",
+    gap: 14,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   bannerContent: { flex: 1, gap: 4 },
   bannerTitle: { fontSize: 20, fontFamily: "Inter_700Bold", lineHeight: 26 },
   bannerSub: { fontSize: 13, fontFamily: "Inter_400Regular", marginBottom: 12 },
   shopNowBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
     alignSelf: "flex-start",
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    borderRadius: 100,
+    borderRadius: 16,
   },
-  shopNowText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
-  bannerImg: { width: 150, height: 130 },
+  shopNowText: { color: "#FFFFFF", fontSize: 13, fontFamily: "Inter_700Bold" },
+  bannerMark: {
+    width: 82,
+    height: 82,
+    borderRadius: 16,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  bannerImg: { width: 54, height: 54, borderRadius: 12 },
 
   // Section headers
   sectionHeader: {
@@ -801,8 +714,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 14,
   },
-  sectionTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
-  seeAll: { fontSize: 14, fontFamily: "Inter_500Medium" },
+  sectionTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    flex: 1,
+  },
+  sectionIconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 12,
+    borderWidth: 2,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  sectionAction: {
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  seeAll: { fontSize: 14, fontFamily: "Inter_700Bold" },
 
   // Category horizontal scroll
   categoryScroll: {
@@ -817,16 +748,20 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 100,
-    borderWidth: 1.5,
+    borderRadius: 14,
+    borderWidth: 2,
   },
-  chipEmoji: { fontSize: 16 },
+  chipActive: {
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+  },
   chipLabel: {
     fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
   },
-
-
 
   // Products
   grid: { gap: 16 },
@@ -835,71 +770,95 @@ const styles = StyleSheet.create({
   emptyState: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 48,
-    gap: 12,
+    paddingVertical: 32,
+    paddingHorizontal: 18,
+    gap: 8,
+    borderRadius: 16,
+    borderWidth: 2,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
-  emptyText: { fontSize: 16, fontFamily: "Inter_500Medium" },
+  emptyText: { fontSize: 16, fontFamily: "Inter_700Bold" },
+  emptySubText: {
+    textAlign: "center",
+    fontSize: 13,
+    fontFamily: "Inter_400Regular",
+    lineHeight: 19,
+  },
 
-  // Super Stores
-  superStoreScroll: {
+  // Store rails
+  storeRail: {
     gap: 12,
     paddingRight: 16,
     paddingVertical: 4,
   },
-  superStoreCard: {
+  storeCard: {
     width: 180,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    borderRadius: 16,
+    borderWidth: 2,
     overflow: "hidden",
     elevation: 6,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-    backgroundColor: "transparent",
   },
-  superStoreGradient: {
+  storeCover: {
     height: 100,
-    alignItems: "center",
-    justifyContent: "center",
     position: "relative",
+    overflow: "hidden",
   },
-  // Cover image fills the header area — only the center portion is visible
-  superStoreCoverImg: {
+  storeCoverImg: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    // 200% height → image is 2× taller than the container; top half shows
-    height: "200%",
+    bottom: 0,
     alignSelf: "center",
   },
-  // Dark scrim so emoji stays readable over bright images
-  superStoreScrim: {
+  storeCoverOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.30)",
+    backgroundColor: "rgba(0,0,0,0.28)",
   },
-  superStoreEmoji: { fontSize: 44 },
-  superStoreInfo: {
-    padding: 12,
-    gap: 3,
-    backgroundColor: "transparent",
-  },
-  superStoreName: {
-    fontSize: 13,
-    fontFamily: "Inter_700Bold",
-  },
-  superStoreCategory: {
-    fontSize: 11,
-    fontFamily: "Inter_400Regular",
-    marginBottom: 4,
-  },
-  superStoreRow: {
+  storeBadge: {
+    position: "absolute",
+    left: 10,
+    bottom: 10,
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+    borderRadius: 100,
+    backgroundColor: "rgba(0,0,0,0.45)",
   },
-  superStoreRating: {
+  storeBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontFamily: "Inter_700Bold",
+  },
+  storeInfo: {
+    padding: 12,
+    gap: 4,
+  },
+  storeName: {
+    fontSize: 13,
+    fontFamily: "Inter_700Bold",
+  },
+  storeTagline: {
+    fontSize: 11,
+    fontFamily: "Inter_400Regular",
+  },
+  storeMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 4,
+  },
+  storeRating: {
     fontSize: 12,
     fontFamily: "Inter_600SemiBold",
   },
@@ -907,11 +866,20 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    marginLeft: 4,
   },
-  superStoreOpen: {
+  statusPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginLeft: 4,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 100,
+  },
+  statusText: {
+    color: "#22C55E",
     fontSize: 11,
-    fontFamily: "Inter_600SemiBold",
+    fontFamily: "Inter_700Bold",
   },
 
   // Popup menu
@@ -919,8 +887,8 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 12,
     minWidth: 210,
-    borderRadius: 14,
-    borderWidth: 1,
+    borderRadius: 16,
+    borderWidth: 2,
     overflow: "hidden",
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.18,

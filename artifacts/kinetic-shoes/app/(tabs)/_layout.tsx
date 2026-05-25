@@ -9,7 +9,11 @@ import { Platform, Pressable, StyleSheet, View, useColorScheme } from "react-nat
 
 import { useColors } from "@/hooks/useColors";
 
-function AddTabButton({ onPress }: { onPress?: () => void }) {
+type AddTabButtonProps = {
+  onPress?: React.ComponentProps<typeof Pressable>["onPress"];
+};
+
+function AddTabButton({ onPress }: AddTabButtonProps) {
   const colors = useColors();
   return (
     <Pressable
@@ -22,30 +26,27 @@ function AddTabButton({ onPress }: { onPress?: () => void }) {
 }
 
 function NativeTabLayout() {
+  const colors = useColors();
   return (
     <NativeTabs>
       <NativeTabs.Trigger name="index">
-        <Icon sf={{ default: "house", selected: "house.fill" }} />
+        <Icon sf={{ default: "house", selected: "house.fill" }} selectedColor={colors.primary} />
         <Label>Home</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="search">
-        <Icon sf={{ default: "magnifyingglass", selected: "magnifyingglass" }} />
-        <Label>Search</Label>
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="messages">
-        <Icon sf={{ default: "storefront", selected: "storefront.fill" }} />
+        <Icon sf={{ default: "storefront", selected: "storefront.fill" }} selectedColor={colors.primary} />
         <Label>Marketplace</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="add">
-        <Icon sf={{ default: "cart", selected: "cart.fill" }} />
+        <Icon sf={{ default: "cart", selected: "cart.fill" }} selectedColor={colors.primary} />
         <Label>Cart</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="profile">
-        <Icon sf={{ default: "person", selected: "person.fill" }} />
+        <Icon sf={{ default: "person", selected: "person.fill" }} selectedColor={colors.primary} />
         <Label>Profile</Label>
       </NativeTabs.Trigger>
       <NativeTabs.Trigger name="chat">
-        <Icon sf={{ default: "bubble.left", selected: "bubble.left.fill" }} />
+        <Icon sf={{ default: "bubble.left", selected: "bubble.left.fill" }} selectedColor={colors.primary} />
         <Label>Chat</Label>
       </NativeTabs.Trigger>
     </NativeTabs>
@@ -102,17 +103,7 @@ function ClassicTabLayout() {
             ),
         }}
       />
-      <Tabs.Screen
-        name="search"
-        options={{
-          tabBarIcon: ({ color }) =>
-            isIOS ? (
-              <SymbolView name="magnifyingglass" tintColor={color} size={24} />
-            ) : (
-              <Feather name="search" size={24} color={color} />
-            ),
-        }}
-      />
+
       <Tabs.Screen
         name="messages"
         options={{
@@ -129,7 +120,7 @@ function ClassicTabLayout() {
         options={{
           tabBarIcon: () => null,
           tabBarButton: (props) => (
-            <AddTabButton onPress={props.onPress ?? undefined} />
+            <AddTabButton onPress={props.onPress} />
           ),
         }}
       />

@@ -1,0 +1,611 @@
+--- c:\Users\nick\Desktop\Asset-Manager\artifacts\kinetic-shoes\components\profile\ProfileScreen.tsx
++++ c:\Users\nick\Desktop\Asset-Manager\artifacts\kinetic-shoes\components\profile\ProfileScreen.tsx
+@@ -42,7 +42,8 @@
+ import { useChat } from "@/context/ChatContext";
+ import * as ImagePicker from "expo-image-picker";
+ import { useColors } from "@/hooks/useColors";
+-import { useStore } from "@/hooks/useStore";
++import { useStore } from "@/hooks/useStore";
++import { DeliveryRegistrationForm } from "../delivery/DeliveryRegistrationForm";
+ 
+ // ─── Empty state ─────────────────────────────────────────────────────────────
+ 
+@@ -1107,102 +1107,300 @@
+     { label: "Electrician", emoji: "⚡", desc: "Offer expert electrical wiring, fixture installation, and power fixes." },
+     { label: "Plumber", emoji: "🪠", desc: "Showcase drainage repairs, pipe fitting, plumbing installations." },
+     { label: "Welder / Metal Fabricator", emoji: "👨‍🏭", desc: "Present custom metal fabrication, heavy welding, iron gates, and grilles." },
+-    { label: "Mechanic (car / motorcycle)", emoji: "🔧", desc: "Showcase auto repairs, motor servicing, diagnostics, and repairs." },
+-    { label: "Bicycle Repair Technician", emoji: "🚲", desc: "Offer gear tuning, puncture repairs, custom bike builds, and maintenance." },
+-    { label: "Mobile Money Agent", emoji: "📲", desc: "Show service coverage for payments, fast transfers, deposits, and cashouts." },
+-    { label: "Photographer / Videographer", emoji: "📷", desc: "Present event photography, cinematic videos, custom portraits." },
+-    { label: "Caterer / Cook", emoji: "🍳", desc: "Showcase gourmet meals, event catering, baking recipes, and food plates." },
+-    { label: "Event Decorator", emoji: "🎈", desc: "Show balloon installations, theme parties, premium flower backdrops." },
+-    { label: "DJ / Sound System Operator", emoji: "🎧", desc: "Present live sound systems, party mixes, music equipment rental." },
+-    { label: "Private Tutor", emoji: "📖", desc: "Offer homework assistance, test prep, subject tutoring, and lessons." },
+-    { label: "Graphic Designer / Printer", emoji: "🎨", desc: "Show logo designs, flyer creations, business card printing services." },
+-    { label: "Computer Repair Technician", emoji: "💻", desc: "Offer OS installations, laptop screen fixes, software upgrades." },
+-    { label: "House Painter", emoji: "🖌️", desc: "Present professional interior/exterior paint styling, textured walls." },
+-    { label: "Taxi / Minibus Operator", emoji: "🚕", desc: "Show taxi bookings, airport pickups, tours, and shuttle routes." }
+-  ];
+-
+-  const ACCENTS = ["#13B734", "#11998E", "#F7971E", "#7C3AED", "#FF6B6B"];
+-
+-  // Reanimated sliding config
+-  const screenWidth = Dimensions.get("window").width;
+-  const animValue = useSharedValue(screenWidth);
+-  const backdropOpacity = useSharedValue(0);
+-
+-  useEffect(() => {
+-    if (visible) {
+-      setStep("select");
+-      setBrandName("");
+-      setBrandTagline("");
+-      setBrandAccent("#13B734");
+-      setCoverImageUrl("");
+-      setSelectedProf("");
+-      animValue.value = withTiming(0, { duration: 350 });
+-      backdropOpacity.value = withTiming(1, { duration: 350 });
+-    } else {
+-      animValue.value = withTiming(screenWidth, { duration: 250 });
+-      backdropOpacity.value = withTiming(0, { duration: 250 });
+-    }
+-  }, [visible]);
+-
+-  const pickImage = async (onSelected: (uri: string) => void) => {
+-    try {
+-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+-      if (status !== "granted") {
+-        Alert.alert("Permission Required", "We need camera roll permissions to select images.");
+-        return;
+-      }
+-      const result = await ImagePicker.launchImageLibraryAsync({
+-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+-        allowsEditing: true,
+-        quality: 0.8,
+-      });
+-      if (!result.canceled && result.assets && result.assets.length > 0) {
+-        onSelected(result.assets[0].uri);
+-      }
+-    } catch (e) {
+-      console.log("Image picker error:", e);
+-      Alert.alert("Error", "Could not pick image from device.");
+-    }
+-  };
+-
+-  const handleSelectProfession = (prof: typeof PROFESSIONS[0]) => {
+-    setSelectedProf(prof.label);
+-    setSelectedProfEmoji(prof.emoji);
+-    setBrandName(`${user?.displayName || "My"} ${prof.label}`);
+-    setBrandTagline(`Expert ${prof.label.toLowerCase()} services and collections`);
+-    setBrandAccent(ACCENTS[Math.floor(Math.random() * ACCENTS.length)]);
+-    setCoverImageUrl("");
+-    setStep("setup");
+-  };
+-
+-  const handleSaveProfession = async () => {
+-    if (!brandName.trim()) {
+-      Alert.alert("Required", "Please enter a business/brand name.");
+-      return;
+-    }
+-    setLoading(true);
+-    try {
+-      // 1. Update user profile title to the chosen profession
+-      await ProfileService.updateProfile(userId, { title: selectedProf });
+-
+-      // Determine merchant type
+-      let mType = "basic_shop";
+-      const matched = PROFESSIONS.find(p => p.label === selectedProf);
+-      if (matched && matched.isShop) {
+-        mType = matched.type;
+-      } else {
+-        mType = "professional"; // Custom professional brand type!
+-      }
+-
+-      // 2. Register/Update corresponding store config
+-      const config = {
+-        owner_id: userId,
+-        name: brandName.trim(),
+-        tagline: brandTagline.trim(),
+-        emoji: selectedProfEmoji,
+-        accent_color: brandAccent,
+-        cover_gradient_start: "#4A00E0",
+-        cover_gradient_end: "#8E2DE2",
++                          <Text style={{ color: colors.mutedForeground, fontSize: 8 }}>Rating</Text>
++                        </View>
++                        <View style={[styles.miniDivider, { backgroundColor: colors.border }]} />
++                        <View style={{ flex: 1, alignItems: "center" }}>
++                          <Text style={{ color: colors.foreground, fontSize: 10, fontFamily: "Inter_800ExtraBold" }}>{products.length}</Text>
++                          <Text style={{ color: colors.mutedForeground, fontSize: 8 }}>Products</Text>
++                        </View>
++                        <View style={[styles.miniDivider, { backgroundColor: colors.border }]} />
++                        <View style={{ flex: 1, alignItems: "center" }}>
++                          <Text style={{ color: colors.foreground, fontSize: 10, fontFamily: "Inter_800ExtraBold" }}>$15</Text>
++                          <Text style={{ color: colors.mutedForeground, fontSize: 8 }}>Min Order</Text>
++                        </View>
++                      </View>
++
++                      {/* Category Pill preview */}
++                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginVertical: 10 }}>
++                        <View style={[styles.miniPill, { backgroundColor: storeAccent }]}>
++                          <Text style={{ color: "#fff", fontSize: 9, fontFamily: "Inter_700Bold" }}>All</Text>
++                        </View>
++                        <View style={[styles.miniPill, { borderColor: colors.border, borderWidth: 1 }]}>
++                          <Text style={{ color: colors.mutedForeground, fontSize: 9 }}>New Arrivals</Text>
++                        </View>
++                      </ScrollView>
++
++                      {/* Products Miniature Grid */}
++                      <Text style={{ color: colors.foreground, fontSize: 11, fontFamily: "Inter_700Bold", marginBottom: 6 }}>
++                        Product Catalog
++                      </Text>
++                      <View style={styles.miniGrid}>
++                        {products.map((p) => (
++                          <View
++                            key={p.id}
++                            style={[styles.miniProductCard, { backgroundColor: colors.card, borderColor: colors.border }]}
++                          >
++                            <View style={[styles.miniProductImg, { backgroundColor: colors.muted }]}>
++                              {p.image_url ? (
++                                <Image source={{ uri: p.image_url }} style={{ width: "100%", height: "100%", resizeMode: "cover" }} />
++                              ) : (
++                                <Text style={{ fontSize: 22 }}>{storeEmoji}</Text>
++                              )}
++                            </View>
++                            <View style={{ padding: 6 }}>
++                              <Text style={[styles.miniProductName, { color: colors.foreground }]} numberOfLines={1}>
++                                {p.name}
++                              </Text>
++                              <Text style={{ color: colors.foreground, fontSize: 10, fontFamily: "Inter_800ExtraBold" }}>
++                                ${Number(p.price).toFixed(0)}
++                              </Text>
++                            </View>
++                          </View>
++                        ))}
++                      </View>
++                    </View>
++                  </View>
++                </View>
++              )}
++              {builderTab === "settings" && store && (
++                <View style={styles.formGroup}>
++                  <Text style={[styles.modalLabel, { color: colors.mutedForeground, marginBottom: 4 }]}>SHOP VISIBILITY</Text>
++
++                  <View style={[styles.settingsStatusBanner, { backgroundColor: isActive ? "#22C55E14" : "#F9731614", borderColor: isActive ? "#22C55E55" : "#F9731655" }]}>
++                    <View style={[styles.settingsStatusDot, { backgroundColor: isActive ? "#22C55E" : "#F97316" }]} />
++                    <View style={{ flex: 1 }}>
++                      <Text style={{ fontFamily: "Inter_700Bold", fontSize: 13, color: isActive ? "#22C55E" : "#F97316" }}>
++                        {isActive ? "Shop is Active" : "Shop is Deactivated"}
++                      </Text>
++                      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: colors.mutedForeground, marginTop: 2 }}>
++                        {isActive
++                          ? "Your shop is visible in the Marketplace and accepting customers."
++                          : "Your shop is hidden from the Marketplace. Reactivate to go live again."}
++                      </Text>
++                    </View>
++                  </View>
++
++                  <TouchableOpacity
++                    style={[styles.settingsDangerRow, { borderColor: colors.border, backgroundColor: colors.card }]}
++                    onPress={handleDeactivateStore}
++                    disabled={deactivateLoading || deleteLoading}
++                  >
++                    <View style={[styles.settingsRowIcon, { backgroundColor: isActive ? "#F9731618" : "#22C55E18" }]}>
++                      {deactivateLoading ? (
++                        <ActivityIndicator size="small" color={isActive ? "#F97316" : "#22C55E"} />
++                      ) : (
++                        <Ionicons name={isActive ? "pause-circle-outline" : "play-circle-outline"} size={22} color={isActive ? "#F97316" : "#22C55E"} />
++                      )}
++                    </View>
++                    <View style={{ flex: 1 }}>
++                      <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: isActive ? "#F97316" : "#22C55E" }}>
++                        {isActive ? "Deactivate Shop" : "Reactivate Shop"}
++                      </Text>
++                      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
++                        {isActive
++                          ? "Temporarily hide your shop from the Marketplace."
++                          : "Bring your shop back online and visible to customers."}
++                      </Text>
++                    </View>
++                    <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
++                  </TouchableOpacity>
++
++                  <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 20 }} />
++
++                  <Text style={[styles.modalLabel, { color: "#EF4444", marginBottom: 4 }]}>DANGER ZONE</Text>
++                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.mutedForeground, marginBottom: 14 }}>
++                    Permanent actions that cannot be undone.
++                  </Text>
++
++                  <TouchableOpacity
++                    style={[styles.settingsDangerRow, { borderColor: "#EF444444", backgroundColor: "#EF444408" }]}
++                    onPress={handleDeleteStore}
++                    disabled={deleteLoading || deactivateLoading}
++                  >
++                    <View style={[styles.settingsRowIcon, { backgroundColor: "#EF444418" }]}>
++                      {deleteLoading ? (
++                        <ActivityIndicator size="small" color="#EF4444" />
++                      ) : (
++                        <Ionicons name="trash-outline" size={22} color="#EF4444" />
++                      )}
++                    </View>
++                    <View style={{ flex: 1 }}>
++                      <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: "#EF4444" }}>
++                        Delete This Shop
++                      </Text>
++                      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
++                        Permanently remove this shop and all its products. Cannot be undone.
++                      </Text>
++                    </View>
++                    <Ionicons name="chevron-forward" size={18} color="#EF4444" />
++                  </TouchableOpacity>
++                </View>
++              )}
++            </ScrollView>
++
++            {/* Bottom Actions footer inside sidebar */}
++            <View style={[styles.sidebarFooter, { borderTopColor: colors.border, backgroundColor: colors.card }]}>
++              {builderTab !== "settings" && (
++                <TouchableOpacity
++                  style={[styles.sidebarSubmitBtn, { backgroundColor: storeAccent }]}
++                  onPress={handleSaveStore}
++                  disabled={loading || deleteLoading || deactivateLoading}
++                >
++                  {loading ? (
++                    <ActivityIndicator size="small" color="#fff" />
++                  ) : (
++                    <Text style={styles.submitBtnText}>
++                      {store ? "Save Changes" : merchantType === "basic_shop" ? "Compile Basic Store" : "Register as Vendor"}
++                    </Text>
++                  )}
++                </TouchableOpacity>
++              )}
++            </View>
++          </>
++        )}
++      </Animated.View>
++    </Modal>
++  );
++}
++
++// ─── Profession Setup Sidebar ──────────────────────────────────────────────────
++
++interface ProfessionSidebarProps {
++  visible: boolean;
++  onClose: () => void;
++  userId: string;
++  user: User | null;
++  store: Store | null;
++  onSuccess: () => void;
++}
++
++function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }: ProfessionSidebarProps) {
++  const colors = useColors();
++  const insets = useSafeAreaInsets();
++  const [step, setStep] = useState<"select" | "setup" | "success">("select");
++  const [loading, setLoading] = useState(false);
++
++  // Selected Profession
++  const [selectedProf, setSelectedProf] = useState("");
++  const [selectedProfEmoji, setSelectedProfEmoji] = useState("💼");
++
++  // Branding details
++  const [brandName, setBrandName] = useState("");
++  const [brandTagline, setBrandTagline] = useState("");
++  const [brandAccent, setBrandAccent] = useState("#13B734");
++  const [coverImageUrl, setCoverImageUrl] = useState("");
++
++  const PROFESSIONS = [
++    { label: "Basic Shop Owner", emoji: "🏪", desc: "Build a digital catalog storefront to showcase and list standard items.", isShop: true, type: "basic_shop" },
++    { label: "Independent Vendor", emoji: "📦", desc: "Become an active vendor, receive order chats, list specialized products.", isShop: true, type: "vendor" },
++    { label: "Tailor / Fashion Designer", emoji: "🧵", desc: "Showcase custom tailoring, design collections, and alteration services." },
++    { label: "Barber", emoji: "💈", desc: "Offer premium styling, haircuts, beard grooming, and portfolio shots." },
++    { label: "Hairdresser / Braider", emoji: "💇‍♀️", desc: "Present beautiful braids, wig styling, extensions, and treatment catalog." },
++    { label: "Carpenter", emoji: "🪚", desc: "Show off bespoke woodwork, custom furniture, cabinets, and carpentry." },
++    { label: "Bricklayer / Builder", emoji: "🧱", desc: "Showcase masonry, brick construction, structural building, and repairs." },
++    { label: "Electrician", emoji: "⚡", desc: "Offer expert electrical wiring, fixture installation, and power fixes." },
++    { label: "Plumber", emoji: "🪠", desc: "Showcase drainage repairs, pipe fitting, plumbing installations." },
++    { label: "Welder / Metal Fabricator", emoji: "👨‍🏭", desc: "Present custom metal fabrication, heavy welding, iron gates, and grilles." },
++    { label: "Mechanic (car / motorcycle)", emoji: "🔧", desc: "Showcase auto repairs, motor servicing, diagnostics, and repairs." },
++    { label: "Bicycle Repair Technician", emoji: "🚲", desc: "Offer gear tuning, puncture repairs, custom bike builds, and maintenance." },
++    { label: "Mobile Money Agent", emoji: "📲", desc: "Show service coverage for payments, fast transfers, deposits, and cashouts." },
++    { label: "Photographer / Videographer", emoji: "📷", desc: "Present event photography, cinematic videos, custom portraits." },
++    { label: "Caterer / Cook", emoji: "🍳", desc: "Showcase gourmet meals, event catering, baking recipes, and food plates." },
++    { label: "Event Decorator", emoji: "🎈", desc: "Show balloon installations, theme parties, premium flower backdrops." },
++    { label: "DJ / Sound System Operator", emoji: "🎧", desc: "Present live sound systems, party mixes, music equipment rental." },
++    { label: "Private Tutor", emoji: "📖", desc: "Offer homework assistance, test prep, subject tutoring, and lessons." },
++    { label: "Graphic Designer / Printer", emoji: "🎨", desc: "Show logo designs, flyer creations, business card printing services." },
++    { label: "Computer Repair Technician", emoji: "💻", desc: "Offer OS installations, laptop screen fixes, software upgrades." },
++    { label: "House Painter", emoji: "🖌️", desc: "Present professional interior/exterior paint styling, textured walls." },
++    { label: "Taxi / Minibus Operator", emoji: "🚕", desc: "Show taxi bookings, airport pickups, tours, and shuttle routes." },
++    { label: "Delivery Partner", emoji: "🛵", desc: "Register as a verified delivery partner for transporting products.", type: "delivery_partner" }
++  ];
++
++  const ACCENTS = ["#13B734", "#11998E", "#F7971E", "#7C3AED", "#FF6B6B"];
++
++  // Reanimated sliding config
++  const screenWidth = Dimensions.get("window").width;
++  const animValue = useSharedValue(screenWidth);
++  const backdropOpacity = useSharedValue(0);
++
++  useEffect(() => {
++    if (visible) {
++      setStep("select");
++      setBrandName("");
++      setBrandTagline("");
++      setBrandAccent("#13B734");
++      setCoverImageUrl("");
++      setSelectedProf("");
++      animValue.value = withTiming(0, { duration: 350 });
++      backdropOpacity.value = withTiming(1, { duration: 350 });
++    } else {
++      animValue.value = withTiming(screenWidth, { duration: 250 });
++      backdropOpacity.value = withTiming(0, { duration: 250 });
++    }
++  }, [visible]);
++
++  const pickImage = async (onSelected: (uri: string) => void) => {
++    try {
++      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
++      if (status !== "granted") {
++        Alert.alert("Permission Required", "We need camera roll permissions to select images.");
++        return;
++      }
++      const result = await ImagePicker.launchImageLibraryAsync({
++        mediaTypes: ImagePicker.MediaTypeOptions.Images,
++        allowsEditing: true,
++        quality: 0.8,
++      });
++      if (!result.canceled && result.assets && result.assets.length > 0) {
++        onSelected(result.assets[0].uri);
++      }
++    } catch (e) {
++      console.log("Image picker error:", e);
++      Alert.alert("Error", "Could not pick image from device.");
++    }
++  };
++
++  const handleSelectProfession = (prof: typeof PROFESSIONS[0]) => {
++    setSelectedProf(prof.label);
++    setSelectedProfEmoji(prof.emoji);
++    setBrandName(`${user?.displayName || "My"} ${prof.label}`);
++    setBrandTagline(`Expert ${prof.label.toLowerCase()} services and collections`);
++    setBrandAccent(ACCENTS[Math.floor(Math.random() * ACCENTS.length)]);
++    setCoverImageUrl("");
++    setStep("setup");
++  };
++
++  const handleSaveProfession = async () => {
++    if (!brandName.trim()) {
++      Alert.alert("Required", "Please enter a business/brand name.");
++      return;
++    }
++    setLoading(true);
++    try {
++      // 1. Update user profile title to the chosen profession
++      await ProfileService.updateProfile(userId, { title: selectedProf });
++
++      // Determine merchant type
++      let mType = "basic_shop";
++      const matched = PROFESSIONS.find(p => p.label === selectedProf);
++      if (matched && matched.isShop) {
++        mType = matched.type;
++      } else if (matched && matched.type) {
++        mType = matched.type;
++      } else {
++        mType = "professional"; // Custom professional brand type!
++      }
++
++      // 2. Register/Update corresponding store config
++      const config = {
++        owner_id: userId,
++        name: brandName.trim(),
++        tagline: brandTagline.trim(),
++        emoji: selectedProfEmoji,
++        accent_color: brandAccent,
++        cover_gradient_start: "#4A00E0",
++        cover_gradient_end: "#8E2DE2",
+         cover_image_url: coverImageUrl.trim() || null,
+         merchant_type: mType,
+         products: []
+@@ -1209,201 +1209,3 @@
+-
+-      await StoreService.createStore(config as any);
+-
+-      setStep("success");
+-      onSuccess();
+-    } catch (e: any) {
+-      Alert.alert("Error", e.message || "Could not register your professional brand.");
+-    } finally {
+-      setLoading(false);
+-    }
+-  };
+-
+-  const handleClose = () => {
+-    onClose();
+-  };
+-
+-  const sidebarAnimatedStyle = useAnimatedStyle(() => ({
+-    transform: [{ translateX: animValue.value }],
+-  }));
+-
+-  const backdropAnimatedStyle = useAnimatedStyle(() => ({
+-    opacity: backdropOpacity.value,
+-  }));
+-
+-  if (!visible) return null;
+-
+-  return (
+-    <Modal transparent visible={visible} animationType="none" onRequestClose={handleClose}>
+-      <Animated.View style={[styles.sidebarBackdrop, backdropAnimatedStyle]}>
+-        <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
+-      </Animated.View>
+-
+-      <Animated.View style={[
+-        styles.sidebarSheet,
+-        sidebarAnimatedStyle,
+-        { backgroundColor: colors.card, borderColor: colors.border, paddingTop: insets.top }
+-      ]}>
+-        {/* Header */}
+-        <View style={[styles.sidebarHeader, { flexDirection: "row", alignItems: "center", gap: 12 }]}>
+-          <TouchableOpacity style={[styles.sidebarCloseBtn, { paddingRight: 6 }]} onPress={handleClose}>
+-            <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+-          </TouchableOpacity>
+-          <View style={{ flex: 1 }}>
+-            <Text style={[styles.sidebarSubtitle, { color: colors.mutedForeground }]}>
+-              Brand & Profession Inception
+-            </Text>
+-            <Text style={[styles.sidebarTitle, { color: colors.foreground, fontSize: 18 }]}>
+-              {step === "select" ? "Choose Your Path" : step === "setup" ? "Design Your Brand" : "Success!"}
+-            </Text>
+-          </View>
+-        </View>
+-
+-        {step === "select" ? (
+-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 18, gap: 12, paddingBottom: 100 }}>
+-            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, marginBottom: 4 }}>
+-              Select a path below to instantly build a highly polished professional showcase brand. Visitors of your profile can view your portfolios, services, products, and contact you directly.
+-            </Text>
+-
+-            {PROFESSIONS.map((prof) => (
+-              <Pressable
+-                key={prof.label}
+-                style={{
+-                  backgroundColor: colors.card,
+-                  borderColor: colors.border,
+-                  borderWidth: 1.5,
+-                  borderRadius: 14,
+-                  padding: 14,
+-                  flexDirection: "row",
+-                  alignItems: "center",
+-                  gap: 12,
+-                  marginBottom: 4,
+-                }}
+-                onPress={() => handleSelectProfession(prof)}
+-              >
+-                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.muted, alignItems: "center", justifyContent: "center" }}>
+-                  <Text style={{ fontSize: 24 }}>{prof.emoji}</Text>
+-                </View>
+-                <View style={{ flex: 1, gap: 2 }}>
+-                  <Text style={{ color: colors.foreground, fontSize: 15, fontFamily: "Inter_700Bold" }}>{prof.label}</Text>
+-                  <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_500Medium" }} numberOfLines={2}>{prof.desc}</Text>
+-                </View>
+-                <Ionicons name="arrow-forward" size={18} color={colors.mutedForeground} />
+-              </Pressable>
+-            ))}
+-          </ScrollView>
+-        ) : step === "setup" ? (
+-          <>
+-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 18, gap: 16 }}>
+-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.muted, padding: 10, borderRadius: 10 }}>
+-                <Text style={{ fontSize: 20 }}>{selectedProfEmoji}</Text>
+-                <View>
+-                  <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_700Bold", textTransform: "uppercase" }}>SELECTED PROFESSION</Text>
+-                  <Text style={{ fontSize: 14, color: colors.foreground, fontFamily: "Inter_700Bold" }}>{selectedProf}</Text>
+-                </View>
+-              </View>
+-
+-              <View style={styles.modalInputGroup}>
+-                <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Brand / Business Name</Text>
+-                <TextInput
+-                  style={[styles.modalInput, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]}
+-                  placeholder="e.g. Nick's Elite Alterations"
+-                  placeholderTextColor={colors.mutedForeground}
+-                  value={brandName}
+-                  onChangeText={setBrandName}
+-                />
+-              </View>
+-
+-              <View style={styles.modalInputGroup}>
+-                <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Brand Tagline / Bio</Text>
+-                <TextInput
+-                  style={[styles.modalInput, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]}
+-                  placeholder="e.g. Providing high-quality styling"
+-                  placeholderTextColor={colors.mutedForeground}
+-                  value={brandTagline}
+-                  onChangeText={setBrandTagline}
+-                />
+-              </View>
+-
+-              <View style={styles.modalInputGroup}>
+-                <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Showcase Cover Image</Text>
+-                <Pressable
+-                  style={{
+-                    backgroundColor: colors.input,
+-                    borderColor: colors.border,
+-                    borderWidth: 1.5,
+-                    borderRadius: 12,
+-                    height: 120,
+-                    justifyContent: "center",
+-                    alignItems: "center",
+-                    overflow: "hidden",
+-                  }}
+-                  onPress={() => pickImage(setCoverImageUrl)}
+-                >
+-                  {coverImageUrl ? (
+-                    <>
+-                      <Image source={{ uri: coverImageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+-                      <View style={{ position: "absolute", bottom: 8, right: 8, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, flexDirection: "row", alignItems: "center", gap: 4 }}>
+-                        <Ionicons name="camera" size={14} color="#fff" />
+-                        <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" }}>Change Image</Text>
+-                      </View>
+-                    </>
+-                  ) : (
+-                    <View style={{ alignItems: "center", gap: 6 }}>
+-                      <Ionicons name="image-outline" size={32} color={colors.mutedForeground} />
+-                      <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>Upload Cover Image</Text>
+-                      <Text style={{ color: colors.mutedForeground, fontSize: 10 }}>Select professional banner from device</Text>
+-                    </View>
+-                  )}
+-                </Pressable>
+-              </View>
+-
+-              <View style={styles.modalInputGroup}>
+-                <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Brand Accent Color</Text>
+-                <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
+-                  {ACCENTS.map((c) => (
+-                    <TouchableOpacity
+-                      key={c}
+-                      style={{
+-                        width: 38,
+-                        height: 38,
+-                        borderRadius: 19,
+-                        backgroundColor: c,
+-                        borderWidth: brandAccent === c ? 3 : 0,
+-                        borderColor: colors.foreground,
+-                      }}
+-                      onPress={() => setBrandAccent(c)}
+-                    />
+-                  ))}
+-                </View>
+-              </View>
+-            </ScrollView>
+-
+-            <View style={[styles.sidebarFooter, { borderTopColor: colors.border, backgroundColor: colors.card, flexDirection: "row", gap: 10 }]}>
+-              <TouchableOpacity
+-                style={[styles.sidebarSubmitBtn, { flex: 1, backgroundColor: colors.muted }]}
+-                onPress={() => setStep("select")}
+-              >
+-                <Text style={[styles.submitBtnText, { color: colors.foreground }]}>Back</Text>
+-              </TouchableOpacity>
+-              <TouchableOpacity
+-                style={[styles.sidebarSubmitBtn, { flex: 2, backgroundColor: brandAccent }]}
+-                onPress={handleSaveProfession}
+-                disabled={loading}
+-              >
+-                {loading ? (
+-                  <ActivityIndicator size="small" color="#fff" />
+-                ) : (
+-                  <Text style={styles.submitBtnText}>Launch Brand</Text>
+-                )}
+-              </TouchableOpacity>
+-            </View>
+-          </>
+-        ) : (
+-          <View style={[styles.successWrapper, { padding: 32, flex: 1, justifyContent: "center", alignItems: "center", gap: 16 }]}>
+-            <Ionicons name="checkmark-circle" size={80} color="#22C55E" />
+-            <Text style={[styles.successTitleText, { color: colors.foreground, fontSize: 22, fontFamily: "Inter_800ExtraBold" }]}>
+-              Brand Live & Compiled!
+-            </Text>
+             <Text style={[styles.successDescText, { color: colors.mutedForeground, textAlign: "center", fontSize: 14, fontFamily: "Inter_500Medium" }]}>
+               Congratulations! Your brand as a "{selectedProf}" is now fully set up. Visitors can browse your services, portfolio, and easily message you.
+             </Text>

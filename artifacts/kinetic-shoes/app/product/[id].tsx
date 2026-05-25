@@ -23,17 +23,22 @@ import Animated, {
 import { LinearGradient } from "expo-linear-gradient";
 
 import { useColors } from "@/hooks/useColors";
-import { STORE_PRODUCTS, SUPER_STORES } from "@/data/superstores";
 import { useCart } from "@/context/CartContext";
-import { supabase } from "@/lib/supabase";
 
 const { width } = Dimensions.get("window");
 const IMAGE_H = 300;
+const fallbackProductImage = require("@/assets/logo and icon/doorsteplogo.png");
 
 const SHOP_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  "Super Store": { bg: "#4A80F0", text: "#FFFFFF" },
+  "Super Store": { bg: "#13B734", text: "#FFFFFF" },
   "Basic Store": { bg: "#11998E", text: "#FFFFFF" },
   "Vendor":      { bg: "#F7971E", text: "#FFFFFF" },
+};
+
+const getApiBaseUrl = () => {
+  const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "");
+  if (configuredUrl) return configuredUrl.endsWith("/api") ? configuredUrl : `${configuredUrl}/api`;
+  return Platform.OS === "android" ? "http://10.0.2.2:5001/api" : "http://localhost:5001/api";
 };
 
 export default function ProductDetailPage() {
@@ -55,31 +60,34 @@ export default function ProductDetailPage() {
   useEffect(() => {
     const fetchDbProduct = async () => {
       if (!id) return;
-      const isMock = STORE_PRODUCTS.some((p) => p.id === id);
-      if (isMock) {
-        setLoadingDb(false);
-        return;
-      }
-
       setLoadingDb(true);
       try {
-        const { data: prodData, error: prodErr } = await supabase
-          .from("store_products")
-          .select("*")
-          .eq("id", id)
-          .maybeSingle();
-
-        if (prodData) {
-          setDbProduct(prodData);
-          
-          const { data: storeData } = await supabase
-            .from("stores")
-            .select("*")
-            .eq("id", prodData.store_id)
-            .maybeSingle();
-            
-          if (storeData) {
-            setDbStore(storeData);
+        const baseUrl = getApiBaseUrl();
+        const res = await fetch(`${baseUrl}/public/products/${id}`);
+        
+        if (res.ok) {
+          const data = await res.json();
+          setDbProduct(data.product);
+          setDbStore(data.store);
+        } else {
+          // Fallback to local service (useful for newly created 'temp-' products that haven't synced)
+          const { StoreService } = await import("@/services/store/store.service");
+          const allStores = await StoreService.searchStores();
+          let foundProd = null;
+          let foundStore = null;
+          for (const s of allStores) {
+            if (s.products) {
+              const p = s.products.find(prod => prod.id === id);
+              if (p) {
+                foundProd = p;
+                foundStore = s;
+                break;
+              }
+            }
+          }
+          if (foundProd) {
+            setDbProduct(foundProd);
+            setDbStore(foundStore);
           }
         }
       } catch (err) {
@@ -92,38 +100,37 @@ export default function ProductDetailPage() {
     fetchDbProduct();
   }, [id]);
 
-  const isMock = STORE_PRODUCTS.some((p) => p.id === id);
-  const mockProduct = STORE_PRODUCTS.find((p) => p.id === id);
-  const mockStore = mockProduct ? SUPER_STORES.find((s) => s.id === mockProduct.shopId) : null;
-
-  const product = isMock ? mockProduct : (dbProduct ? {
+  const product = dbProduct ? {
     id: dbProduct.id,
     shopId: dbProduct.store_id,
-    shopName: dbStore?.name || "Dynamic Store",
-    shopType: dbStore?.merchant_type === "basic_shop" ? "Basic Store" : dbStore?.merchant_type === "vendor" ? "Vendor" : "Super Store",
+    shopName: dbStore?.name || "Store",
+    shopType: (dbStore?.merchant_type === "basic_shop" ? "Basic Store" : dbStore?.merchant_type === "vendor" ? "Vendor" : "Super Store") as any,
     name: dbProduct.name,
     price: Number(dbProduct.price),
-    originalPrice: undefined,
-    image: dbProduct.image_url ? { uri: dbProduct.image_url } : null,
-    brand: dbProduct.brand || dbStore?.name || "Dynamic Brand",
+    originalPrice: dbProduct.discountPrice ? Number(dbProduct.discountPrice) : undefined,
+    image: dbProduct.image_url ? { uri: dbProduct.image_url } : undefined,
+    brand: dbProduct.brand || dbStore?.name || "Doorstep",
     rating: dbProduct.rating || 5.0,
     reviews: 8,
-    availableItems: 15,
-    tags: [dbProduct.category || "Shoes"],
-    description: `A premium product from ${dbStore?.name || "our dynamic merchant"}. Crafted with quality materials.`,
-  } : null);
+    availableItems: dbProduct.availableItems || 0,
+    category: dbProduct.category || "General",
+    tags: [dbProduct.category || "General"],
+    description: dbProduct.description || `A quality product from ${dbStore?.name || "this Doorstep merchant"}.`,
+  } : null;
 
-  const store = isMock ? mockStore : dbStore;
+  const store = dbStore;
   const badge = product ? (SHOP_TYPE_COLORS[product.shopType] ?? SHOP_TYPE_COLORS["Basic Store"]) : null;
 
   const SIZES = [38, 39, 40, 41, 42, 43, 44, 45];
+  const isShoes = product?.tags?.includes("Shoes") || product?.category === "Shoes";
+  const requiresSize = isShoes;
 
   const cartBtnStyle = useAnimatedStyle(() => ({
     transform: [{ scale: cartScale.value }],
   }));
 
   const handleAddToCart = () => {
-    if (!selectedSize || !product) return;
+    if ((requiresSize && !selectedSize) || !product) return;
     
     addToCart({
       productId: product.id,
@@ -131,13 +138,13 @@ export default function ProductDetailPage() {
       price: product.price,
       brand: product.brand,
       rating: product.rating,
-      category: product.tags[0] || "Shoes",
-      imageUrl: !isMock && product.image ? (product.image as any).uri : undefined,
-      imageSource: isMock ? product.image : undefined,
+      category: product.tags[0] || "General",
+      imageUrl: product.image ? (product.image as any).uri : undefined,
+      imageSource: undefined,
       shopId: product.shopId,
       shopName: product.shopName,
       shopType: product.shopType,
-      selectedSize,
+      selectedSize: selectedSize || 0,
     }, quantity);
 
     cartScale.value = withSequence(withSpring(0.92, { damping: 8 }), withSpring(1));
@@ -172,7 +179,7 @@ export default function ProductDetailPage() {
 
         {/* ── Hero Image ── */}
         <View style={styles.imageContainer}>
-          <Image source={product.image} style={styles.heroImage} resizeMode="cover" />
+          <Image source={product.image || fallbackProductImage} style={styles.heroImage} resizeMode="cover" />
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.55)"]}
             style={StyleSheet.absoluteFill}
@@ -210,7 +217,7 @@ export default function ProductDetailPage() {
             )}
             <Pressable
               onPress={() => {
-                if (store) router.push({ pathname: "/superstore/[id]", params: { id: product.shopId } });
+                if (store) router.push({ pathname: "/store/[id]", params: { id: product.shopId } });
               }}
             >
               <Text style={[styles.shopName, { color: colors.primary }]}>
@@ -262,29 +269,33 @@ export default function ProductDetailPage() {
           </View>
 
           {/* Size selector */}
-          <Text style={[styles.sizeLabel, { color: colors.foreground }]}>Select Size (EU)</Text>
-          <View style={styles.sizeGrid}>
-            {SIZES.map((size) => (
-              <Pressable
-                key={size}
-                onPress={() => setSelectedSize(size)}
-                style={[
-                  styles.sizeBtn,
-                  {
-                    backgroundColor: selectedSize === size ? colors.foreground : colors.card,
-                    borderColor: selectedSize === size ? colors.foreground : colors.border,
-                  },
-                ]}
-              >
-                <Text style={[
-                  styles.sizeBtnText,
-                  { color: selectedSize === size ? colors.background : colors.foreground },
-                ]}>
-                  {size}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
+          {requiresSize && (
+            <>
+              <Text style={[styles.sizeLabel, { color: colors.foreground }]}>Select Size (EU)</Text>
+              <View style={styles.sizeGrid}>
+                {SIZES.map((size) => (
+                  <Pressable
+                    key={size}
+                    onPress={() => setSelectedSize(size)}
+                    style={[
+                      styles.sizeBtn,
+                      {
+                        backgroundColor: selectedSize === size ? colors.foreground : colors.card,
+                        borderColor: selectedSize === size ? colors.foreground : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[
+                      styles.sizeBtnText,
+                      { color: selectedSize === size ? colors.background : colors.foreground },
+                    ]}>
+                      {size}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </>
+          )}
 
           {/* Quantity */}
           <View style={styles.qtyRow}>
@@ -310,10 +321,10 @@ export default function ProductDetailPage() {
           {store && (
             <Pressable
               style={[styles.storeInfoCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => router.push({ pathname: "/superstore/[id]", params: { id: product.shopId } })}
+              onPress={() => router.push({ pathname: "/store/[id]", params: { id: product.shopId } })}
             >
-              <View style={[styles.storeEmoji, { backgroundColor: store.accentColor + "22" }]}>
-                <Text style={{ fontSize: 24 }}>{store.emoji}</Text>
+              <View style={[styles.storeEmoji, { backgroundColor: (store.accentColor || store.accent_color || colors.primary) + "22" }]}>
+                <Text style={{ fontSize: 24 }}>{store.emoji || "🛍️"}</Text>
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.storeInfoName, { color: colors.foreground }]}>{store.name}</Text>
@@ -349,8 +360,8 @@ export default function ProductDetailPage() {
             style={[
               styles.addToCartBtn,
               {
-                backgroundColor: !selectedSize ? colors.muted : (cartAdded ? "#22C55E" : colors.foreground),
-                opacity: !selectedSize ? 0.6 : 1,
+                backgroundColor: (requiresSize && !selectedSize) ? colors.muted : (cartAdded ? "#22C55E" : colors.foreground),
+                opacity: (requiresSize && !selectedSize) ? 0.6 : 1,
               },
             ]}
             onPress={handleAddToCart}
@@ -361,7 +372,7 @@ export default function ProductDetailPage() {
               color={cartAdded ? "#FFFFFF" : colors.background}
             />
             <Text style={[styles.addToCartText, { color: cartAdded ? "#FFFFFF" : colors.background }]}>
-              {!selectedSize ? "Pick a Size" : cartAdded ? "Added!" : "Add to Cart"}
+              {(requiresSize && !selectedSize) ? "Pick a Size" : cartAdded ? "Added!" : "Add to Cart"}
             </Text>
           </Pressable>
         </Animated.View>

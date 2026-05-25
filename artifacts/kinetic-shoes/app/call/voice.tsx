@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     borderWidth: 30,
   },
   avatarWrap: {
-    shadowColor: "#4A80F0",
+    shadowColor: "#13B734",
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 24,
@@ -295,7 +295,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   controlBtnActive: {
-    backgroundColor: "#4A80F0",
+    backgroundColor: "#13B734",
   },
   endBtn: {
     backgroundColor: "#EF4444",

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import { ResizeMode, Video } from "expo-av";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useEffect, useState, useRef } from "react";
 import {
@@ -51,9 +52,13 @@ export default function StoryViewerScreen() {
     markStoryAsViewed(currentStory.id);
     
     progressAnim.setValue(0);
+    const duration = currentStory.type === "voice"
+      ? Math.max((currentStory.audioDuration ?? 5) * 1000, STORY_DURATION)
+      : STORY_DURATION;
+
     Animated.timing(progressAnim, {
       toValue: 1,
-      duration: STORY_DURATION,
+      duration,
       useNativeDriver: false,
     }).start(({ finished }) => {
       if (finished) {
@@ -114,9 +119,44 @@ export default function StoryViewerScreen() {
     if (currentStory.type === "image" && currentStory.mediaUri) {
       return <Image source={{ uri: currentStory.mediaUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />;
     }
+    if (currentStory.type === "video" && currentStory.mediaUri) {
+      return (
+        <Video
+          source={{ uri: currentStory.mediaUri }}
+          style={StyleSheet.absoluteFill}
+          resizeMode={ResizeMode.COVER}
+          shouldPlay
+          isLooping
+        />
+      );
+    }
+    if (currentStory.type === "voice" && currentStory.mediaUri) {
+      return (
+        <View style={[StyleSheet.absoluteFill, styles.voiceStory, { backgroundColor: currentStory.backgroundColor || "#13B734" }]}>
+          <Ionicons name="mic-circle" size={96} color="#FFF" />
+          <Text style={styles.voiceStoryTitle}>Voice status</Text>
+          <Text style={styles.voiceStoryTime}>
+            {Math.floor((currentStory.audioDuration ?? 0) / 60)}:{((currentStory.audioDuration ?? 0) % 60).toString().padStart(2, "0")}
+          </Text>
+          <Video
+            source={{ uri: currentStory.mediaUri }}
+            style={styles.hiddenAudio}
+            shouldPlay
+            isLooping={false}
+          />
+        </View>
+      );
+    }
+    if (currentStory.type === "sticker" && currentStory.sticker) {
+      return (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: currentStory.backgroundColor || "#13B734", justifyContent: "center", alignItems: "center" }]}>
+          <Text style={styles.storySticker}>{currentStory.sticker}</Text>
+        </View>
+      );
+    }
     // Default to text if text or unsupported type
     return (
-      <View style={[StyleSheet.absoluteFill, { backgroundColor: currentStory.backgroundColor || "#4A80F0", justifyContent: "center", alignItems: "center", padding: 24 }]}>
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: currentStory.backgroundColor || "#13B734", justifyContent: "center", alignItems: "center", padding: 24 }]}>
         <Text style={styles.storyText}>{currentStory.text}</Text>
       </View>
     );
@@ -195,6 +235,24 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
   },
+  storySticker: { fontSize: 112 },
+  voiceStory: {
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 10,
+    padding: 24,
+  },
+  voiceStoryTitle: {
+    color: "#FFF",
+    fontSize: 22,
+    fontFamily: "Inter_700Bold",
+  },
+  voiceStoryTime: {
+    color: "rgba(255,255,255,0.84)",
+    fontSize: 32,
+    fontFamily: "Inter_800ExtraBold",
+  },
+  hiddenAudio: { width: 1, height: 1, opacity: 0 },
   progressContainer: {
     position: "absolute",
     left: 10,

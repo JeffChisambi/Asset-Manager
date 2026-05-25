@@ -68,7 +68,7 @@ export default function LoginScreen() {
         id: data.user?.id || "me_" + Date.now(),
         username: un,
         displayName: dn || "User",
-        avatarColor: "#4A80F0",
+        avatarColor: "#13B734",
         bio: "Sneaker enthusiast",
         isBot: false,
       });

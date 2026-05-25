@@ -1,12 +1,12 @@
 import React, { useMemo } from "react";
-import { Text, TextStyle } from "react-native";
+import { StyleProp, Text, TextStyle } from "react-native";
 import { useColors } from "@/hooks/useColors";
 
 interface Props {
   text: string;
   query: string;
-  style?: TextStyle;
-  highlightStyle?: TextStyle;
+  style?: StyleProp<TextStyle>;
+  highlightStyle?: StyleProp<TextStyle>;
   numberOfLines?: number;
 }
 

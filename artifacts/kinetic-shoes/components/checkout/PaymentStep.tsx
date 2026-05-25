@@ -39,7 +39,7 @@ export const PAYMENT_METHODS: PaymentMethod[] = [
     name: "Card Payment",
     description: "Visa or Mastercard accepted",
     icon: "card-outline",
-    gradient: ["#4A80F0", "#7C5CFC"],
+    gradient: ["#13B734", "#7C5CFC"],
     badge: undefined,
     extraFee: 0.5,
   },

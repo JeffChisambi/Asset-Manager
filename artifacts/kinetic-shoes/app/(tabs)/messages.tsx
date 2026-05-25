@@ -95,7 +95,7 @@ const SHOPS: Shop[] = [
     image: "https://images.unsplash.com/photo-1520256862855-398228c41684?auto=format&fit=crop&q=80&w=400",
     rating: 4.5,
     itemCount: 5,
-    description: "Skate shoes and rare SB Dunks.",
+    description: "Local products and merchant updates.",
   },
   {
     id: "b3",

@@ -370,11 +370,10 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   sectionTitle: {
-    fontSize: 13,
-    fontFamily: "Inter_600SemiBold",
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    marginLeft: 4,
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
   card: {
     borderRadius: 16,

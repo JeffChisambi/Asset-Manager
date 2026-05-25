@@ -31,11 +31,19 @@ const { width } = Dimensions.get("window");
 const CARD_W = (width - 48) / 2;
 
 const SHOP_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  "Super Store": { bg: "#4A80F0", text: "#FFFFFF" },
+  "Super Store": { bg: "#13B734", text: "#FFFFFF" },
+  "super_store": { bg: "#13B734", text: "#FFFFFF" },
   "basic_shop": { bg: "#11998E", text: "#FFFFFF" },
   "vendor":      { bg: "#F7971E", text: "#FFFFFF" },
   "professional": { bg: "#7C3AED", text: "#FFFFFF" },
 };
+
+function merchantTypeLabel(type: Store["merchant_type"]) {
+  if (type === "super_store") return "Super Store";
+  if (type === "vendor") return "Vendor";
+  if (type === "professional") return "Service";
+  return "Basic Shop";
+}
 
 function StoreProductCard({ product, store }: { product: StoreProduct, store: Store }) {
   const colors = useColors();
@@ -65,7 +73,7 @@ function StoreProductCard({ product, store }: { product: StoreProduct, store: St
           {/* Badge top right */}
           <View style={[styles.badge, { backgroundColor: badge.bg }]}>
             <Text style={[styles.badgeText, { color: badge.text }]}>
-              {store.merchant_type === "basic_shop" ? "Basic Store" : store.merchant_type === "vendor" ? "Vendor" : "Service"}
+              {merchantTypeLabel(store.merchant_type)}
             </Text>
           </View>
         </View>
@@ -209,7 +217,7 @@ export default function StoreProfilePage() {
             <View style={styles.heroText}>
               <View style={styles.storeTitleRow}>
                 <Text style={styles.storeName}>{store.name}</Text>
-                <Ionicons name="checkmark-circle" size={20} color={store.accent_color || "#4A80F0"} />
+                <Ionicons name="checkmark-circle" size={20} color={store.accent_color || "#13B734"} />
               </View>
               <Text style={styles.storeTagline}>{store.tagline || "Your local marketplace partner"}</Text>
               <View style={styles.heroBadgeRow}>
@@ -222,7 +230,7 @@ export default function StoreProfilePage() {
                 <View style={[styles.heroBadge, { backgroundColor: "rgba(255,255,255,0.15)" }]}>
                   <Ionicons name="cube-outline" size={12} color="#FFFFFF" />
                   <Text style={[styles.heroBadgeText, { color: "#FFFFFF" }]}>
-                    {store.merchant_type === "vendor" ? "Vendor" : "Basic Shop"}
+                    {merchantTypeLabel(store.merchant_type)}
                   </Text>
                 </View>
               </View>

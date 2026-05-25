@@ -40,6 +40,7 @@ export interface Post {
   isSaved: boolean;
   createdAt: string;
   tags: string[];
+  mediaUrls?: string[];
   productTag?: {
     name: string;
     price: number;

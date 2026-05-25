@@ -183,7 +183,7 @@ export class StoreServiceImpl extends BaseStoreService {
   async searchStores(query?: string, merchantType?: string): Promise<Store[]> {
     try {
       const dbStores = await this.repository.searchStores(query, merchantType);
-      if (dbStores && dbStores.length > 0) {
+      if (dbStores) {
         return dbStores;
       }
     } catch {

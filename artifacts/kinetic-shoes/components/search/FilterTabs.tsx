@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React from "react";
 import {
   ScrollView,
   Pressable,
@@ -24,16 +24,15 @@ interface Props {
 }
 
 const TABS: Array<{ key: EntityType | "all"; label: string }> = [
-  { key: "all", label: "All" },
-  { key: "product", label: "Products" },
-  { key: "store", label: "Stores" },
+  { key: "all",          label: "All"           },
+  { key: "product",      label: "Products"      },
+  { key: "store",        label: "Stores"        },
   { key: "professional", label: "Professionals" },
-  { key: "service", label: "Services" },
+  { key: "service",      label: "Services"      },
 ];
 
 export function FilterTabs({ activeFilter, onFilterChange, counts }: Props) {
   const colors = useColors();
-  const scrollRef = useRef<ScrollView>(null);
 
   const tabs: Tab[] = TABS.map((t) => ({ ...t, count: counts[t.key] ?? 0 })).filter(
     (t) => t.key === "all" || t.count > 0
@@ -41,7 +40,6 @@ export function FilterTabs({ activeFilter, onFilterChange, counts }: Props) {
 
   return (
     <ScrollView
-      ref={scrollRef}
       horizontal
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={styles.container}
@@ -60,18 +58,15 @@ export function FilterTabs({ activeFilter, onFilterChange, counts }: Props) {
             style={[
               styles.tab,
               {
-                backgroundColor: isActive ? colors.primary : colors.muted,
-                borderColor: isActive ? colors.primary : "transparent",
+                backgroundColor: isActive ? colors.primary : colors.card,
+                borderColor: isActive ? colors.primary : colors.border,
               },
             ]}
           >
             <Text
               style={[
                 styles.tabText,
-                {
-                  color: isActive ? colors.primaryForeground : colors.mutedForeground,
-                  fontFamily: isActive ? "Inter_600SemiBold" : "Inter_400Regular",
-                },
+                { color: isActive ? "#FFFFFF" : colors.foreground },
               ]}
             >
               {tab.label}
@@ -81,20 +76,14 @@ export function FilterTabs({ activeFilter, onFilterChange, counts }: Props) {
                 style={[
                   styles.badge,
                   {
-                    backgroundColor: isActive
-                      ? "rgba(255,255,255,0.25)"
-                      : colors.border,
+                    backgroundColor: isActive ? "rgba(255,255,255,0.25)" : colors.muted,
                   },
                 ]}
               >
                 <Text
                   style={[
                     styles.badgeText,
-                    {
-                      color: isActive
-                        ? colors.primaryForeground
-                        : colors.mutedForeground,
-                    },
+                    { color: isActive ? "#FFFFFF" : colors.mutedForeground },
                   ]}
                 >
                   {tab.count > 99 ? "99+" : tab.count}
@@ -110,29 +99,32 @@ export function FilterTabs({ activeFilter, onFilterChange, counts }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     gap: 8,
     flexDirection: "row",
+    alignItems: "center",
   },
   tab: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 9,
     borderRadius: 20,
-    gap: 5,
     borderWidth: 1,
+    gap: 6,
   },
   tabText: {
     fontSize: 13,
+    fontFamily: "Inter_500Medium",
   },
   badge: {
     borderRadius: 10,
-    paddingHorizontal: 5,
-    paddingVertical: 1,
-    minWidth: 20,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    minWidth: 22,
     alignItems: "center",
+    justifyContent: "center",
   },
   badgeText: {
     fontSize: 11,

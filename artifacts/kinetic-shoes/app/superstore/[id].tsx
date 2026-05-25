@@ -29,7 +29,7 @@ const { width } = Dimensions.get("window");
 const CARD_W = (width - 48) / 2;
 
 const SHOP_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  "Super Store": { bg: "#4A80F0", text: "#FFFFFF" },
+  "Super Store": { bg: "#13B734", text: "#FFFFFF" },
   "Basic Store": { bg: "#11998E", text: "#FFFFFF" },
   "Vendor":      { bg: "#F7971E", text: "#FFFFFF" },
 };
@@ -186,7 +186,7 @@ export default function SuperStorePage() {
               <View style={styles.storeTitleRow}>
                 <Text style={styles.storeName}>{store.name}</Text>
                 {store.isVerified && (
-                  <Ionicons name="checkmark-circle" size={20} color="#4A80F0" />
+                  <Ionicons name="checkmark-circle" size={20} color="#13B734" />
                 )}
               </View>
               <Text style={styles.storeTagline}>{store.tagline}</Text>

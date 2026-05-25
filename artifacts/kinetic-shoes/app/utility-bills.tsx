@@ -15,7 +15,7 @@ type Utility = {
 
 const UTILITIES: Utility[] = [
   { id: "1", title: "Electricity (ESCOM)", icon: "bulb-outline", color: "#F7971E" },
-  { id: "2", title: "Water", icon: "water-outline", color: "#4A80F0" },
+  { id: "2", title: "Water", icon: "water-outline", color: "#13B734" },
   { id: "3", title: "Mobile Airtime/Data", icon: "phone-portrait-outline", color: "#11998E" },
   { id: "4", title: "Internet/Wi-Fi", icon: "wifi-outline", color: "#C850C0" },
   { id: "5", title: "TV Subscription (DStv/GOtv)", icon: "tv-outline", color: "#E84393" },

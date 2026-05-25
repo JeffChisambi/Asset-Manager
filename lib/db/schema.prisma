@@ -1,0 +1,68 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Merchant {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  stores    Store[]
+}
+
+model Store {
+  id          Int         @id @default(autoincrement())
+  merchantId  Int
+  merchant    Merchant    @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  merchantType String     @default("basic_shop")
+  name        String
+  logoUrl     String?
+  description String?
+  phone       String?
+  email       String?
+  address     String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  products    Product[]
+  uploadLogs  UploadLog[]
+}
+
+model Product {
+  id            Int      @id @default(autoincrement())
+  merchantId    Int
+  storeId       Int
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  name          String
+  description   String?
+  price         Float
+  stock         Int
+  category      String?
+  sku           String   @unique
+  brand         String?
+  imageUrl      String?
+  discountPrice Float?
+  weight        Float?
+  tags          String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model UploadLog {
+  id            Int      @id @default(autoincrement())
+  merchantId    Int
+  storeId       Int
+  store         Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  filename      String
+  status        String   // "pending", "success", "failed", "partial"
+  totalRows     Int
+  importedCount Int
+  failedCount   Int
+  errors        String?  // JSON stringified errors array
+  createdAt     DateTime @default(now())
+}

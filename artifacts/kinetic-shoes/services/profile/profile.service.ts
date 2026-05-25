@@ -4,6 +4,8 @@ import { SEED_USERS } from "@/context/ChatContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SupabaseProfileRepository, IProfileRepository } from "./profile.repository";
 
+import { SupabasePostRepository } from "./post.repository";
+
 export abstract class BaseProfileService {
   protected repository: IProfileRepository;
 
@@ -16,6 +18,7 @@ export abstract class BaseProfileService {
   abstract createInitialProfile(userId: string, data: Partial<User>): Promise<void>;
 
   abstract getPosts(userId: string): Promise<Post[]>;
+  abstract createPost(userId: string, content: string, tags: string[], mediaFiles?: { uri: string; name: string }[]): Promise<Post>;
   abstract followUser(userId: string): Promise<void>;
   abstract unfollowUser(userId: string): Promise<void>;
   abstract sendFriendRequest(userId: string): Promise<void>;
@@ -105,7 +108,7 @@ export class ProfileServiceImpl extends BaseProfileService {
               id: u.id,
               username: u.username || "",
               displayName: u.displayName || "",
-              avatarColor: u.avatarColor || "#4A80F0",
+              avatarColor: u.avatarColor || "#13B734",
               coverColor: "#1A2456",
               bio: u.bio || "",
               location: "",
@@ -154,7 +157,7 @@ export class ProfileServiceImpl extends BaseProfileService {
           id: userId,
           username: localData.username || "",
           displayName: localData.displayName || "User",
-          avatarColor: localData.avatarColor || "#4A80F0",
+          avatarColor: localData.avatarColor || "#13B734",
           coverColor: localData.coverColor || "#1A2456",
           avatarUrl: localData.avatarUrl,
           coverUrl: localData.coverUrl,
@@ -202,8 +205,53 @@ export class ProfileServiceImpl extends BaseProfileService {
   }
 
   async getPosts(userId: string): Promise<Post[]> {
+    const postRepo = new SupabasePostRepository();
+    // 1. Try Supabase
+    try {
+      const posts = await postRepo.getPostsByUser(userId);
+      if (posts && posts.length > 0) {
+        return posts;
+      }
+    } catch (err) {
+      console.warn("Supabase fetch posts failed, falling back to cache/mock", err);
+    }
+    
+    // 2. Try AsyncStorage cache
+    try {
+      const cachedRaw = await AsyncStorage.getItem(`profile_posts_${userId}`);
+      if (cachedRaw) {
+        const cached = JSON.parse(cachedRaw) as Post[];
+        if (cached.length > 0) return cached;
+      }
+    } catch {}
+
+    // 3. Fallback to mock posts
     await new Promise((r) => setTimeout(r, 200));
     return getPostsByUser(userId);
+  }
+
+  async createPost(userId: string, content: string, tags: string[], mediaFiles?: { uri: string; name: string }[]): Promise<Post> {
+    const postRepo = new SupabasePostRepository();
+    const newPost = await postRepo.createPost(userId, {
+      content,
+      tags,
+      likes: 0,
+      comments: 0,
+      shares: 0,
+      isLiked: false,
+      isSaved: false,
+    }, mediaFiles);
+    
+    // Also save locally in AsyncStorage for fallback / local caching
+    try {
+      const currentLocalPostsRaw = await AsyncStorage.getItem(`profile_posts_${userId}`);
+      const currentLocalPosts: Post[] = currentLocalPostsRaw ? JSON.parse(currentLocalPostsRaw) : [];
+      await AsyncStorage.setItem(`profile_posts_${userId}`, JSON.stringify([newPost, ...currentLocalPosts]));
+    } catch (err) {
+      console.warn("Error caching new post locally:", err);
+    }
+    
+    return newPost;
   }
 
   async followUser(_userId: string): Promise<void> {}
@@ -212,6 +260,11 @@ export class ProfileServiceImpl extends BaseProfileService {
   async cancelFriendRequest(_userId: string): Promise<void> {}
   async acceptFriendRequest(_userId: string): Promise<void> {}
   async unfriend(_userId: string): Promise<void> {}
+
+  /** Diagnose bucket connectivity — call from a dev button or onMount. */
+  async diagnoseBucket(): Promise<string> {
+    return SupabasePostRepository.diagnoseBucket();
+  }
 }
 
 const repository = new SupabaseProfileRepository();

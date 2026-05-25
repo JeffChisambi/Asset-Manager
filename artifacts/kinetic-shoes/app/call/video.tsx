@@ -83,6 +83,7 @@ export default function VideoCallScreen() {
   };
 
   const topPad = Platform.OS === "web" ? 67 : insets.top;
+  const localVideoBottom = (Platform.OS === "web" ? 34 : insets.bottom) + 100;
 
   const remoteAvatarColor = conv?.type === "group" ? colors.primary : (otherUser?.avatarColor ?? colors.primary);
   const remoteName = conv?.type === "group" ? (conv.name ?? "Group") : (otherUser?.displayName ?? "Unknown");
@@ -109,11 +110,11 @@ export default function VideoCallScreen() {
 
       {/* Local camera preview */}
       {!videoOff && Platform.OS !== "web" && cameraPermission?.granted ? (
-        <View style={[styles.localVideo, { bottom: (Platform.OS === "web" ? 34 : insets.bottom) + 100 }]}>
+        <View style={[styles.localVideo, { bottom: localVideoBottom }]}>
           <CameraView style={StyleSheet.absoluteFill} facing={facing} />
         </View>
       ) : (
-        <View style={[styles.localVideo, styles.localVideoOff, { backgroundColor: "#222", bottom: (Platform.OS === "web" ? 34 : insets.bottom) + 100 }]}>
+        <View style={[styles.localVideo, styles.localVideoOff, { backgroundColor: "#222", bottom: localVideoBottom }]}>
           <Ionicons name="videocam-off" size={22} color="rgba(255,255,255,0.5)" />
         </View>
       )}
@@ -289,7 +290,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  controlBtnActive: { backgroundColor: "#4A80F0" },
+  controlBtnActive: { backgroundColor: "#13B734" },
   endBtn: { backgroundColor: "#EF4444" },
   controlLabel: {
     color: "rgba(255,255,255,0.75)",

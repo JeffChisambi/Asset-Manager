@@ -21,7 +21,7 @@ import { supabase } from "@/lib/supabase";
 import { ProfileService } from "@/services/profile/profile.service";
 
 const AVATAR_COLORS = [
-  "#4A80F0", "#FF6B6B", "#4ECDC4", "#FFD93D",
+  "#13B734", "#FF6B6B", "#4ECDC4", "#FFD93D",
   "#A29BFE", "#FD79A8", "#00B894", "#E17055",
 ];
 

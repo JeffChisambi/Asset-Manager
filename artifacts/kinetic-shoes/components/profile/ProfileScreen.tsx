@@ -41,8 +41,37 @@ import { Post, ProfileTab, User, WishlistItem } from "@/types/profile";
 import { Store, MerchantType } from "@/types/store";
 import { useChat } from "@/context/ChatContext";
 import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import { Audio } from "expo-av";
 import { useColors } from "@/hooks/useColors";
 import { useStore } from "@/hooks/useStore";
+import { DeliveryRegistrationForm } from "../delivery/DeliveryRegistrationForm";
+
+// Delivery Partner Dashboard – shows mock performance stats
+const DeliveryDashboard = () => {
+  const colors = useColors();
+  return (
+    <View style={{ padding: 18, gap: 14 }}>
+      <Text style={{ color: colors.foreground, fontSize: 20, fontFamily: "Inter_700Bold" }}>
+        Delivery Partner Dashboard
+      </Text>
+      <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Deliveries</Text>
+          <Text style={{ color: colors.foreground, fontSize: 24, fontFamily: "Inter_800ExtraBold" }}>124</Text>
+        </View>
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Acceptance Rate</Text>
+          <Text style={{ color: colors.foreground, fontSize: 24, fontFamily: "Inter_800ExtraBold" }}>97%</Text>
+        </View>
+        <View style={{ alignItems: "center" }}>
+          <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Earnings</Text>
+          <Text style={{ color: colors.foreground, fontSize: 24, fontFamily: "Inter_800ExtraBold" }}>$1,240</Text>
+        </View>
+      </View>
+    </View>
+  );
+};
 
 // ─── Empty state ─────────────────────────────────────────────────────────────
 
@@ -1122,7 +1151,8 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
     { label: "Graphic Designer / Printer", emoji: "🎨", desc: "Show logo designs, flyer creations, business card printing services." },
     { label: "Computer Repair Technician", emoji: "💻", desc: "Offer OS installations, laptop screen fixes, software upgrades." },
     { label: "House Painter", emoji: "🖌️", desc: "Present professional interior/exterior paint styling, textured walls." },
-    { label: "Taxi / Minibus Operator", emoji: "🚕", desc: "Show taxi bookings, airport pickups, tours, and shuttle routes." }
+    { label: "Taxi / Minibus Operator", emoji: "🚕", desc: "Show taxi bookings, airport pickups, tours, and shuttle routes." },
+    { label: "Delivery Partner", emoji: "🛵", desc: "Register as a verified delivery partner for transporting products.", type: "delivery_partner" }
   ];
 
   const ACCENTS = ["#4A80F0", "#11998E", "#F7971E", "#7C3AED", "#FF6B6B"];
@@ -1189,11 +1219,18 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
       // 1. Update user profile title to the chosen profession
       await ProfileService.updateProfile(userId, { title: selectedProf });
 
+      // Delivery partners have their own registration form — skip store creation
+      if (selectedProf === "Delivery Partner") {
+        setStep("success");
+        onSuccess();
+        return;
+      }
+
       // Determine merchant type
       let mType = "basic_shop";
       const matched = PROFESSIONS.find(p => p.label === selectedProf);
       if (matched && matched.isShop) {
-        mType = matched.type;
+        mType = matched.type as string;
       } else {
         mType = "professional"; // Custom professional brand type!
       }
@@ -1301,6 +1338,16 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
             ))}
           </ScrollView>
         ) : step === "setup" ? (
+          selectedProf === "Delivery Partner" ? (
+            <DeliveryRegistrationForm 
+              userId={userId}
+              onSuccess={() => {
+                setStep("success");
+                onSuccess();
+              }}
+              onCancel={() => setStep("select")}
+            />
+          ) : (
           <>
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 18, gap: 16 }}>
               <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.muted, padding: 10, borderRadius: 10 }}>
@@ -1407,20 +1454,23 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
               </TouchableOpacity>
             </View>
           </>
+          )
         ) : (
           <View style={[styles.successWrapper, { padding: 32, flex: 1, justifyContent: "center", alignItems: "center", gap: 16 }]}>
             <Ionicons name="checkmark-circle" size={80} color="#22C55E" />
             <Text style={[styles.successTitleText, { color: colors.foreground, fontSize: 22, fontFamily: "Inter_800ExtraBold" }]}>
-              Brand Live & Compiled!
+              {selectedProf === "Delivery Partner" ? "Application Submitted!" : "Brand Live & Compiled!"}
             </Text>
             <Text style={[styles.successDescText, { color: colors.mutedForeground, textAlign: "center", fontSize: 14, fontFamily: "Inter_500Medium" }]}>
-              Congratulations! Your brand as a "{selectedProf}" is now fully set up. Visitors can browse your services, portfolio, and easily message you.
+              {selectedProf === "Delivery Partner"
+                ? "Your delivery partner registration has been submitted and is pending verification. You will be notified once approved."
+                : `Congratulations! Your brand as a "${selectedProf}" is now fully set up. Visitors can browse your services, portfolio, and easily message you.`}
             </Text>
             <TouchableOpacity
               style={[styles.sidebarSubmitBtn, { width: "100%", backgroundColor: colors.primary, marginTop: 14 }]}
               onPress={handleClose}
             >
-              <Text style={styles.submitBtnText}>View My Showcase</Text>
+              <Text style={styles.submitBtnText}>{selectedProf === "Delivery Partner" ? "Done" : "View My Showcase"}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -1453,6 +1503,177 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
   const [content, setContent] = useState("");
   const [tagsRaw, setTagsRaw] = useState("");
   const [posting, setPosting] = useState(false);
+  const [imageUri, setImageUri] = useState<string | null>(null);
+  const [audioUri, setAudioUri] = useState<string | null>(null);
+  const [voiceUri, setVoiceUri] = useState<string | null>(null);
+
+  // Recording State
+  const [recording, setRecording] = useState<Audio.Recording | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+
+  // Playback State
+  const [playbackSound, setPlaybackSound] = useState<Audio.Sound | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      if (playbackSound) {
+        playbackSound.unloadAsync();
+      }
+    };
+  }, [playbackSound]);
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permission Required", "We need access to your photos to attach an image.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.85,
+    });
+    if (!result.canceled && result.assets?.length) {
+      setImageUri(result.assets[0].uri);
+    }
+  };
+
+  const pickAudio = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: "audio/*",
+        copyToCacheDirectory: true,
+      });
+      if (!result.canceled && result.assets?.length) {
+        const uri = result.assets[0].uri;
+        setAudioUri(uri);
+        
+        // Logical check for music duration using temporary sound object
+        try {
+          const { sound, status } = await Audio.Sound.createAsync(
+            { uri },
+            { shouldPlay: false }
+          );
+          if (status.isLoaded) {
+            const durationMs = status.durationMillis || 0;
+            await sound.unloadAsync();
+            if (durationMs > 60000) {
+              Alert.alert(
+                "Audio Trimmed",
+                "Your audio track exceeds 1 minute. It will automatically be trimmed to play only the first 60 seconds."
+              );
+            }
+          }
+        } catch (durationErr) {
+          console.warn("Could not check audio duration", durationErr);
+        }
+      }
+    } catch (err) {
+      console.warn("Document picker error", err);
+      Alert.alert("Error", "Could not select the audio file.");
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      const permission = await Audio.requestPermissionsAsync();
+      if (permission.status !== "granted") {
+        Alert.alert("Permission Required", "Microphone access is needed to record voice notes.");
+        return;
+      }
+      
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+
+      const { recording } = await Audio.Recording.createAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+      
+      // Auto-stop recording at 60 seconds (1 minute limit)
+      recording.setOnRecordingStatusUpdate(async (status) => {
+        if (status.durationMillis >= 60000) {
+          try {
+            setIsRecording(false);
+            await recording.stopAndUnloadAsync();
+            const uri = recording.getURI();
+            setVoiceUri(uri);
+            setRecording(null);
+            
+            await Audio.setAudioModeAsync({
+              allowsRecordingIOS: false,
+            });
+            Alert.alert("Recording Limit", "Voice notes are limited to 1 minute maximum.");
+          } catch (stopErr) {
+            console.error("Auto stop recording failed", stopErr);
+          }
+        }
+      });
+
+      setRecording(recording);
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Failed to start recording", err);
+      Alert.alert("Error", "Could not start audio recording.");
+    }
+  };
+
+  const stopRecording = async () => {
+    if (!recording) return;
+    try {
+      setIsRecording(false);
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      setVoiceUri(uri);
+      setRecording(null);
+      
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+      });
+    } catch (err) {
+      console.error("Failed to stop recording", err);
+      Alert.alert("Error", "Could not stop audio recording.");
+    }
+  };
+
+  const togglePlayback = async (uri: string) => {
+    if (playbackSound) {
+      if (isPlaying) {
+        await playbackSound.pauseAsync();
+        setIsPlaying(false);
+      } else {
+        await playbackSound.playAsync();
+        setIsPlaying(true);
+      }
+    } else {
+      try {
+        const { sound } = await Audio.Sound.createAsync(
+          { uri },
+          { shouldPlay: true }
+        );
+        
+        sound.setOnPlaybackStatusUpdate(async (status) => {
+          if (status.isLoaded) {
+            if (status.positionMillis >= 60000) {
+              await sound.stopAsync();
+              setIsPlaying(false);
+              setPlaybackSound(null);
+            } else if (status.didJustFinish) {
+              setIsPlaying(false);
+              setPlaybackSound(null);
+            }
+          }
+        });
+
+        setPlaybackSound(sound);
+        setIsPlaying(true);
+      } catch (err) {
+        Alert.alert("Playback Error", "Could not play the audio.");
+      }
+    }
+  };
 
   const handlePost = async () => {
     const trimmed = content.trim();
@@ -1461,35 +1682,57 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
       return;
     }
     setPosting(true);
-    await new Promise((r) => setTimeout(r, 400));
+    
     const tags = tagsRaw
       .split(/[\s,#]+/)
       .map((t) => t.trim().replace(/^#/, ""))
       .filter(Boolean);
-    const newPost: Post = {
-      id: `post_${Date.now()}`,
-      userId,
-      content: trimmed,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      isLiked: false,
-      isSaved: false,
-      createdAt: "Just now",
-      tags,
-    };
-    onPost(newPost);
-    setContent("");
-    setTagsRaw("");
-    setPosting(false);
-    onClose();
+
+    const mediaFiles: { uri: string; name: string }[] = [];
+    if (imageUri) {
+      mediaFiles.push({ uri: imageUri, name: `image_${Date.now()}.jpg` });
+    }
+    if (audioUri) {
+      mediaFiles.push({ uri: audioUri, name: `music_${Date.now()}.m4a` });
+    }
+    if (voiceUri) {
+      mediaFiles.push({ uri: voiceUri, name: `voice_${Date.now()}.m4a` });
+    }
+
+    try {
+      const createdPost = await ProfileService.createPost(userId, trimmed, tags, mediaFiles);
+      onPost(createdPost);
+      
+      // Clear states
+      setContent("");
+      setTagsRaw("");
+      setImageUri(null);
+      setAudioUri(null);
+      setVoiceUri(null);
+      onClose();
+    } catch (err) {
+      Alert.alert("Error", "Failed to create post. Please try again.");
+    } finally {
+      setPosting(false);
+    }
   };
 
   const handleClose = () => {
-    if (content.trim()) {
+    if (content.trim() || imageUri || audioUri || voiceUri) {
       Alert.alert("Discard Post?", "Your draft will be lost.", [
         { text: "Keep Editing", style: "cancel" },
-        { text: "Discard", style: "destructive", onPress: () => { setContent(""); setTagsRaw(""); onClose(); } },
+        {
+          text: "Discard",
+          style: "destructive",
+          onPress: () => {
+            setContent("");
+            setTagsRaw("");
+            setImageUri(null);
+            setAudioUri(null);
+            setVoiceUri(null);
+            onClose();
+          },
+        },
       ]);
     } else {
       onClose();
@@ -1499,20 +1742,35 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={handleClose}>
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
-        <View style={[
-          createPostStyles.sheet,
-          { backgroundColor: colors.card, paddingBottom: insets.bottom + 16 }
-        ]}>
-          {/* Header */}
-          <View style={[createPostStyles.header, { borderBottomColor: colors.border }]}>
-            <TouchableOpacity onPress={handleClose} style={createPostStyles.cancelBtn}>
-              <Text style={[createPostStyles.cancelText, { color: colors.mutedForeground }]}>Cancel</Text>
-            </TouchableOpacity>
-            <Text style={[createPostStyles.title, { color: colors.foreground }]}>New Post</Text>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={handleClose}
+    >
+      <View style={[createPostStyles.fullScreenContainer, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+        {/* ── Header ── */}
+        <View style={[createPostStyles.header, { borderBottomColor: colors.border }]}>
+          <TouchableOpacity onPress={handleClose} style={createPostStyles.cancelBtn}>
+            <Text style={[createPostStyles.cancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+          </TouchableOpacity>
+          <Text style={[createPostStyles.title, { color: colors.foreground }]}>New Post</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {/* Dev diagnostic — remove before shipping to production */}
             <TouchableOpacity
-              style={[createPostStyles.postBtn, { backgroundColor: colors.primary, opacity: posting || !content.trim() ? 0.6 : 1 }]}
+              style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: '#f59e0b22' }}
+              onPress={async () => {
+                const report = await ProfileService.diagnoseBucket();
+                Alert.alert('Bucket Diagnostic', report);
+              }}
+            >
+              <Text style={{ color: '#f59e0b', fontSize: 11, fontWeight: '600' }}>Test Bucket</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                createPostStyles.postBtn,
+                { backgroundColor: colors.primary, opacity: posting || !content.trim() ? 0.5 : 1 },
+              ]}
               onPress={handlePost}
               disabled={posting || !content.trim()}
             >
@@ -1523,35 +1781,130 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
               )}
             </TouchableOpacity>
           </View>
+        </View>
 
-          {/* Content input */}
-          <TextInput
-            style={[createPostStyles.contentInput, { color: colors.foreground }]}
-            placeholder="What's on your mind? Share a look, drop, or review..."
-            placeholderTextColor={colors.mutedForeground}
-            multiline
-            maxLength={500}
-            value={content}
-            onChangeText={setContent}
-            autoFocus
-          />
+        {/* ── Media toolbar ── */}
+        <View style={[createPostStyles.mediaToolbar, { borderBottomColor: colors.border }]}>
+          <Pressable
+            onPress={pickImage}
+            style={[createPostStyles.mediaBtn, imageUri ? { backgroundColor: colors.primary + "22" } : null]}
+          >
+            <Ionicons name="image-outline" size={22} color={imageUri ? colors.primary : colors.mutedForeground} />
+            <Text style={[createPostStyles.mediaBtnLabel, { color: imageUri ? colors.primary : colors.mutedForeground }]}>
+              {imageUri ? "Image ✓" : "Image"}
+            </Text>
+          </Pressable>
 
-          <Text style={[createPostStyles.charCount, { color: colors.mutedForeground }]}>
-            {content.length}/500
-          </Text>
+          <Pressable
+            onPress={pickAudio}
+            style={[createPostStyles.mediaBtn, audioUri ? { backgroundColor: colors.primary + "22" } : null]}
+          >
+            <Ionicons name="musical-note-outline" size={22} color={audioUri ? colors.primary : colors.mutedForeground} />
+            <Text style={[createPostStyles.mediaBtnLabel, { color: audioUri ? colors.primary : colors.mutedForeground }]}>
+              {audioUri ? "Audio ✓" : "Music"}
+            </Text>
+          </Pressable>
 
-          {/* Tags input */}
-          <View style={[createPostStyles.tagsRow, { borderTopColor: colors.border, borderColor: colors.border, backgroundColor: colors.input }]}>
-            <Ionicons name="pricetag-outline" size={16} color={colors.mutedForeground} />
-            <TextInput
-              style={[createPostStyles.tagsInput, { color: colors.foreground }]}
-              placeholder="Add tags, e.g. Nike AirMax Hype"
-              placeholderTextColor={colors.mutedForeground}
-              value={tagsRaw}
-              onChangeText={setTagsRaw}
-              returnKeyType="done"
+          <Pressable
+            onPress={isRecording ? stopRecording : (voiceUri ? () => setVoiceUri(null) : startRecording)}
+            style={[
+              createPostStyles.mediaBtn,
+              isRecording ? { backgroundColor: "#FF3B3022" } : (voiceUri ? { backgroundColor: colors.primary + "22" } : null)
+            ]}
+          >
+            <Ionicons
+              name={isRecording ? "stop-circle-outline" : "mic-outline"}
+              size={22}
+              color={isRecording ? "#FF3B30" : (voiceUri ? colors.primary : colors.mutedForeground)}
             />
+            <Text style={[
+              createPostStyles.mediaBtnLabel,
+              { color: isRecording ? "#FF3B30" : (voiceUri ? colors.primary : colors.mutedForeground) }
+            ]}>
+              {isRecording ? "Recording..." : (voiceUri ? "Voice ✓" : "Voice")}
+            </Text>
+          </Pressable>
+        </View>
+
+        {/* ── Image preview ── */}
+        {imageUri ? (
+          <View style={createPostStyles.imagePreviewWrapper}>
+            <Image source={{ uri: imageUri }} style={createPostStyles.imagePreview} resizeMode="cover" />
+            <TouchableOpacity
+              style={createPostStyles.removeImageBtn}
+              onPress={() => setImageUri(null)}
+            >
+              <Ionicons name="close-circle" size={24} color="#fff" />
+            </TouchableOpacity>
+            {audioUri ? (
+              <View style={createPostStyles.audioOverlay}>
+                <Ionicons name="musical-notes" size={14} color="#fff" />
+                <Text style={createPostStyles.audioOverlayText}>Music attached</Text>
+              </View>
+            ) : null}
           </View>
+        ) : null}
+
+        {/* ── Voice preview player (if voice note exists) ── */}
+        {voiceUri ? (
+          <View style={createPostStyles.voiceNotePreviewWrapper}>
+            <View style={[createPostStyles.voiceNoteCard, { backgroundColor: colors.input, borderColor: colors.border }]}>
+              <TouchableOpacity onPress={() => togglePlayback(voiceUri)} style={createPostStyles.voicePlayBtn}>
+                <Ionicons name={isPlaying ? "pause" : "play"} size={20} color={colors.primary} />
+              </TouchableOpacity>
+              <Text style={[createPostStyles.voiceNoteText, { color: colors.foreground }]}>
+                {isPlaying ? "Playing voice note..." : "Voice Note Recorded"}
+              </Text>
+              <TouchableOpacity
+                onPress={() => {
+                  setVoiceUri(null);
+                  if (playbackSound) {
+                    playbackSound.unloadAsync();
+                    setPlaybackSound(null);
+                    setIsPlaying(false);
+                  }
+                }}
+                style={createPostStyles.voiceNoteRemoveBtn}
+              >
+                <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        ) : null}
+
+        {/* ── Content input (scrollable) ── */}
+        <TextInput
+          style={[createPostStyles.contentInput, { color: colors.foreground }]}
+          placeholder="What's on your mind? Share a look, drop, or review..."
+          placeholderTextColor={colors.mutedForeground}
+          multiline
+          maxLength={500}
+          value={content}
+          onChangeText={setContent}
+          autoFocus
+          textAlignVertical="top"
+        />
+
+        <Text style={[createPostStyles.charCount, { color: colors.mutedForeground }]}>
+          {content.length}/500
+        </Text>
+
+        {/* ── Tags input ── */}
+        <View
+          style={[
+            createPostStyles.tagsRow,
+            { borderColor: colors.border, backgroundColor: colors.input, marginBottom: insets.bottom + 16 },
+          ]}
+        >
+          <Ionicons name="pricetag-outline" size={16} color={colors.mutedForeground} />
+          <TextInput
+            style={[createPostStyles.tagsInput, { color: colors.foreground }]}
+            placeholder="Add tags, e.g. Nike AirMax Hype"
+            placeholderTextColor={colors.mutedForeground}
+            value={tagsRaw}
+            onChangeText={setTagsRaw}
+            returnKeyType="done"
+          />
         </View>
       </View>
     </Modal>
@@ -1559,6 +1912,9 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
 }
 
 const createPostStyles = StyleSheet.create({
+  fullScreenContainer: {
+    flex: 1,
+  },
   sheet: {
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -1597,6 +1953,60 @@ const createPostStyles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_700Bold",
   },
+  // ── Media toolbar ──
+  mediaToolbar: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  mediaBtn: {
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  mediaBtnLabel: {
+    fontSize: 11,
+    fontFamily: "Inter_600SemiBold",
+  },
+  // ── Image preview ──
+  imagePreviewWrapper: {
+    width: "100%",
+    height: 200,
+    position: "relative",
+  },
+  imagePreview: {
+    width: "100%",
+    height: "100%",
+  },
+  removeImageBtn: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderRadius: 12,
+  },
+  audioOverlay: {
+    position: "absolute",
+    bottom: 8,
+    left: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  audioOverlayText: {
+    color: "#fff",
+    fontSize: 12,
+    fontFamily: "Inter_500Medium",
+  },
+  // ── Content ──
   contentInput: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -1604,6 +2014,7 @@ const createPostStyles = StyleSheet.create({
     fontFamily: "Inter_400Regular",
     lineHeight: 24,
     minHeight: 120,
+    flex: 1,
     textAlignVertical: "top",
   },
   charCount: {
@@ -1630,6 +2041,36 @@ const createPostStyles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Inter_400Regular",
   },
+  voiceNotePreviewWrapper: {
+    marginHorizontal: 16,
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  voiceNoteCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: 12,
+  },
+  voicePlayBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "rgba(0,0,0,0.05)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  voiceNoteText: {
+    flex: 1,
+    fontSize: 14,
+    fontFamily: "Inter_600SemiBold",
+  },
+  voiceNoteRemoveBtn: {
+    padding: 4,
+  },
 });
 
 // ─── Main ProfileScreen ───────────────────────────────────────────────────────
@@ -1655,7 +2096,8 @@ export function ProfileScreen({ userId, showBackButton, onBack, onEditPress }: P
   const { stores, store, refreshStore, selectActiveStore } = useStore(userId);
   const hasShop = !!store || !!user?.title;
   const [modalVisible, setModalVisible] = useState(false);
-  const [professionModalVisible, setProfessionModalVisible] = useState(false);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+const [professionModalVisible, setProfessionModalVisible] = useState(false);
 
   // Local posts state — supports create + delete without refetching
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
@@ -1761,7 +2203,10 @@ export function ProfileScreen({ userId, showBackButton, onBack, onEditPress }: P
       case "posts":
         return null; // handled by FlatList
       case "collection":
-        if (store) {
+        if (selectedItemId === "delivery_partner") {
+  return <DeliveryDashboard />;
+}
+if (store) {
           return (
             <View style={{ padding: 18, gap: 14 }}>
               {/* Horizontal selector bar for multiple stores/professions */}
@@ -1802,6 +2247,32 @@ export function ProfileScreen({ userId, showBackButton, onBack, onEditPress }: P
                       </TouchableOpacity>
                     );
                   })}
+{/* Delivery Partner selection pill */}
+<TouchableOpacity
+  style={{
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: selectedItemId === "delivery_partner" ? colors.accent : colors.muted,
+    borderColor: selectedItemId === "delivery_partner" ? colors.accent : colors.border,
+    borderWidth: 1.5,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  }}
+  onPress={() => setSelectedItemId("delivery_partner")}
+>
+  <Ionicons name="bicycle" size={14} color={selectedItemId === "delivery_partner" ? "#fff" : colors.foreground} />
+  <Text
+    style={{
+      color: selectedItemId === "delivery_partner" ? "#fff" : colors.foreground,
+      fontSize: 12,
+      fontFamily: "Inter_700Bold",
+    }}
+  >
+    Delivery Partner
+  </Text>
+</TouchableOpacity>
                   {isOwn && (
                     <TouchableOpacity
                       style={{

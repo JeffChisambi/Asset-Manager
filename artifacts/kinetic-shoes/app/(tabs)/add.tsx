@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, Pressable, StyleSheet,
   Animated, Image, TextInput, Dimensions, Platform,
   KeyboardAvoidingView,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
@@ -12,11 +13,13 @@ import * as Haptics from "expo-haptics";
 
 import { useColors } from "@/hooks/useColors";
 import { useCart } from "@/context/CartContext";
-import { useOrder, calcStage, calcEta, DELIVERY_STAGES as _STAGES } from "@/context/OrderContext";
+import { useOrder, calcStage } from "@/context/OrderContext";
+import { useTracking } from "@/hooks/useTracking";
 import Map from "@/components/Map";
 import DeliveryTimeline, { DELIVERY_STAGES } from "@/components/checkout/DeliveryTimeline";
 import PaymentStep, { PAYMENT_METHODS } from "@/components/checkout/PaymentStep";
-import LocationPickerModal from "@/components/checkout/LocationPickerModal";
+import LocationPickerModal, { MZUZU_LOCATIONS } from "@/components/checkout/LocationPickerModal";
+import { STORE_COORD, fetchRoute, calculateRouteDistanceKm } from "@/lib/routing";
 
 const { width } = Dimensions.get("window");
 const TAB_BAR_H = Platform.OS === "web" ? 84 : 70;
@@ -94,7 +97,9 @@ export default function CartScreen() {
   const [mainView, setMainView]         = useState<MainView>("shop");
   const [step, setStep]                 = useState<CheckoutStep>("cart");
   const [deliveryType, setDeliveryType] = useState<DeliveryType>("Delivery");
-  const [address, setAddress]           = useState("Area 47, Lilongwe, Malawi");
+  const [address, setAddress]           = useState("Chimaliro, Mzuzu, Malawi");
+  const [vehicleType, setVehicleType]   = useState<"bike" | "car">("bike");
+  const [routeDistanceKm, setRouteDistanceKm] = useState(0);
   const [instructions, setInstructions] = useState("");
   const [paymentId, setPaymentId]                   = useState<string | null>(null);
   const [locationPickerVisible, setLocationPickerVisible] = useState(false);
@@ -102,9 +107,7 @@ export default function CartScreen() {
   const [snapshotItems, setSnapshotItems]   = useState<typeof cartItems>([]);
   const [driver] = useState(MOCK_DRIVERS[Math.floor(Math.random() * MOCK_DRIVERS.length)]);
 
-  // ── Live tracking state (derived from activeOrder.placedAt) ──
-  const [liveStage, setLiveStage] = useState(0);
-  const [liveEta,   setLiveEta]   = useState(18);
+  const { route, liveStage, liveEta, destination } = useTracking();
 
   // ── Animations ──
   const slideAnim      = useRef(new Animated.Value(0)).current;
@@ -143,24 +146,21 @@ export default function CartScreen() {
     return () => anim.stop();
   }, [activeOrder]);
 
-  // Live tracking ticker (updates every second from placedAt)
+  // Distance calculator to restrict bike delivery
   useEffect(() => {
-    const order = activeOrder ?? (step === "tracking" ? null : null);
-    const source = step === "tracking" ? activeOrder : activeOrder;
-    if (!source) return;
-    const tick = () => {
-      const stage = calcStage(source.placedAt);
-      const eta   = calcEta(source.placedAt);
-      setLiveStage(stage);
-      setLiveEta(eta);
-      if (stage >= DELIVERY_STAGES.length - 1) {
-        completeOrder();
-      }
-    };
-    tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [activeOrder, step]);
+    const match = MZUZU_LOCATIONS.find(l => address.includes(l.name) || l.detail === address);
+    if (match) {
+      fetchRoute(STORE_COORD, { latitude: match.lat, longitude: match.lng })
+        .then(route => {
+          const dist = calculateRouteDistanceKm(route);
+          setRouteDistanceKm(dist);
+          if (dist > 10 && vehicleType === "bike") {
+            setVehicleType("car");
+          }
+        })
+        .catch(() => {});
+    }
+  }, [address]);
 
   // Success animation
   useEffect(() => {
@@ -229,7 +229,8 @@ export default function CartScreen() {
       paymentId:       paymentId!,
       paymentName:     PAYMENT_METHODS.find(m => m.id === paymentId)?.name ?? "",
       deliveryType,
-      address,
+      address:         deliveryType === "Delivery" ? address : "Shoprite Mzuzu",
+      vehicleType,
       driverName:      driver.name,
       driverInitials:  driver.initials,
       driverRating:    driver.rating,
@@ -524,9 +525,11 @@ export default function CartScreen() {
                     <Text style={{ fontSize: 28 }}>👟</Text>
                   </View>
                 )}
-                <View style={[s.sizeBadge, { backgroundColor: colors.primary }]}>
-                  <Text style={s.sizeBadgeTxt}>Size {item.selectedSize}</Text>
-                </View>
+                {item.selectedSize > 0 && (
+                  <View style={[s.sizeBadge, { backgroundColor: colors.primary }]}>
+                    <Text style={s.sizeBadgeTxt}>Size {item.selectedSize}</Text>
+                  </View>
+                )}
               </View>
               <View style={s.cartInfo}>
                 <View style={s.cartTitleRow}>
@@ -656,6 +659,32 @@ export default function CartScreen() {
                   colors={colors}
                 />
 
+                <Text style={[s.fieldLabel, { color: colors.foreground }]}>Delivery Vehicle</Text>
+                <View style={[s.segmented, { backgroundColor: colors.muted, marginBottom: 20 }]}>
+                  {(["bike", "car"] as const).map(vt => {
+                    const isDisabled = vt === "bike" && routeDistanceKm > 10;
+                    return (
+                      <Pressable
+                        key={vt}
+                        style={[s.seg, vehicleType === vt && { backgroundColor: colors.primary }, isDisabled && { opacity: 0.5 }]}
+                        onPress={() => {
+                          if (isDisabled) {
+                            Alert.alert("Distance Too Long", "Bicycle delivery is not available for routes over 10km. Car has been auto-selected.");
+                            return;
+                          }
+                          setVehicleType(vt);
+                          haptic("light");
+                        }}
+                      >
+                        <Ionicons name={vt === "bike" ? "bicycle" : "car-sport"} size={16} color={vehicleType === vt ? "#fff" : colors.mutedForeground} />
+                        <Text style={[s.segTxt, { color: vehicleType === vt ? "#fff" : colors.mutedForeground }]}>
+                          {vt === "bike" ? "Bicycle" : "Car"}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+
                 <Text style={[s.fieldLabel, { color: colors.foreground }]}>Delivery Instructions</Text>
                 <View style={[s.inputWrap, s.textAreaWrap, { backgroundColor: colors.muted, borderColor: colors.border }]}>
                   <TextInput style={[s.input, s.textArea, { color: colors.foreground }]} value={instructions} onChangeText={setInstructions} placeholder="E.g. Gate code, landmarks, call when nearby..." placeholderTextColor={colors.mutedForeground} multiline numberOfLines={3} />
@@ -672,8 +701,8 @@ export default function CartScreen() {
                 <View style={[s.pickupIcon, { backgroundColor: colors.primary + "20" }]}>
                   <Ionicons name="storefront-outline" size={28} color={colors.primary} />
                 </View>
-                <Text style={[s.pickupTitle, { color: colors.foreground }]}>Old Town Market</Text>
-                <Text style={[s.pickupAddr, { color: colors.mutedForeground }]}>Lilongwe Old Town, Market Circle{"\n"}Open: Mon–Sat, 7am–7pm</Text>
+                <Text style={[s.pickupTitle, { color: colors.foreground }]}>Shoprite Mzuzu</Text>
+                <Text style={[s.pickupAddr, { color: colors.mutedForeground }]}>Mzuzu Shoprite Area, CBD{"\n"}Open: Mon–Sat, 7am–7pm</Text>
                 <View style={[s.pickupBadge, { backgroundColor: "#22C55E20" }]}>
                   <View style={[s.pickupDot, { backgroundColor: "#22C55E" }]} />
                   <Text style={[s.pickupBadgeTxt, { color: "#22C55E" }]}>Ready for pickup in ~10 min</Text>
@@ -717,7 +746,7 @@ export default function CartScreen() {
     return (
       <View style={[s.screen, s.successScreen, { backgroundColor: colors.background, paddingTop: topPad }]}>
         <Animated.View style={[s.successCircle, { transform: [{ scale: successScale }] }]}>
-          <LinearGradient colors={["#4A80F0", "#7C5CFC"]} style={s.successGrad}>
+          <LinearGradient colors={["#13B734", "#7C5CFC"]} style={s.successGrad}>
             <Animated.View style={{ opacity: successOpacity }}>
               <Ionicons name="checkmark" size={60} color="#fff" />
             </Animated.View>
@@ -751,7 +780,7 @@ export default function CartScreen() {
 
   return (
     <View style={s.screen}>
-      <Map colors={colors} isDark={isDark} />
+      <Map colors={colors} isDark={isDark} route={route} placedAt={activeOrder?.placedAt} destination={destination} />
 
       {/* Top bar */}
       <View style={[s.topBar, { paddingTop: topPad + 8 }]}>
@@ -799,7 +828,9 @@ export default function CartScreen() {
               <Ionicons name="star" size={13} color="#FFB300" />
               <Text style={[s.driverRating, { color: colors.mutedForeground }]}>{trackingOrder?.driverRating ?? driver.rating}</Text>
               <Text style={[s.driverDot, { color: colors.mutedForeground }]}>·</Text>
-              <Text style={[s.driverVehicle, { color: colors.mutedForeground }]}>Motorcycle</Text>
+              <Text style={[s.driverVehicle, { color: colors.mutedForeground }]}>
+                {trackingOrder?.vehicleType === "car" ? "Car" : "Motorcycle"}
+              </Text>
             </View>
           </View>
           <View style={[s.etaBadge, { backgroundColor: colors.primary + "15" }]}>
@@ -854,7 +885,7 @@ function ActiveOrderBanner({
   return (
     <Pressable onPress={onPress} style={styles.bannerOuter}>
       <LinearGradient
-        colors={["#4A80F0", "#6C63FF"]}
+        colors={["#13B734", "#6C63FF"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={styles.bannerGrad}
@@ -1015,7 +1046,7 @@ const s = StyleSheet.create({
   liveDot: { width:7, height:7, borderRadius:4 },
   orderIdTxt: { fontSize:13, fontFamily:"Inter_700Bold" },
   driverFab: { position:"absolute", right:16, bottom:360, zIndex:20 },
-  fabBtn: { width:50, height:50, borderRadius:16, alignItems:"center", justifyContent:"center", shadowColor:"#4A80F0", shadowOpacity:0.4, shadowRadius:10, shadowOffset:{width:0,height:4}, elevation:8 },
+  fabBtn: { width:50, height:50, borderRadius:16, alignItems:"center", justifyContent:"center", shadowColor:"#13B734", shadowOpacity:0.4, shadowRadius:10, shadowOffset:{width:0,height:4}, elevation:8 },
   panel: { position:"absolute", bottom:0, left:0, right:0, borderTopLeftRadius:28, borderTopRightRadius:28, paddingBottom:20, shadowColor:"#000", shadowOpacity:0.2, shadowRadius:20, shadowOffset:{width:0,height:-4}, elevation:20 },
   panelHandle: { alignItems:"center", paddingVertical:12 },
   handleBar: { width:36, height:4, borderRadius:2 },

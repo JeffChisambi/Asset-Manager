@@ -20,7 +20,7 @@ const NOTIFICATIONS: Notification[] = [
     id: "1",
     type: "order",
     title: "Order Shipped! 🚚",
-    message: "Your Kinetic Air 90s have been shipped and are on the way.",
+    message: "Your Doorstep order has been shipped and is on the way.",
     time: "2m ago",
     read: false,
   },
@@ -66,7 +66,7 @@ const ICONS: Record<Notification["type"], keyof typeof Ionicons.glyphMap> = {
 };
 
 const COLORS: Record<Notification["type"], string> = {
-  order: "#4A80F0",
+  order: "#13B734",
   promo: "#F7971E",
   social: "#11998E",
   system: "#8B8B8B",

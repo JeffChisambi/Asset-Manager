@@ -25,7 +25,7 @@ import { SEED_USERS, useChat, type AppUser } from "@/context/ChatContext";
 import { useColors } from "@/hooks/useColors";
 
 const AVATAR_COLORS = [
-  "#4A80F0", "#FF6B6B", "#4ECDC4", "#FFD93D",
+  "#13B734", "#FF6B6B", "#4ECDC4", "#FFD93D",
   "#A29BFE", "#FD79A8", "#00B894", "#E17055",
 ];
 
@@ -393,9 +393,12 @@ export default function ChatScreen() {
             const lastMsg = getLastMessage(item.id);
             const lastSender = lastMsg ? getUser(lastMsg.senderId) : undefined;
             const lastText = lastMsg
-              ? lastMsg.type === "voice" ? "🎤 Voice message"
-              : lastMsg.type === "image" ? "📷 Photo"
-              : lastMsg.type === "file" ? `📎 ${lastMsg.fileName ?? "File"}`
+              ? lastMsg.type === "voice" ? "Voice message"
+              : lastMsg.type === "image" ? "Photo"
+              : lastMsg.type === "video" ? "Video"
+              : lastMsg.type === "file" ? `${lastMsg.fileName ?? "File"}`
+              : lastMsg.type === "sticker" ? `${lastMsg.sticker ?? "Sticker"} Sticker`
+              : lastMsg.type === "contact" ? `Contact: ${lastMsg.contact?.displayName ?? "Shared contact"}`
               : lastMsg.senderId === currentUser.id
                 ? `You: ${lastMsg.text}`
                 : item.type === "group"

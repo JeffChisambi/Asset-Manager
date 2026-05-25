@@ -25,7 +25,7 @@ const CARD_WIDTH = (width - 48) / 2;
 
 // Shop type badge colours
 const SHOP_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
-  "Super Store": { bg: "#4A80F0", text: "#FFFFFF" },
+  "Super Store": { bg: "#13B734", text: "#FFFFFF" },
   "Basic Store": { bg: "#11998E", text: "#FFFFFF" },
   "Vendor":      { bg: "#F7971E", text: "#FFFFFF" },
 };
@@ -161,9 +161,14 @@ export function ProductCard({
 const styles = StyleSheet.create({
   card: {
     borderRadius: 16,
-    borderWidth: 1,
+    borderWidth: 2,
     overflow: "hidden",
     marginBottom: 12,
+    elevation: 6,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   imageContainer: {
     padding: 8,
@@ -181,15 +186,14 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 8,
     right: 8,
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    borderRadius: 100,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     zIndex: 10,
   },
   badgeText: {
     fontSize: 9,
     fontFamily: "Inter_700Bold",
-    letterSpacing: 0.3,
     textTransform: "uppercase",
   },
   image: {
@@ -228,9 +232,9 @@ const styles = StyleSheet.create({
     fontFamily: "Inter_700Bold",
   },
   stockPill: {
-    borderRadius: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    borderRadius: 100,
+    paddingHorizontal: 7,
+    paddingVertical: 3,
   },
   stockText: {
     fontSize: 10,

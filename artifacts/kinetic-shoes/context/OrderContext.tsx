@@ -28,6 +28,7 @@ export interface ActiveOrder {
   paymentName: string;
   deliveryType: "Pickup" | "Delivery";
   address: string;
+  vehicleType: "bike" | "car";
   driverName: string;
   driverInitials: string;
   driverRating: number;

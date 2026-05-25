@@ -5,13 +5,11 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
-  useSharedValue, useAnimatedStyle,
-  withTiming, withSpring,
   FadeIn, FadeOut, SlideInDown,
 } from "react-native-reanimated";
 import { Ionicons } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
-import { useFocusEffect } from "expo-router";
+import { router, useFocusEffect } from "expo-router";
 
 import { useColors } from "@/hooks/useColors";
 import { useSearch } from "@/hooks/useSearch";
@@ -23,7 +21,7 @@ import { SearchSkeletonList } from "@/components/search/SkeletonCard";
 
 // ─── Quick Categories ─────────────────────────────────────────────────────────
 const QUICK_CATEGORIES = [
-  { id: "electronics", label: "Electronics", icon: "phone-portrait-outline",  color: "#4A80F0" },
+  { id: "electronics", label: "Electronics", icon: "phone-portrait-outline",  color: "#13B734" },
   { id: "fashion",     label: "Fashion",      icon: "bag-handle-outline",      color: "#C850C0" },
   { id: "food",        label: "Food",         icon: "restaurant-outline",       color: "#FF6B35" },
   { id: "services",    label: "Services",     icon: "construct-outline",        color: "#667EEA" },
@@ -136,21 +134,13 @@ export default function SearchScreen() {
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
-  const cancelWidth   = useSharedValue(0);
-  const cancelOpacity = useSharedValue(0);
-  const cancelStyle   = useAnimatedStyle(() => ({ width: cancelWidth.value, opacity: cancelOpacity.value }));
-
   const onFocus = useCallback(() => {
     setIsFocused(true);
-    cancelWidth.value   = withSpring(72, { damping: 18, stiffness: 280 });
-    cancelOpacity.value = withTiming(1, { duration: 200 });
   }, []);
 
   const onBlur = useCallback(() => {
     if (query.length === 0) {
       setIsFocused(false);
-      cancelWidth.value   = withSpring(0, { damping: 18, stiffness: 280 });
-      cancelOpacity.value = withTiming(0, { duration: 150 });
     }
   }, [query]);
 
@@ -158,8 +148,6 @@ export default function SearchScreen() {
     Keyboard.dismiss();
     setQuery("");
     setIsFocused(false);
-    cancelWidth.value   = withSpring(0, { damping: 18, stiffness: 280 });
-    cancelOpacity.value = withTiming(0, { duration: 150 });
   }, [setQuery]);
 
   const handleSubmit = useCallback(() => {
@@ -216,6 +204,9 @@ export default function SearchScreen() {
 
         {/* Search bar row */}
         <View style={ss.searchRow}>
+          <Pressable onPress={() => router.back()} hitSlop={10} style={{ marginRight: 4 }}>
+            <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+          </Pressable>
           <View style={[
             ss.searchBar,
             {
@@ -250,13 +241,11 @@ export default function SearchScreen() {
             )}
           </View>
 
-          <Animated.View style={[cancelStyle, ss.cancelWrap]}>
+          {(isFocused || query.length > 0) && (
             <Pressable onPress={handleCancel} style={ss.cancelBtn}>
-              <Text style={[ss.cancelText, { color: colors.primary }]} numberOfLines={1}>
-                Cancel
-              </Text>
+              <Text style={[ss.cancelText, { color: colors.primary }]}>Cancel</Text>
             </Pressable>
-          </Animated.View>
+          )}
         </View>
       </View>
 
@@ -414,14 +403,13 @@ const ss = StyleSheet.create({
   searchRow:   { flexDirection: "row", alignItems: "center", gap: 10 },
   searchBar:   { flex: 1, flexDirection: "row", alignItems: "center", height: 52, borderRadius: 16, paddingHorizontal: 14, gap: 10, borderWidth: 1.5 },
   searchInput: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular", height: "100%", paddingVertical: 0 },
-  cancelWrap:  { overflow: "hidden" },
-  cancelBtn:   { paddingHorizontal: 4, paddingVertical: 10 },
-  cancelText:  { fontSize: 15, fontFamily: "Inter_600SemiBold" },
+  cancelBtn:   { paddingHorizontal: 8, paddingVertical: 10 },
+  cancelText:  { fontSize: 15, fontFamily: "Inter_700Bold" },
 
   homeContent: { paddingTop: 4, gap: 4 },
 
   sectionHeader:{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12 },
-  sectionTitle: { fontSize: 18, fontFamily: "Inter_700Bold" },
+  sectionTitle: { fontSize: 20, fontFamily: "Inter_700Bold" },
   clearBtn:     { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
   clearTxt:     { fontSize: 12, fontFamily: "Inter_500Medium" },
   flamePill:    { flexDirection: "row", alignItems: "center", gap: 4, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },

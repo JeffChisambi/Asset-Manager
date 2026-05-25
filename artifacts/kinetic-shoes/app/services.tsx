@@ -17,7 +17,7 @@ type Service = {
 
 const SERVICES: Service[] = [
   { id: "1", title: "Utility Bills", subtitle: "Electricity, Water, Internet & more", icon: "flash-outline", color: "#F7971E", route: "/utility-bills" },
-  { id: "2", title: "Ride Hailing", subtitle: "Book a cab instantly", icon: "car-outline", color: "#4A80F0" },
+  { id: "2", title: "Ride Hailing", subtitle: "Book a cab instantly", icon: "car-outline", color: "#13B734" },
   { id: "3", title: "Food Delivery", subtitle: "Order from top restaurants", icon: "fast-food-outline", color: "#E84393" },
   { id: "4", title: "Flight Booking", subtitle: "Cheap flights globally", icon: "airplane-outline", color: "#0F3460" },
   { id: "5", title: "Hotels", subtitle: "Book rooms and stays", icon: "bed-outline", color: "#11998E" },

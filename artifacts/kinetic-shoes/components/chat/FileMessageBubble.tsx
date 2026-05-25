@@ -1,10 +1,11 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { StyleSheet, Text, View, ActivityIndicator } from "react-native";
+import { StyleSheet, Text, View, ActivityIndicator, Linking, Pressable } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
 interface FileMessageBubbleProps {
+  fileUri?: string;
   fileName: string;
   fileSize?: number;
   fileMimeType?: string;
@@ -38,6 +39,7 @@ function getFileIcon(mimeType?: string, fileName?: string): "document-text" | "i
 }
 
 export function FileMessageBubble({
+  fileUri,
   fileName,
   fileSize,
   fileMimeType,
@@ -52,10 +54,15 @@ export function FileMessageBubble({
   const mutedFg = isMine ? "rgba(255,255,255,0.65)" : colors.mutedForeground;
   const iconBg = isMine ? "rgba(255,255,255,0.2)" : colors.primary + "18";
   const iconColor = isMine ? "#FFF" : colors.primary;
+  const canOpen = !!fileUri && status !== "sending";
 
   return (
     <View style={[styles.row, isMine ? styles.rowRight : styles.rowLeft]}>
-      <View
+      <Pressable
+        disabled={!canOpen}
+        onPress={() => {
+          if (fileUri) Linking.openURL(fileUri).catch(() => {});
+        }}
         style={[
           styles.bubble,
           { backgroundColor: bgColor },
@@ -88,7 +95,7 @@ export function FileMessageBubble({
         <Text style={[styles.time, { color: mutedFg }]}>
           {formatTime(timestamp)}
         </Text>
-      </View>
+      </Pressable>
     </View>
   );
 }

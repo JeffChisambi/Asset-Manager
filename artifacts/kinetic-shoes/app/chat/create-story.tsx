@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 import * as Haptics from "expo-haptics";
 import * as ImagePicker from "expo-image-picker";
 import { router } from "expo-router";
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -12,6 +13,7 @@ import {
   TextInput,
   View,
   Image,
+  ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -19,9 +21,10 @@ import { useChat } from "@/context/ChatContext";
 import { useColors } from "@/hooks/useColors";
 
 const BG_COLORS = [
-  "#4A80F0", "#FF6B6B", "#4ECDC4", "#FFD93D",
+  "#13B734", "#FF6B6B", "#4ECDC4", "#FFD93D",
   "#A29BFE", "#FD79A8", "#00B894", "#E17055",
 ];
+const STICKERS = ["😀", "😂", "😍", "🔥", "🎉", "🙏", "✅", "💚", "🛍️", "📦", "🚚", "⭐"];
 
 export default function CreateStoryScreen() {
   const colors = useColors();
@@ -31,10 +34,26 @@ export default function CreateStoryScreen() {
   const [text, setText] = useState("");
   const [bgIndex, setBgIndex] = useState(0);
   const [mediaUri, setMediaUri] = useState<string | null>(null);
+  const [mediaType, setMediaType] = useState<"image" | "video" | null>(null);
+  const [selectedSticker, setSelectedSticker] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingDuration, setRecordingDuration] = useState(0);
+  const [voiceUri, setVoiceUri] = useState<string | null>(null);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+
+  useEffect(() => {
+    if (!isRecording) return;
+    const timer = setInterval(() => setRecordingDuration((d) => d + 1), 1000);
+    return () => clearInterval(timer);
+  }, [isRecording]);
 
   const handlePost = () => {
     if (mediaUri) {
-      addStory({ type: "image", mediaUri });
+      addStory({ type: mediaType === "video" ? "video" : "image", mediaUri });
+    } else if (voiceUri) {
+      addStory({ type: "voice", mediaUri: voiceUri, audioDuration: recordingDuration, backgroundColor: BG_COLORS[bgIndex] });
+    } else if (selectedSticker) {
+      addStory({ type: "sticker", sticker: selectedSticker, backgroundColor: BG_COLORS[bgIndex] });
     } else if (text.trim()) {
       addStory({ type: "text", text: text.trim(), backgroundColor: BG_COLORS[bgIndex] });
     } else {
@@ -52,7 +71,55 @@ export default function CreateStoryScreen() {
     });
     if (!result.canceled && result.assets[0]) {
       setMediaUri(result.assets[0].uri);
+      setMediaType(result.assets[0].type === "video" ? "video" : "image");
+      setVoiceUri(null);
+      setSelectedSticker(null);
     }
+  };
+
+  const startRecording = async () => {
+    if (Platform.OS === "web") return;
+    const { granted } = await Audio.requestPermissionsAsync();
+    if (!granted) return;
+    await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
+    const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+    recordingRef.current = recording;
+    setVoiceUri(null);
+    setMediaUri(null);
+    setMediaType(null);
+    setSelectedSticker(null);
+    setRecordingDuration(0);
+    setIsRecording(true);
+  };
+
+  const finishRecording = async () => {
+    if (!recordingRef.current) return;
+    try {
+      await recordingRef.current.stopAndUnloadAsync();
+      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
+      setVoiceUri(recordingRef.current.getURI());
+    } finally {
+      recordingRef.current = null;
+      setIsRecording(false);
+    }
+  };
+
+  const cancelRecording = async () => {
+    try {
+      await recordingRef.current?.stopAndUnloadAsync();
+    } catch {}
+    recordingRef.current = null;
+    setIsRecording(false);
+    setRecordingDuration(0);
+    setVoiceUri(null);
+  };
+
+  const chooseSticker = (sticker: string) => {
+    setSelectedSticker(sticker);
+    setMediaUri(null);
+    setMediaType(null);
+    setVoiceUri(null);
+    setText("");
   };
 
   const topPad = Platform.OS === "web" ? 20 : insets.top;
@@ -64,8 +131,14 @@ export default function CreateStoryScreen() {
       behavior="padding"
     >
       {/* Background Media */}
-      {mediaUri && (
+      {mediaUri && mediaType === "image" && (
         <Image source={{ uri: mediaUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+      )}
+      {mediaUri && mediaType === "video" && (
+        <View style={[StyleSheet.absoluteFill, styles.videoPreview]}>
+          <Ionicons name="play-circle" size={72} color="#FFF" />
+          <Text style={styles.videoPreviewText}>Video status ready</Text>
+        </View>
       )}
 
       {/* Header */}
@@ -88,7 +161,7 @@ export default function CreateStoryScreen() {
 
       {/* Content Area */}
       <View style={styles.content}>
-        {!mediaUri && (
+        {!mediaUri && !voiceUri && !selectedSticker && (
           <TextInput
             style={styles.textInput}
             placeholder="Type a story..."
@@ -100,6 +173,28 @@ export default function CreateStoryScreen() {
             textAlign="center"
           />
         )}
+        {selectedSticker && (
+          <Text style={styles.bigSticker}>{selectedSticker}</Text>
+        )}
+        {(isRecording || voiceUri) && (
+          <View style={styles.voicePreview}>
+            <Ionicons name={voiceUri ? "mic-circle" : "radio-button-on"} size={64} color="#FFF" />
+            <Text style={styles.voicePreviewTitle}>{voiceUri ? "Voice status ready" : "Recording voice status"}</Text>
+            <Text style={styles.voicePreviewTime}>
+              {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, "0")}
+            </Text>
+            {isRecording && (
+              <View style={styles.voiceActions}>
+                <Pressable onPress={cancelRecording} style={styles.voiceActionBtn}>
+                  <Ionicons name="close" size={22} color="#FFF" />
+                </Pressable>
+                <Pressable onPress={finishRecording} style={[styles.voiceActionBtn, styles.voiceDoneBtn]}>
+                  <Ionicons name="checkmark" size={22} color="#000" />
+                </Pressable>
+              </View>
+            )}
+          </View>
+        )}
       </View>
 
       {/* Footer */}
@@ -108,12 +203,22 @@ export default function CreateStoryScreen() {
           <Pressable onPress={pickMedia} style={styles.toolBtn}>
             <Ionicons name="image" size={24} color="#FFF" />
           </Pressable>
+          <Pressable onPress={startRecording} style={[styles.toolBtn, isRecording && { opacity: 0.5 }]} disabled={isRecording || Platform.OS === "web"}>
+            <Ionicons name="mic" size={24} color="#FFF" />
+          </Pressable>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stickerRail}>
+            {STICKERS.map((sticker) => (
+              <Pressable key={sticker} onPress={() => chooseSticker(sticker)} style={styles.storyStickerBtn}>
+                <Text style={styles.storyStickerText}>{sticker}</Text>
+              </Pressable>
+            ))}
+          </ScrollView>
         </View>
 
         <Pressable 
-          style={[styles.postBtn, { opacity: (text.trim() || mediaUri) ? 1 : 0.5 }]}
+          style={[styles.postBtn, { opacity: (text.trim() || mediaUri || voiceUri || selectedSticker) ? 1 : 0.5 }]}
           onPress={handlePost}
-          disabled={!text.trim() && !mediaUri}
+          disabled={!text.trim() && !mediaUri && !voiceUri && !selectedSticker}
         >
           <Text style={styles.postBtnText}>Post Story</Text>
           <Ionicons name="chevron-forward" size={18} color="#000" />
@@ -184,4 +289,53 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter_600SemiBold",
   },
+  videoPreview: {
+    backgroundColor: "#111",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  videoPreviewText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+  },
+  bigSticker: {
+    fontSize: 96,
+    textAlign: "center",
+  },
+  voicePreview: {
+    alignItems: "center",
+    gap: 10,
+  },
+  voicePreviewTitle: {
+    color: "#FFF",
+    fontSize: 20,
+    fontFamily: "Inter_700Bold",
+  },
+  voicePreviewTime: {
+    color: "rgba(255,255,255,0.85)",
+    fontSize: 32,
+    fontFamily: "Inter_800ExtraBold",
+  },
+  voiceActions: { flexDirection: "row", gap: 14, marginTop: 8 },
+  voiceActionBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "rgba(0,0,0,0.35)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  voiceDoneBtn: { backgroundColor: "#FFF" },
+  stickerRail: { gap: 8, alignItems: "center", paddingRight: 8 },
+  storyStickerBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(0,0,0,0.24)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  storyStickerText: { fontSize: 24 },
 });
