@@ -52,21 +52,57 @@ const DeliveryDashboard = () => {
   const colors = useColors();
   return (
     <View style={{ padding: 18, gap: 14 }}>
-      <Text style={{ color: colors.foreground, fontSize: 20, fontFamily: "Inter_700Bold" }}>
+      <Text
+        style={{
+          color: colors.foreground,
+          fontSize: 20,
+          fontFamily: "Inter_700Bold",
+        }}
+      >
         Delivery Partner Dashboard
       </Text>
       <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
         <View style={{ alignItems: "center" }}>
-          <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Deliveries</Text>
-          <Text style={{ color: colors.foreground, fontSize: 24, fontFamily: "Inter_800ExtraBold" }}>124</Text>
+          <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>
+            Deliveries
+          </Text>
+          <Text
+            style={{
+              color: colors.foreground,
+              fontSize: 24,
+              fontFamily: "Inter_800ExtraBold",
+            }}
+          >
+            124
+          </Text>
         </View>
         <View style={{ alignItems: "center" }}>
-          <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Acceptance Rate</Text>
-          <Text style={{ color: colors.foreground, fontSize: 24, fontFamily: "Inter_800ExtraBold" }}>97%</Text>
+          <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>
+            Acceptance Rate
+          </Text>
+          <Text
+            style={{
+              color: colors.foreground,
+              fontSize: 24,
+              fontFamily: "Inter_800ExtraBold",
+            }}
+          >
+            97%
+          </Text>
         </View>
         <View style={{ alignItems: "center" }}>
-          <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>Earnings</Text>
-          <Text style={{ color: colors.foreground, fontSize: 24, fontFamily: "Inter_800ExtraBold" }}>$1,240</Text>
+          <Text style={{ color: colors.mutedForeground, fontSize: 14 }}>
+            Earnings
+          </Text>
+          <Text
+            style={{
+              color: colors.foreground,
+              fontSize: 24,
+              fontFamily: "Inter_800ExtraBold",
+            }}
+          >
+            $1,240
+          </Text>
         </View>
       </View>
     </View>
@@ -106,7 +142,11 @@ const AboutTab = memo(({ user }: AboutTabProps) => {
   const colors = useColors();
 
   const rows: { icon: string; label: string; value: string }[] = [
-    { icon: "location-outline", label: "Location", value: user.location || "—" },
+    {
+      icon: "location-outline",
+      label: "Location",
+      value: user.location || "—",
+    },
     { icon: "calendar-outline", label: "Joined", value: user.joinDate },
     { icon: "link-outline", label: "Website", value: user.website || "—" },
   ];
@@ -114,7 +154,10 @@ const AboutTab = memo(({ user }: AboutTabProps) => {
   return (
     <View style={styles.aboutContainer}>
       <View
-        style={[styles.aboutCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        style={[
+          styles.aboutCard,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
       >
         <Text style={[styles.aboutSection, { color: colors.foreground }]}>
           Bio
@@ -125,7 +168,10 @@ const AboutTab = memo(({ user }: AboutTabProps) => {
       </View>
 
       <View
-        style={[styles.aboutCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+        style={[
+          styles.aboutCard,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
       >
         <Text style={[styles.aboutSection, { color: colors.foreground }]}>
           Info
@@ -137,7 +183,9 @@ const AboutTab = memo(({ user }: AboutTabProps) => {
               size={16}
               color={colors.mutedForeground}
             />
-            <Text style={[styles.aboutRowLabel, { color: colors.mutedForeground }]}>
+            <Text
+              style={[styles.aboutRowLabel, { color: colors.mutedForeground }]}
+            >
               {r.label}
             </Text>
             <Text style={[styles.aboutRowValue, { color: colors.foreground }]}>
@@ -153,17 +201,30 @@ const AboutTab = memo(({ user }: AboutTabProps) => {
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 
 const SkeletonBlock = memo(
-  ({ width, height, style }: { width: number | string; height: number; style?: any }) => {
+  ({
+    width,
+    height,
+    style,
+  }: {
+    width: number | string;
+    height: number;
+    style?: any;
+  }) => {
     const colors = useColors();
     return (
       <View
         style={[
-          { width: width as any, height, borderRadius: 8, backgroundColor: colors.muted },
+          {
+            width: width as any,
+            height,
+            borderRadius: 8,
+            backgroundColor: colors.muted,
+          },
           style,
         ]}
       />
     );
-  }
+  },
 );
 
 const ProfileSkeleton = memo(() => {
@@ -172,7 +233,11 @@ const ProfileSkeleton = memo(() => {
     <View style={{ backgroundColor: colors.background }}>
       <View style={[styles.skeletonCover, { backgroundColor: colors.muted }]} />
       <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-        <SkeletonBlock width={80} height={80} style={{ borderRadius: 40, marginTop: -40 }} />
+        <SkeletonBlock
+          width={80}
+          height={80}
+          style={{ borderRadius: 40, marginTop: -40 }}
+        />
         <View style={{ height: 12 }} />
         <SkeletonBlock width={160} height={20} />
         <View style={{ height: 8 }} />
@@ -195,13 +260,22 @@ interface ShopVendorSidebarProps {
   onDeleteStore?: (storeId: string) => void;
 }
 
-function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDeleteStore }: ShopVendorSidebarProps) {
+function ShopVendorSidebar({
+  visible,
+  onClose,
+  userId,
+  store,
+  onSuccess,
+  onDeleteStore,
+}: ShopVendorSidebarProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
-  
+
   // Navigation tabs inside Sidebar
   const [step, setStep] = useState<"choose" | "builder" | "success">("choose");
-  const [builderTab, setBuilderTab] = useState<"branding" | "inventory" | "preview" | "settings">("branding");
+  const [builderTab, setBuilderTab] = useState<
+    "branding" | "inventory" | "preview" | "settings"
+  >("branding");
   const [loading, setLoading] = useState(false);
   const [merchantType, setMerchantType] = useState<MerchantType>("basic_shop");
 
@@ -210,9 +284,12 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
   const [storeTagline, setStoreTagline] = useState("");
   const [storeEmoji, setStoreEmoji] = useState("🏪");
   const [storeAccent, setStoreAccent] = useState("#4A80F0");
-  const [coverGradient, setCoverGradient] = useState<[string, string]>(["#4A00E0", "#8E2DE2"]);
+  const [coverGradient, setCoverGradient] = useState<[string, string]>([
+    "#4A00E0",
+    "#8E2DE2",
+  ]);
   const [coverImageUrl, setCoverImageUrl] = useState("");
-  
+
   // Products Inventory Fields
   const [products, setProducts] = useState<any[]>([]);
   const [newProdName, setNewProdName] = useState("");
@@ -252,16 +329,22 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
       return;
     }
     const priceNum = parseFloat(newProdPrice) || 29.99;
-    
+
     if (editingProductId) {
       // Update existing
-      setProducts(products.map(p => p.id === editingProductId ? {
-        ...p,
-        name: newProdName.trim(),
-        price: priceNum,
-        image_url: newProdImageUrl.trim() || null,
-        category: newProdCategory
-      } : p));
+      setProducts(
+        products.map((p) =>
+          p.id === editingProductId
+            ? {
+                ...p,
+                name: newProdName.trim(),
+                price: priceNum,
+                image_url: newProdImageUrl.trim() || null,
+                category: newProdCategory,
+              }
+            : p,
+        ),
+      );
       setEditingProductId(null);
     } else {
       // Add new
@@ -272,11 +355,11 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
         brand: "My Brand",
         rating: 5.0,
         category: newProdCategory,
-        image_url: newProdImageUrl.trim() || null
+        image_url: newProdImageUrl.trim() || null,
       };
       setProducts([...products, newProd]);
     }
-    
+
     setNewProdName("");
     setNewProdPrice("");
     setNewProdImageUrl("");
@@ -322,17 +405,21 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
                       onClose();
                       onSuccess();
                     } catch (err: any) {
-                      Alert.alert("Deletion Failed", err.message || "Could not delete this shop. Please try again.");
+                      Alert.alert(
+                        "Deletion Failed",
+                        err.message ||
+                          "Could not delete this shop. Please try again.",
+                      );
                     } finally {
                       setDeleteLoading(false);
                     }
                   },
                 },
-              ]
+              ],
             );
           },
         },
-      ]
+      ],
     );
   };
 
@@ -360,7 +447,10 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
             setIsActive((prev) => !prev);
             onSuccess();
           } catch (err: any) {
-            Alert.alert("Error", err.message || `Could not ${action} the shop. Try again.`);
+            Alert.alert(
+              "Error",
+              err.message || `Could not ${action} the shop. Try again.`,
+            );
           } finally {
             setDeactivateLoading(false);
           }
@@ -376,9 +466,12 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
     }
     setLoading(true);
     try {
-      const title = merchantType === "basic_shop" ? "Basic Shop Owner" : "Independent Vendor";
+      const title =
+        merchantType === "basic_shop"
+          ? "Basic Shop Owner"
+          : "Independent Vendor";
       await ProfileService.updateProfile(userId, { title });
-      
+
       const config = {
         owner_id: userId,
         name: storeName.trim(),
@@ -400,16 +493,23 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
       setStep("success");
       onSuccess();
     } catch (err: any) {
-      Alert.alert("Error", err.message || "Could not build store config. Try again.");
+      Alert.alert(
+        "Error",
+        err.message || "Could not build store config. Try again.",
+      );
     } finally {
       setLoading(false);
     }
   };
   const pickImage = async (onSelected: (uri: string) => void) => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission Required", "We need camera roll permissions to select images.");
+        Alert.alert(
+          "Permission Required",
+          "We need camera roll permissions to select images.",
+        );
         return;
       }
 
@@ -452,7 +552,7 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
         setStoreAccent(store.accent_color || "#4A80F0");
         setCoverGradient([
           store.cover_gradient_start || "#4A00E0",
-          store.cover_gradient_end || "#8E2DE2"
+          store.cover_gradient_end || "#8E2DE2",
         ]);
         setCoverImageUrl(store.cover_image_url || "");
         setProducts(store.products || []);
@@ -468,8 +568,24 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
         setCoverGradient(["#4A00E0", "#8E2DE2"]);
         setCoverImageUrl("");
         setProducts([
-          { id: "temp-1", name: "Premium Air Force", price: 120, brand: "Nike", rating: 4.8, category: "Shoes", image_url: "" },
-          { id: "temp-2", name: "Ultra Boost V2", price: 180, brand: "Adidas", rating: 4.9, category: "Shoes", image_url: "" }
+          {
+            id: "temp-1",
+            name: "Premium Air Force",
+            price: 120,
+            brand: "Nike",
+            rating: 4.8,
+            category: "Shoes",
+            image_url: "",
+          },
+          {
+            id: "temp-2",
+            name: "Ultra Boost V2",
+            price: 180,
+            brand: "Adidas",
+            rating: 4.9,
+            category: "Shoes",
+            image_url: "",
+          },
         ]);
         setStep("choose");
       }
@@ -497,92 +613,180 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
   if (!sidebarVisible) return null;
 
   return (
-    <Modal transparent visible={sidebarVisible} animationType="none" onRequestClose={handleClose}>
+    <Modal
+      transparent
+      visible={sidebarVisible}
+      animationType="none"
+      onRequestClose={handleClose}
+    >
       {/* Backdrop */}
       <Animated.View style={[styles.sidebarBackdrop, backdropAnimatedStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
       </Animated.View>
 
       {/* Sidebar Sheet */}
-      <Animated.View style={[
-        styles.sidebarSheet,
-        sidebarAnimatedStyle,
-        { backgroundColor: colors.card, borderColor: colors.border, paddingTop: insets.top }
-      ]}>
+      <Animated.View
+        style={[
+          styles.sidebarSheet,
+          sidebarAnimatedStyle,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            paddingTop: insets.top,
+          },
+        ]}
+      >
         {/* Header */}
         <View style={styles.sidebarHeader}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.sidebarSubtitle, { color: colors.mutedForeground }]}>
+            <Text
+              style={[
+                styles.sidebarSubtitle,
+                { color: colors.mutedForeground },
+              ]}
+            >
               {store ? "Shop Manager" : "Store Builder"}
             </Text>
-            <Text style={[styles.sidebarTitle, { color: colors.foreground }]} numberOfLines={1}>
-              {step === "choose" ? "Select Merchant Type" : step === "success" ? "Success!" : store ? "Edit Store Properties" : merchantType === "basic_shop" ? "Basic Store" : "Vendor Store"}
+            <Text
+              style={[styles.sidebarTitle, { color: colors.foreground }]}
+              numberOfLines={1}
+            >
+              {step === "choose"
+                ? "Select Merchant Type"
+                : step === "success"
+                  ? "Success!"
+                  : store
+                    ? "Edit Store Properties"
+                    : merchantType === "basic_shop"
+                      ? "Basic Store"
+                      : "Vendor Store"}
             </Text>
           </View>
-          <TouchableOpacity onPress={handleClose} style={styles.sidebarCloseBtn}>
+          <TouchableOpacity
+            onPress={handleClose}
+            style={styles.sidebarCloseBtn}
+          >
             <Ionicons name="close" size={20} color={colors.foreground} />
           </TouchableOpacity>
         </View>
 
         {step === "choose" ? (
-          <ScrollView contentContainerStyle={styles.sidebarBody} showsVerticalScrollIndicator={false}>
-            <Text style={[styles.choiceSubtitle, { color: colors.mutedForeground }]}>
-              Choose how you want to offer your services or sell products on the platform.
+          <ScrollView
+            contentContainerStyle={styles.sidebarBody}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text
+              style={[styles.choiceSubtitle, { color: colors.mutedForeground }]}
+            >
+              Choose how you want to offer your services or sell products on the
+              platform.
             </Text>
 
             <Pressable
-              style={[styles.choiceCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[
+                styles.choiceCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
               onPress={() => {
                 setMerchantType("basic_shop");
                 setStep("builder");
               }}
             >
-              <View style={[styles.choiceIconCircle, { backgroundColor: "#4A80F0", borderColor: colors.border }]}>
+              <View
+                style={[
+                  styles.choiceIconCircle,
+                  { backgroundColor: "#4A80F0", borderColor: colors.border },
+                ]}
+              >
                 <Ionicons name="storefront" size={24} color="#fff" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.choiceCardTitle, { color: colors.foreground }]}>
+                <Text
+                  style={[styles.choiceCardTitle, { color: colors.foreground }]}
+                >
                   Create a Basic Store
                 </Text>
-                <Text style={[styles.choiceCardDesc, { color: colors.mutedForeground }]}>
-                  Set up your storefront with custom colors, list goods and grow.
+                <Text
+                  style={[
+                    styles.choiceCardDesc,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  Set up your storefront with custom colors, list goods and
+                  grow.
                 </Text>
               </View>
-              <Ionicons name="arrow-forward" size={20} color={colors.foreground} />
+              <Ionicons
+                name="arrow-forward"
+                size={20}
+                color={colors.foreground}
+              />
             </Pressable>
 
             <Pressable
-              style={[styles.choiceCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+              style={[
+                styles.choiceCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
               onPress={() => {
                 setMerchantType("vendor");
                 setStep("builder");
               }}
             >
-              <View style={[styles.choiceIconCircle, { backgroundColor: "#FF6B6B", borderColor: colors.border }]}>
+              <View
+                style={[
+                  styles.choiceIconCircle,
+                  { backgroundColor: "#FF6B6B", borderColor: colors.border },
+                ]}
+              >
                 <Ionicons name="cube" size={24} color="#fff" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.choiceCardTitle, { color: colors.foreground }]}>
+                <Text
+                  style={[styles.choiceCardTitle, { color: colors.foreground }]}
+                >
                   Become a Vendor
                 </Text>
-                <Text style={[styles.choiceCardDesc, { color: colors.mutedForeground }]}>
-                  Sell specialized items directly, manage orders, handle buyer chats and more.
+                <Text
+                  style={[
+                    styles.choiceCardDesc,
+                    { color: colors.mutedForeground },
+                  ]}
+                >
+                  Sell specialized items directly, manage orders, handle buyer
+                  chats and more.
                 </Text>
               </View>
-              <Ionicons name="arrow-forward" size={20} color={colors.foreground} />
+              <Ionicons
+                name="arrow-forward"
+                size={20}
+                color={colors.foreground}
+              />
             </Pressable>
           </ScrollView>
         ) : step === "success" ? (
           <View style={styles.successWrapper}>
             <Ionicons name="checkmark-circle" size={72} color="#22C55E" />
-            <Text style={[styles.successTitleText, { color: colors.foreground }]}>
+            <Text
+              style={[styles.successTitleText, { color: colors.foreground }]}
+            >
               {store ? "Updated Successfully!" : "Upgraded Successfully!"}
             </Text>
-            <Text style={[styles.successDescText, { color: colors.mutedForeground }]}>
-              Your {merchantType === "basic_shop" ? "Basic Store" : "Vendor Store"} has been compiled and is now online.
+            <Text
+              style={[
+                styles.successDescText,
+                { color: colors.mutedForeground },
+              ]}
+            >
+              Your{" "}
+              {merchantType === "basic_shop" ? "Basic Store" : "Vendor Store"}{" "}
+              has been compiled and is now online.
             </Text>
             <TouchableOpacity
-              style={[styles.sidebarSubmitBtn, { backgroundColor: colors.primary }]}
+              style={[
+                styles.sidebarSubmitBtn,
+                { backgroundColor: colors.primary },
+              ]}
               onPress={handleClose}
             >
               <Text style={styles.submitBtnText}>Launch Store</Text>
@@ -592,23 +796,39 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
           <>
             {/* Nav Tabs for Builder */}
             <View style={styles.builderNav}>
-              {(["branding", "inventory", "preview", ...(store ? ["settings"] : [])] as const).map((tab) => (
+              {(
+                [
+                  "branding",
+                  "inventory",
+                  "preview",
+                  ...(store ? ["settings"] : []),
+                ] as const
+              ).map((tab) => (
                 <Pressable
                   key={tab}
                   style={[
                     styles.builderNavTab,
-                    builderTab === tab && { borderBottomColor: tab === "settings" ? "#EF4444" : storeAccent, borderBottomWidth: 2 }
+                    builderTab === tab && {
+                      borderBottomColor:
+                        tab === "settings" ? "#EF4444" : storeAccent,
+                      borderBottomWidth: 2,
+                    },
                   ]}
                   onPress={() => setBuilderTab(tab as any)}
                 >
-                  <Text style={[
-                    styles.builderNavText,
-                    {
-                      color: builderTab === tab
-                        ? (tab === "settings" ? "#EF4444" : colors.foreground)
-                        : colors.mutedForeground
-                    }
-                  ]}>
+                  <Text
+                    style={[
+                      styles.builderNavText,
+                      {
+                        color:
+                          builderTab === tab
+                            ? tab === "settings"
+                              ? "#EF4444"
+                              : colors.foreground
+                            : colors.mutedForeground,
+                      },
+                    ]}
+                  >
                     {tab === "settings" ? "⚙️ SETTINGS" : tab.toUpperCase()}
                   </Text>
                 </Pressable>
@@ -616,13 +836,30 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
             </View>
 
             {/* Main Form Fields */}
-            <ScrollView contentContainerStyle={styles.sidebarBody} showsVerticalScrollIndicator={false}>
+            <ScrollView
+              contentContainerStyle={styles.sidebarBody}
+              showsVerticalScrollIndicator={false}
+            >
               {builderTab === "branding" && (
                 <View style={styles.formGroup}>
                   <View style={styles.modalInputGroup}>
-                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Store Name</Text>
+                    <Text
+                      style={[
+                        styles.modalLabel,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Store Name
+                    </Text>
                     <TextInput
-                      style={[styles.modalInput, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]}
+                      style={[
+                        styles.modalInput,
+                        {
+                          backgroundColor: colors.input,
+                          borderColor: colors.border,
+                          color: colors.foreground,
+                        },
+                      ]}
                       placeholder="e.g. Sneaker Plaza"
                       placeholderTextColor={colors.mutedForeground}
                       value={storeName}
@@ -631,9 +868,23 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
                   </View>
 
                   <View style={styles.modalInputGroup}>
-                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Store Tagline</Text>
+                    <Text
+                      style={[
+                        styles.modalLabel,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Store Tagline
+                    </Text>
                     <TextInput
-                      style={[styles.modalInput, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]}
+                      style={[
+                        styles.modalInput,
+                        {
+                          backgroundColor: colors.input,
+                          borderColor: colors.border,
+                          color: colors.foreground,
+                        },
+                      ]}
                       placeholder="e.g. Best kicks in the city"
                       placeholderTextColor={colors.mutedForeground}
                       value={storeTagline}
@@ -642,7 +893,14 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
                   </View>
 
                   <View style={styles.modalInputGroup}>
-                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Shop Cover Photo</Text>
+                    <Text
+                      style={[
+                        styles.modalLabel,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Shop Cover Photo
+                    </Text>
                     <Pressable
                       style={[
                         {
@@ -654,23 +912,67 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
                           justifyContent: "center",
                           alignItems: "center",
                           overflow: "hidden",
-                        }
+                        },
                       ]}
                       onPress={() => pickImage(setCoverImageUrl)}
                     >
                       {coverImageUrl ? (
                         <>
-                          <Image source={{ uri: coverImageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                          <View style={{ position: "absolute", bottom: 8, right: 8, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <Image
+                            source={{ uri: coverImageUrl }}
+                            style={StyleSheet.absoluteFill}
+                            resizeMode="cover"
+                          />
+                          <View
+                            style={{
+                              position: "absolute",
+                              bottom: 8,
+                              right: 8,
+                              backgroundColor: "rgba(0,0,0,0.7)",
+                              borderRadius: 8,
+                              paddingHorizontal: 10,
+                              paddingVertical: 5,
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
                             <Ionicons name="camera" size={14} color="#fff" />
-                            <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" }}>Change Image</Text>
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontSize: 11,
+                                fontFamily: "Inter_700Bold",
+                              }}
+                            >
+                              Change Image
+                            </Text>
                           </View>
                         </>
                       ) : (
                         <View style={{ alignItems: "center", gap: 6 }}>
-                          <Ionicons name="image-outline" size={32} color={colors.mutedForeground} />
-                          <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>Upload Cover Image</Text>
-                          <Text style={{ color: colors.mutedForeground, fontSize: 10 }}>Supports JPEG, PNG from device</Text>
+                          <Ionicons
+                            name="image-outline"
+                            size={32}
+                            color={colors.mutedForeground}
+                          />
+                          <Text
+                            style={{
+                              color: colors.mutedForeground,
+                              fontSize: 13,
+                              fontFamily: "Inter_600SemiBold",
+                            }}
+                          >
+                            Upload Cover Image
+                          </Text>
+                          <Text
+                            style={{
+                              color: colors.mutedForeground,
+                              fontSize: 10,
+                            }}
+                          >
+                            Supports JPEG, PNG from device
+                          </Text>
                         </View>
                       )}
                     </Pressable>
@@ -678,14 +980,23 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
 
                   {/* Emoji selector */}
                   <View style={styles.modalInputGroup}>
-                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Store Icon (Emoji)</Text>
+                    <Text
+                      style={[
+                        styles.modalLabel,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Store Icon (Emoji)
+                    </Text>
                     <View style={styles.emojiRow}>
                       {EMOJIS.map((e) => (
                         <Pressable
                           key={e}
                           style={[
                             styles.emojiBtn,
-                            storeEmoji === e && { backgroundColor: colors.border }
+                            storeEmoji === e && {
+                              backgroundColor: colors.border,
+                            },
                           ]}
                           onPress={() => setStoreEmoji(e)}
                         >
@@ -697,7 +1008,14 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
 
                   {/* Theme Accents */}
                   <View style={styles.modalInputGroup}>
-                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Branding Accent Color</Text>
+                    <Text
+                      style={[
+                        styles.modalLabel,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Branding Accent Color
+                    </Text>
                     <View style={styles.accentRow}>
                       {ACCENTS.map((acc) => (
                         <Pressable
@@ -715,7 +1033,14 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
 
                   {/* Cover Gradients */}
                   <View style={styles.modalInputGroup}>
-                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Hero Cover Gradient</Text>
+                    <Text
+                      style={[
+                        styles.modalLabel,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
+                      Hero Cover Gradient
+                    </Text>
                     <View style={styles.gradientRow}>
                       {GRADIENTS.map((grad) => (
                         <Pressable
@@ -723,7 +1048,10 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
                           style={[
                             styles.gradientCard,
                             { borderColor: colors.border },
-                            coverGradient[0] === grad.colors[0] && { borderWidth: 2, borderColor: storeAccent }
+                            coverGradient[0] === grad.colors[0] && {
+                              borderWidth: 2,
+                              borderColor: storeAccent,
+                            },
                           ]}
                           onPress={() => setCoverGradient(grad.colors)}
                         >
@@ -742,22 +1070,73 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
 
               {builderTab === "inventory" && (
                 <View style={styles.formGroup}>
-                  <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
-                    {editingProductId ? "Modify product details and save changes." : "Add mock items to stock your store shelves instantly."}
+                  <Text
+                    style={[
+                      styles.sectionSubtitle,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    {editingProductId
+                      ? "Modify product details and save changes."
+                      : "Add mock items to stock your store shelves instantly."}
                   </Text>
 
                   {/* Add / Edit Form */}
-                  <View style={[styles.addCard, { backgroundColor: colors.muted, borderColor: colors.border, borderRadius: 14 }]}>
+                  <View
+                    style={[
+                      styles.addCard,
+                      {
+                        backgroundColor: colors.muted,
+                        borderColor: colors.border,
+                        borderRadius: 14,
+                      },
+                    ]}
+                  >
                     {editingProductId && (
-                      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8, backgroundColor: storeAccent + "22", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 }}>
-                        <Text style={{ color: storeAccent, fontFamily: "Inter_700Bold", fontSize: 11 }}>EDITING PRODUCT MODE</Text>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          marginBottom: 8,
+                          backgroundColor: storeAccent + "22",
+                          paddingHorizontal: 10,
+                          paddingVertical: 6,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Text
+                          style={{
+                            color: storeAccent,
+                            fontFamily: "Inter_700Bold",
+                            fontSize: 11,
+                          }}
+                        >
+                          EDITING PRODUCT MODE
+                        </Text>
                         <TouchableOpacity onPress={handleCancelEdit}>
-                          <Text style={{ color: "#EF4444", fontFamily: "Inter_700Bold", fontSize: 11 }}>Cancel</Text>
+                          <Text
+                            style={{
+                              color: "#EF4444",
+                              fontFamily: "Inter_700Bold",
+                              fontSize: 11,
+                            }}
+                          >
+                            Cancel
+                          </Text>
                         </TouchableOpacity>
                       </View>
                     )}
                     <TextInput
-                      style={[styles.modalInput, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground, marginBottom: 8 }]}
+                      style={[
+                        styles.modalInput,
+                        {
+                          backgroundColor: colors.input,
+                          borderColor: colors.border,
+                          color: colors.foreground,
+                          marginBottom: 8,
+                        },
+                      ]}
                       placeholder="Product Name"
                       placeholderTextColor={colors.mutedForeground}
                       value={newProdName}
@@ -775,30 +1154,82 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
                           alignItems: "center",
                           overflow: "hidden",
                           marginBottom: 12,
-                        }
+                        },
                       ]}
                       onPress={() => pickImage(setNewProdImageUrl)}
                     >
                       {newProdImageUrl ? (
                         <>
-                          <Image source={{ uri: newProdImageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                          <View style={{ position: "absolute", bottom: 6, right: 6, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                          <Image
+                            source={{ uri: newProdImageUrl }}
+                            style={StyleSheet.absoluteFill}
+                            resizeMode="cover"
+                          />
+                          <View
+                            style={{
+                              position: "absolute",
+                              bottom: 6,
+                              right: 6,
+                              backgroundColor: "rgba(0,0,0,0.7)",
+                              borderRadius: 6,
+                              paddingHorizontal: 8,
+                              paddingVertical: 4,
+                              flexDirection: "row",
+                              alignItems: "center",
+                              gap: 4,
+                            }}
+                          >
                             <Ionicons name="camera" size={12} color="#fff" />
-                            <Text style={{ color: "#fff", fontSize: 10, fontFamily: "Inter_700Bold" }}>Change</Text>
+                            <Text
+                              style={{
+                                color: "#fff",
+                                fontSize: 10,
+                                fontFamily: "Inter_700Bold",
+                              }}
+                            >
+                              Change
+                            </Text>
                           </View>
                         </>
                       ) : (
                         <View style={{ alignItems: "center", gap: 4 }}>
-                          <Ionicons name="camera-outline" size={24} color={colors.mutedForeground} />
-                          <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_600SemiBold" }}>Upload Product Image</Text>
+                          <Ionicons
+                            name="camera-outline"
+                            size={24}
+                            color={colors.mutedForeground}
+                          />
+                          <Text
+                            style={{
+                              color: colors.mutedForeground,
+                              fontSize: 12,
+                              fontFamily: "Inter_600SemiBold",
+                            }}
+                          >
+                            Upload Product Image
+                          </Text>
                         </View>
                       )}
                     </Pressable>
 
                     {/* Category Selection */}
-                    <Text style={[styles.modalLabel, { color: colors.mutedForeground, fontSize: 11, marginBottom: 6 }]}>Product Category</Text>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginBottom: 12 }}>
-                      {PRODUCT_CATEGORIES.map(cat => {
+                    <Text
+                      style={[
+                        styles.modalLabel,
+                        {
+                          color: colors.mutedForeground,
+                          fontSize: 11,
+                          marginBottom: 6,
+                        },
+                      ]}
+                    >
+                      Product Category
+                    </Text>
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ gap: 6, marginBottom: 12 }}
+                    >
+                      {PRODUCT_CATEGORIES.map((cat) => {
                         const isSelected = newProdCategory === cat.label;
                         return (
                           <Pressable
@@ -812,12 +1243,26 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
                               paddingVertical: 6,
                               borderRadius: 8,
                               borderWidth: 1.5,
-                              borderColor: isSelected ? storeAccent : colors.border,
-                              backgroundColor: isSelected ? storeAccent + "15" : colors.input
+                              borderColor: isSelected
+                                ? storeAccent
+                                : colors.border,
+                              backgroundColor: isSelected
+                                ? storeAccent + "15"
+                                : colors.input,
                             }}
                           >
                             <Text style={{ fontSize: 13 }}>{cat.emoji}</Text>
-                            <Text style={{ fontSize: 11, fontFamily: "Inter_700Bold", color: isSelected ? storeAccent : colors.mutedForeground }}>{cat.label}</Text>
+                            <Text
+                              style={{
+                                fontSize: 11,
+                                fontFamily: "Inter_700Bold",
+                                color: isSelected
+                                  ? storeAccent
+                                  : colors.mutedForeground,
+                              }}
+                            >
+                              {cat.label}
+                            </Text>
                           </Pressable>
                         );
                       })}
@@ -825,7 +1270,15 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
 
                     <View style={{ flexDirection: "row", gap: 8 }}>
                       <TextInput
-                        style={[styles.modalInput, { flex: 1, backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]}
+                        style={[
+                          styles.modalInput,
+                          {
+                            flex: 1,
+                            backgroundColor: colors.input,
+                            borderColor: colors.border,
+                            color: colors.foreground,
+                          },
+                        ]}
                         placeholder="Price ($)"
                         placeholderTextColor={colors.mutedForeground}
                         keyboardType="numeric"
@@ -833,11 +1286,24 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
                         onChangeText={setNewProdPrice}
                       />
                       <Pressable
-                        style={[styles.addProductBtn, { backgroundColor: storeAccent }]}
+                        style={[
+                          styles.addProductBtn,
+                          { backgroundColor: storeAccent },
+                        ]}
                         onPress={handleAddProduct}
                       >
-                        <Ionicons name={editingProductId ? "checkmark" : "add"} size={20} color="#fff" />
-                        <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 13 }}>
+                        <Ionicons
+                          name={editingProductId ? "checkmark" : "add"}
+                          size={20}
+                          color="#fff"
+                        />
+                        <Text
+                          style={{
+                            color: "#fff",
+                            fontFamily: "Inter_700Bold",
+                            fontSize: 13,
+                          }}
+                        >
                           {editingProductId ? "Save" : "Add"}
                         </Text>
                       </Pressable>
@@ -846,45 +1312,115 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
 
                   {/* Current List */}
                   <View style={{ gap: 8, marginTop: 8 }}>
-                    <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>
+                    <Text
+                      style={[
+                        styles.modalLabel,
+                        { color: colors.mutedForeground },
+                      ]}
+                    >
                       Products Stock ({products.length})
                     </Text>
                     {products.map((p) => (
                       <View
                         key={p.id}
-                        style={[styles.prodItemRow, { backgroundColor: colors.input, borderColor: colors.border }]}
+                        style={[
+                          styles.prodItemRow,
+                          {
+                            backgroundColor: colors.input,
+                            borderColor: colors.border,
+                          },
+                        ]}
                       >
                         {p.image_url ? (
-                          <Image source={{ uri: p.image_url }} style={{ width: 36, height: 36, borderRadius: 8, marginRight: 4 }} />
+                          <Image
+                            source={{ uri: p.image_url }}
+                            style={{
+                              width: 36,
+                              height: 36,
+                              borderRadius: 8,
+                              marginRight: 4,
+                            }}
+                          />
                         ) : (
                           <Text style={{ fontSize: 20 }}>{storeEmoji}</Text>
                         )}
                         <View style={{ flex: 1 }}>
-                          <Text style={{ color: colors.foreground, fontFamily: "Inter_600SemiBold", fontSize: 13 }} numberOfLines={1}>
+                          <Text
+                            style={{
+                              color: colors.foreground,
+                              fontFamily: "Inter_600SemiBold",
+                              fontSize: 13,
+                            }}
+                            numberOfLines={1}
+                          >
                             {p.name}
                           </Text>
-                          <View style={{ flexDirection: "row", gap: 6, alignItems: "center" }}>
-                            <Text style={{ color: colors.mutedForeground, fontSize: 11 }}>
+                          <View
+                            style={{
+                              flexDirection: "row",
+                              gap: 6,
+                              alignItems: "center",
+                            }}
+                          >
+                            <Text
+                              style={{
+                                color: colors.mutedForeground,
+                                fontSize: 11,
+                              }}
+                            >
                               ${p.price.toFixed(2)}
                             </Text>
-                            <View style={{ width: 4, height: 4, borderRadius: 2, backgroundColor: colors.mutedForeground }} />
-                            <Text style={{ color: storeAccent, fontSize: 10, fontFamily: "Inter_700Bold" }}>
+                            <View
+                              style={{
+                                width: 4,
+                                height: 4,
+                                borderRadius: 2,
+                                backgroundColor: colors.mutedForeground,
+                              }}
+                            />
+                            <Text
+                              style={{
+                                color: storeAccent,
+                                fontSize: 10,
+                                fontFamily: "Inter_700Bold",
+                              }}
+                            >
                               {p.category || "Shoes"}
                             </Text>
                           </View>
                         </View>
-                        <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-                          <TouchableOpacity onPress={() => {
-                            setEditingProductId(p.id);
-                            setNewProdName(p.name);
-                            setNewProdPrice(String(p.price));
-                            setNewProdImageUrl(p.image_url || "");
-                            setNewProdCategory(p.category || "Shoes");
-                          }}>
-                            <Ionicons name="pencil-outline" size={16} color={colors.foreground} />
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            gap: 8,
+                            alignItems: "center",
+                          }}
+                        >
+                          <TouchableOpacity
+                            onPress={() => {
+                              setEditingProductId(p.id);
+                              setNewProdName(p.name);
+                              setNewProdPrice(String(p.price));
+                              setNewProdImageUrl(p.image_url || "");
+                              setNewProdCategory(p.category || "Shoes");
+                            }}
+                          >
+                            <Ionicons
+                              name="pencil-outline"
+                              size={16}
+                              color={colors.foreground}
+                            />
                           </TouchableOpacity>
-                          <TouchableOpacity onPress={() => setProducts(products.filter((x) => x.id !== p.id))}>
-                            <Ionicons name="trash-outline" size={16} color="#EF4444" />
+                          <TouchableOpacity
+                            onPress={() =>
+                              setProducts(products.filter((x) => x.id !== p.id))
+                            }
+                          >
+                            <Ionicons
+                              name="trash-outline"
+                              size={16}
+                              color="#EF4444"
+                            />
                           </TouchableOpacity>
                         </View>
                       </View>
@@ -895,16 +1431,34 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
 
               {builderTab === "preview" && (
                 <View style={styles.formGroup}>
-                  <Text style={[styles.sectionSubtitle, { color: colors.mutedForeground }]}>
-                    Interactive miniature preview matching Super Store architecture.
+                  <Text
+                    style={[
+                      styles.sectionSubtitle,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    Interactive miniature preview matching Super Store
+                    architecture.
                   </Text>
 
                   {/* MINI PREVIEW BOX */}
-                  <View style={[styles.miniPreviewCard, { backgroundColor: colors.background, borderColor: colors.border }]}>
+                  <View
+                    style={[
+                      styles.miniPreviewCard,
+                      {
+                        backgroundColor: colors.background,
+                        borderColor: colors.border,
+                      },
+                    ]}
+                  >
                     {/* Cover Hero Gradient or Cover Image */}
                     <View style={[styles.miniPreviewCover, { height: 90 }]}>
                       {coverImageUrl ? (
-                        <Image source={{ uri: coverImageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                        <Image
+                          source={{ uri: coverImageUrl }}
+                          style={StyleSheet.absoluteFill}
+                          resizeMode="cover"
+                        />
                       ) : (
                         <LinearGradient
                           colors={coverGradient}
@@ -921,76 +1475,254 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
                     {/* Stats details */}
                     <View style={styles.miniPreviewInfo}>
                       <View style={styles.miniTitleRow}>
-                        <Text style={[styles.miniStoreName, { color: colors.foreground }]} numberOfLines={1}>
+                        <Text
+                          style={[
+                            styles.miniStoreName,
+                            { color: colors.foreground },
+                          ]}
+                          numberOfLines={1}
+                        >
                           {storeName || "My Custom Store"}
                         </Text>
-                        <Ionicons name="checkmark-circle" size={14} color="#4A80F0" />
+                        <Ionicons
+                          name="checkmark-circle"
+                          size={14}
+                          color="#4A80F0"
+                        />
                       </View>
-                      <Text style={[styles.miniTagline, { color: colors.mutedForeground }]} numberOfLines={1}>
+                      <Text
+                        style={[
+                          styles.miniTagline,
+                          { color: colors.mutedForeground },
+                        ]}
+                        numberOfLines={1}
+                      >
                         {storeTagline || "Configure tagline in Branding"}
                       </Text>
 
                       {/* Open Tag & Time */}
-                      <View style={{ flexDirection: "row", gap: 6, marginVertical: 8 }}>
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          gap: 6,
+                          marginVertical: 8,
+                        }}
+                      >
                         <View style={styles.miniBadge}>
-                          <View style={[styles.statusDot, { backgroundColor: "#22C55E" }]} />
-                          <Text style={{ fontSize: 9, color: "#22C55E", fontFamily: "Inter_700Bold" }}>Open</Text>
+                          <View
+                            style={[
+                              styles.statusDot,
+                              { backgroundColor: "#22C55E" },
+                            ]}
+                          />
+                          <Text
+                            style={{
+                              fontSize: 9,
+                              color: "#22C55E",
+                              fontFamily: "Inter_700Bold",
+                            }}
+                          >
+                            Open
+                          </Text>
                         </View>
-                        <View style={[styles.miniBadge, { backgroundColor: colors.muted }]}>
-                          <Text style={{ fontSize: 9, color: colors.mutedForeground }}>15-25 min</Text>
+                        <View
+                          style={[
+                            styles.miniBadge,
+                            { backgroundColor: colors.muted },
+                          ]}
+                        >
+                          <Text
+                            style={{
+                              fontSize: 9,
+                              color: colors.mutedForeground,
+                            }}
+                          >
+                            15-25 min
+                          </Text>
                         </View>
                       </View>
 
                       {/* Mini Stats Bar */}
-                      <View style={[styles.miniStatsBar, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                      <View
+                        style={[
+                          styles.miniStatsBar,
+                          {
+                            backgroundColor: colors.card,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                      >
                         <View style={{ flex: 1, alignItems: "center" }}>
-                          <Text style={{ color: colors.foreground, fontSize: 10, fontFamily: "Inter_800ExtraBold" }}>5.0</Text>
-                          <Text style={{ color: colors.mutedForeground, fontSize: 8 }}>Rating</Text>
+                          <Text
+                            style={{
+                              color: colors.foreground,
+                              fontSize: 10,
+                              fontFamily: "Inter_800ExtraBold",
+                            }}
+                          >
+                            5.0
+                          </Text>
+                          <Text
+                            style={{
+                              color: colors.mutedForeground,
+                              fontSize: 8,
+                            }}
+                          >
+                            Rating
+                          </Text>
                         </View>
-                        <View style={[styles.miniDivider, { backgroundColor: colors.border }]} />
+                        <View
+                          style={[
+                            styles.miniDivider,
+                            { backgroundColor: colors.border },
+                          ]}
+                        />
                         <View style={{ flex: 1, alignItems: "center" }}>
-                          <Text style={{ color: colors.foreground, fontSize: 10, fontFamily: "Inter_800ExtraBold" }}>{products.length}</Text>
-                          <Text style={{ color: colors.mutedForeground, fontSize: 8 }}>Products</Text>
+                          <Text
+                            style={{
+                              color: colors.foreground,
+                              fontSize: 10,
+                              fontFamily: "Inter_800ExtraBold",
+                            }}
+                          >
+                            {products.length}
+                          </Text>
+                          <Text
+                            style={{
+                              color: colors.mutedForeground,
+                              fontSize: 8,
+                            }}
+                          >
+                            Products
+                          </Text>
                         </View>
-                        <View style={[styles.miniDivider, { backgroundColor: colors.border }]} />
+                        <View
+                          style={[
+                            styles.miniDivider,
+                            { backgroundColor: colors.border },
+                          ]}
+                        />
                         <View style={{ flex: 1, alignItems: "center" }}>
-                          <Text style={{ color: colors.foreground, fontSize: 10, fontFamily: "Inter_800ExtraBold" }}>$15</Text>
-                          <Text style={{ color: colors.mutedForeground, fontSize: 8 }}>Min Order</Text>
+                          <Text
+                            style={{
+                              color: colors.foreground,
+                              fontSize: 10,
+                              fontFamily: "Inter_800ExtraBold",
+                            }}
+                          >
+                            $15
+                          </Text>
+                          <Text
+                            style={{
+                              color: colors.mutedForeground,
+                              fontSize: 8,
+                            }}
+                          >
+                            Min Order
+                          </Text>
                         </View>
                       </View>
 
                       {/* Category Pill preview */}
-                      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6, marginVertical: 10 }}>
-                        <View style={[styles.miniPill, { backgroundColor: storeAccent }]}>
-                          <Text style={{ color: "#fff", fontSize: 9, fontFamily: "Inter_700Bold" }}>All</Text>
+                      <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        contentContainerStyle={{ gap: 6, marginVertical: 10 }}
+                      >
+                        <View
+                          style={[
+                            styles.miniPill,
+                            { backgroundColor: storeAccent },
+                          ]}
+                        >
+                          <Text
+                            style={{
+                              color: "#fff",
+                              fontSize: 9,
+                              fontFamily: "Inter_700Bold",
+                            }}
+                          >
+                            All
+                          </Text>
                         </View>
-                        <View style={[styles.miniPill, { borderColor: colors.border, borderWidth: 1 }]}>
-                          <Text style={{ color: colors.mutedForeground, fontSize: 9 }}>New Arrivals</Text>
+                        <View
+                          style={[
+                            styles.miniPill,
+                            { borderColor: colors.border, borderWidth: 1 },
+                          ]}
+                        >
+                          <Text
+                            style={{
+                              color: colors.mutedForeground,
+                              fontSize: 9,
+                            }}
+                          >
+                            New Arrivals
+                          </Text>
                         </View>
                       </ScrollView>
 
                       {/* Products Miniature Grid */}
-                      <Text style={{ color: colors.foreground, fontSize: 11, fontFamily: "Inter_700Bold", marginBottom: 6 }}>
+                      <Text
+                        style={{
+                          color: colors.foreground,
+                          fontSize: 11,
+                          fontFamily: "Inter_700Bold",
+                          marginBottom: 6,
+                        }}
+                      >
                         Product Catalog
                       </Text>
                       <View style={styles.miniGrid}>
                         {products.map((p) => (
                           <View
                             key={p.id}
-                            style={[styles.miniProductCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+                            style={[
+                              styles.miniProductCard,
+                              {
+                                backgroundColor: colors.card,
+                                borderColor: colors.border,
+                              },
+                            ]}
                           >
-                            <View style={[styles.miniProductImg, { backgroundColor: colors.muted }]}>
+                            <View
+                              style={[
+                                styles.miniProductImg,
+                                { backgroundColor: colors.muted },
+                              ]}
+                            >
                               {p.image_url ? (
-                                <Image source={{ uri: p.image_url }} style={{ width: "100%", height: "100%", resizeMode: "cover" }} />
+                                <Image
+                                  source={{ uri: p.image_url }}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    resizeMode: "cover",
+                                  }}
+                                />
                               ) : (
-                                <Text style={{ fontSize: 22 }}>{storeEmoji}</Text>
+                                <Text style={{ fontSize: 22 }}>
+                                  {storeEmoji}
+                                </Text>
                               )}
                             </View>
                             <View style={{ padding: 6 }}>
-                              <Text style={[styles.miniProductName, { color: colors.foreground }]} numberOfLines={1}>
+                              <Text
+                                style={[
+                                  styles.miniProductName,
+                                  { color: colors.foreground },
+                                ]}
+                                numberOfLines={1}
+                              >
                                 {p.name}
                               </Text>
-                              <Text style={{ color: colors.foreground, fontSize: 10, fontFamily: "Inter_800ExtraBold" }}>
+                              <Text
+                                style={{
+                                  color: colors.foreground,
+                                  fontSize: 10,
+                                  fontFamily: "Inter_800ExtraBold",
+                                }}
+                              >
                                 ${Number(p.price).toFixed(0)}
                               </Text>
                             </View>
@@ -1003,15 +1735,48 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
               )}
               {builderTab === "settings" && store && (
                 <View style={styles.formGroup}>
-                  <Text style={[styles.modalLabel, { color: colors.mutedForeground, marginBottom: 4 }]}>SHOP VISIBILITY</Text>
+                  <Text
+                    style={[
+                      styles.modalLabel,
+                      { color: colors.mutedForeground, marginBottom: 4 },
+                    ]}
+                  >
+                    SHOP VISIBILITY
+                  </Text>
 
-                  <View style={[styles.settingsStatusBanner, { backgroundColor: isActive ? "#22C55E14" : "#F9731614", borderColor: isActive ? "#22C55E55" : "#F9731655" }]}>
-                    <View style={[styles.settingsStatusDot, { backgroundColor: isActive ? "#22C55E" : "#F97316" }]} />
+                  <View
+                    style={[
+                      styles.settingsStatusBanner,
+                      {
+                        backgroundColor: isActive ? "#22C55E14" : "#F9731614",
+                        borderColor: isActive ? "#22C55E55" : "#F9731655",
+                      },
+                    ]}
+                  >
+                    <View
+                      style={[
+                        styles.settingsStatusDot,
+                        { backgroundColor: isActive ? "#22C55E" : "#F97316" },
+                      ]}
+                    />
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontFamily: "Inter_700Bold", fontSize: 13, color: isActive ? "#22C55E" : "#F97316" }}>
+                      <Text
+                        style={{
+                          fontFamily: "Inter_700Bold",
+                          fontSize: 13,
+                          color: isActive ? "#22C55E" : "#F97316",
+                        }}
+                      >
                         {isActive ? "Shop is Active" : "Shop is Deactivated"}
                       </Text>
-                      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 11, color: colors.mutedForeground, marginTop: 2 }}>
+                      <Text
+                        style={{
+                          fontFamily: "Inter_400Regular",
+                          fontSize: 11,
+                          color: colors.mutedForeground,
+                          marginTop: 2,
+                        }}
+                      >
                         {isActive
                           ? "Your shop is visible in the Marketplace and accepting customers."
                           : "Your shop is hidden from the Marketplace. Reactivate to go live again."}
@@ -1020,68 +1785,170 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
                   </View>
 
                   <TouchableOpacity
-                    style={[styles.settingsDangerRow, { borderColor: colors.border, backgroundColor: colors.card }]}
+                    style={[
+                      styles.settingsDangerRow,
+                      {
+                        borderColor: colors.border,
+                        backgroundColor: colors.card,
+                      },
+                    ]}
                     onPress={handleDeactivateStore}
                     disabled={deactivateLoading || deleteLoading}
                   >
-                    <View style={[styles.settingsRowIcon, { backgroundColor: isActive ? "#F9731618" : "#22C55E18" }]}>
+                    <View
+                      style={[
+                        styles.settingsRowIcon,
+                        {
+                          backgroundColor: isActive ? "#F9731618" : "#22C55E18",
+                        },
+                      ]}
+                    >
                       {deactivateLoading ? (
-                        <ActivityIndicator size="small" color={isActive ? "#F97316" : "#22C55E"} />
+                        <ActivityIndicator
+                          size="small"
+                          color={isActive ? "#F97316" : "#22C55E"}
+                        />
                       ) : (
-                        <Ionicons name={isActive ? "pause-circle-outline" : "play-circle-outline"} size={22} color={isActive ? "#F97316" : "#22C55E"} />
+                        <Ionicons
+                          name={
+                            isActive
+                              ? "pause-circle-outline"
+                              : "play-circle-outline"
+                          }
+                          size={22}
+                          color={isActive ? "#F97316" : "#22C55E"}
+                        />
                       )}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: isActive ? "#F97316" : "#22C55E" }}>
+                      <Text
+                        style={{
+                          fontFamily: "Inter_700Bold",
+                          fontSize: 14,
+                          color: isActive ? "#F97316" : "#22C55E",
+                        }}
+                      >
                         {isActive ? "Deactivate Shop" : "Reactivate Shop"}
                       </Text>
-                      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
+                      <Text
+                        style={{
+                          fontFamily: "Inter_400Regular",
+                          fontSize: 12,
+                          color: colors.mutedForeground,
+                          marginTop: 2,
+                        }}
+                      >
                         {isActive
                           ? "Temporarily hide your shop from the Marketplace."
                           : "Bring your shop back online and visible to customers."}
                       </Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color={colors.mutedForeground} />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color={colors.mutedForeground}
+                    />
                   </TouchableOpacity>
 
-                  <View style={{ height: 1, backgroundColor: colors.border, marginVertical: 20 }} />
+                  <View
+                    style={{
+                      height: 1,
+                      backgroundColor: colors.border,
+                      marginVertical: 20,
+                    }}
+                  />
 
-                  <Text style={[styles.modalLabel, { color: "#EF4444", marginBottom: 4 }]}>DANGER ZONE</Text>
-                  <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.mutedForeground, marginBottom: 14 }}>
+                  <Text
+                    style={[
+                      styles.modalLabel,
+                      { color: "#EF4444", marginBottom: 4 },
+                    ]}
+                  >
+                    DANGER ZONE
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: "Inter_400Regular",
+                      fontSize: 12,
+                      color: colors.mutedForeground,
+                      marginBottom: 14,
+                    }}
+                  >
                     Permanent actions that cannot be undone.
                   </Text>
 
                   <TouchableOpacity
-                    style={[styles.settingsDangerRow, { borderColor: "#EF444444", backgroundColor: "#EF444408" }]}
+                    style={[
+                      styles.settingsDangerRow,
+                      {
+                        borderColor: "#EF444444",
+                        backgroundColor: "#EF444408",
+                      },
+                    ]}
                     onPress={handleDeleteStore}
                     disabled={deleteLoading || deactivateLoading}
                   >
-                    <View style={[styles.settingsRowIcon, { backgroundColor: "#EF444418" }]}>
+                    <View
+                      style={[
+                        styles.settingsRowIcon,
+                        { backgroundColor: "#EF444418" },
+                      ]}
+                    >
                       {deleteLoading ? (
                         <ActivityIndicator size="small" color="#EF4444" />
                       ) : (
-                        <Ionicons name="trash-outline" size={22} color="#EF4444" />
+                        <Ionicons
+                          name="trash-outline"
+                          size={22}
+                          color="#EF4444"
+                        />
                       )}
                     </View>
                     <View style={{ flex: 1 }}>
-                      <Text style={{ fontFamily: "Inter_700Bold", fontSize: 14, color: "#EF4444" }}>
+                      <Text
+                        style={{
+                          fontFamily: "Inter_700Bold",
+                          fontSize: 14,
+                          color: "#EF4444",
+                        }}
+                      >
                         Delete This Shop
                       </Text>
-                      <Text style={{ fontFamily: "Inter_400Regular", fontSize: 12, color: colors.mutedForeground, marginTop: 2 }}>
-                        Permanently remove this shop and all its products. Cannot be undone.
+                      <Text
+                        style={{
+                          fontFamily: "Inter_400Regular",
+                          fontSize: 12,
+                          color: colors.mutedForeground,
+                          marginTop: 2,
+                        }}
+                      >
+                        Permanently remove this shop and all its products.
+                        Cannot be undone.
                       </Text>
                     </View>
-                    <Ionicons name="chevron-forward" size={18} color="#EF4444" />
+                    <Ionicons
+                      name="chevron-forward"
+                      size={18}
+                      color="#EF4444"
+                    />
                   </TouchableOpacity>
                 </View>
               )}
             </ScrollView>
 
             {/* Bottom Actions footer inside sidebar */}
-            <View style={[styles.sidebarFooter, { borderTopColor: colors.border, backgroundColor: colors.card }]}>
+            <View
+              style={[
+                styles.sidebarFooter,
+                { borderTopColor: colors.border, backgroundColor: colors.card },
+              ]}
+            >
               {builderTab !== "settings" && (
                 <TouchableOpacity
-                  style={[styles.sidebarSubmitBtn, { backgroundColor: storeAccent }]}
+                  style={[
+                    styles.sidebarSubmitBtn,
+                    { backgroundColor: storeAccent },
+                  ]}
                   onPress={handleSaveStore}
                   disabled={loading || deleteLoading || deactivateLoading}
                 >
@@ -1089,7 +1956,11 @@ function ShopVendorSidebar({ visible, onClose, userId, store, onSuccess, onDelet
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
                     <Text style={styles.submitBtnText}>
-                      {store ? "Save Changes" : merchantType === "basic_shop" ? "Compile Basic Store" : "Register as Vendor"}
+                      {store
+                        ? "Save Changes"
+                        : merchantType === "basic_shop"
+                          ? "Compile Basic Store"
+                          : "Register as Vendor"}
                     </Text>
                   )}
                 </TouchableOpacity>
@@ -1113,7 +1984,14 @@ interface ProfessionSidebarProps {
   onSuccess: () => void;
 }
 
-function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }: ProfessionSidebarProps) {
+function ProfessionSidebar({
+  visible,
+  onClose,
+  userId,
+  user,
+  store,
+  onSuccess,
+}: ProfessionSidebarProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [step, setStep] = useState<"select" | "setup" | "success">("select");
@@ -1130,29 +2008,126 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
   const [coverImageUrl, setCoverImageUrl] = useState("");
 
   const PROFESSIONS = [
-    { label: "Basic Shop Owner", emoji: "🏪", desc: "Build a digital catalog storefront to showcase and list standard items.", isShop: true, type: "basic_shop" },
-    { label: "Independent Vendor", emoji: "📦", desc: "Become an active vendor, receive order chats, list specialized products.", isShop: true, type: "vendor" },
-    { label: "Tailor / Fashion Designer", emoji: "🧵", desc: "Showcase custom tailoring, design collections, and alteration services." },
-    { label: "Barber", emoji: "💈", desc: "Offer premium styling, haircuts, beard grooming, and portfolio shots." },
-    { label: "Hairdresser / Braider", emoji: "💇‍♀️", desc: "Present beautiful braids, wig styling, extensions, and treatment catalog." },
-    { label: "Carpenter", emoji: "🪚", desc: "Show off bespoke woodwork, custom furniture, cabinets, and carpentry." },
-    { label: "Bricklayer / Builder", emoji: "🧱", desc: "Showcase masonry, brick construction, structural building, and repairs." },
-    { label: "Electrician", emoji: "⚡", desc: "Offer expert electrical wiring, fixture installation, and power fixes." },
-    { label: "Plumber", emoji: "🪠", desc: "Showcase drainage repairs, pipe fitting, plumbing installations." },
-    { label: "Welder / Metal Fabricator", emoji: "👨‍🏭", desc: "Present custom metal fabrication, heavy welding, iron gates, and grilles." },
-    { label: "Mechanic (car / motorcycle)", emoji: "🔧", desc: "Showcase auto repairs, motor servicing, diagnostics, and repairs." },
-    { label: "Bicycle Repair Technician", emoji: "🚲", desc: "Offer gear tuning, puncture repairs, custom bike builds, and maintenance." },
-    { label: "Mobile Money Agent", emoji: "📲", desc: "Show service coverage for payments, fast transfers, deposits, and cashouts." },
-    { label: "Photographer / Videographer", emoji: "📷", desc: "Present event photography, cinematic videos, custom portraits." },
-    { label: "Caterer / Cook", emoji: "🍳", desc: "Showcase gourmet meals, event catering, baking recipes, and food plates." },
-    { label: "Event Decorator", emoji: "🎈", desc: "Show balloon installations, theme parties, premium flower backdrops." },
-    { label: "DJ / Sound System Operator", emoji: "🎧", desc: "Present live sound systems, party mixes, music equipment rental." },
-    { label: "Private Tutor", emoji: "📖", desc: "Offer homework assistance, test prep, subject tutoring, and lessons." },
-    { label: "Graphic Designer / Printer", emoji: "🎨", desc: "Show logo designs, flyer creations, business card printing services." },
-    { label: "Computer Repair Technician", emoji: "💻", desc: "Offer OS installations, laptop screen fixes, software upgrades." },
-    { label: "House Painter", emoji: "🖌️", desc: "Present professional interior/exterior paint styling, textured walls." },
-    { label: "Taxi / Minibus Operator", emoji: "🚕", desc: "Show taxi bookings, airport pickups, tours, and shuttle routes." },
-    { label: "Delivery Partner", emoji: "🛵", desc: "Register as a verified delivery partner for transporting products.", type: "delivery_partner" }
+    {
+      label: "Basic Shop Owner",
+      emoji: "🏪",
+      desc: "Build a digital catalog storefront to showcase and list standard items.",
+      isShop: true,
+      type: "basic_shop",
+    },
+    {
+      label: "Independent Vendor",
+      emoji: "📦",
+      desc: "Become an active vendor, receive order chats, list specialized products.",
+      isShop: true,
+      type: "vendor",
+    },
+    {
+      label: "Tailor / Fashion Designer",
+      emoji: "🧵",
+      desc: "Showcase custom tailoring, design collections, and alteration services.",
+    },
+    {
+      label: "Barber",
+      emoji: "💈",
+      desc: "Offer premium styling, haircuts, beard grooming, and portfolio shots.",
+    },
+    {
+      label: "Hairdresser / Braider",
+      emoji: "💇‍♀️",
+      desc: "Present beautiful braids, wig styling, extensions, and treatment catalog.",
+    },
+    {
+      label: "Carpenter",
+      emoji: "🪚",
+      desc: "Show off bespoke woodwork, custom furniture, cabinets, and carpentry.",
+    },
+    {
+      label: "Bricklayer / Builder",
+      emoji: "🧱",
+      desc: "Showcase masonry, brick construction, structural building, and repairs.",
+    },
+    {
+      label: "Electrician",
+      emoji: "⚡",
+      desc: "Offer expert electrical wiring, fixture installation, and power fixes.",
+    },
+    {
+      label: "Plumber",
+      emoji: "🪠",
+      desc: "Showcase drainage repairs, pipe fitting, plumbing installations.",
+    },
+    {
+      label: "Welder / Metal Fabricator",
+      emoji: "👨‍🏭",
+      desc: "Present custom metal fabrication, heavy welding, iron gates, and grilles.",
+    },
+    {
+      label: "Mechanic (car / motorcycle)",
+      emoji: "🔧",
+      desc: "Showcase auto repairs, motor servicing, diagnostics, and repairs.",
+    },
+    {
+      label: "Bicycle Repair Technician",
+      emoji: "🚲",
+      desc: "Offer gear tuning, puncture repairs, custom bike builds, and maintenance.",
+    },
+    {
+      label: "Mobile Money Agent",
+      emoji: "📲",
+      desc: "Show service coverage for payments, fast transfers, deposits, and cashouts.",
+    },
+    {
+      label: "Photographer / Videographer",
+      emoji: "📷",
+      desc: "Present event photography, cinematic videos, custom portraits.",
+    },
+    {
+      label: "Caterer / Cook",
+      emoji: "🍳",
+      desc: "Showcase gourmet meals, event catering, baking recipes, and food plates.",
+    },
+    {
+      label: "Event Decorator",
+      emoji: "🎈",
+      desc: "Show balloon installations, theme parties, premium flower backdrops.",
+    },
+    {
+      label: "DJ / Sound System Operator",
+      emoji: "🎧",
+      desc: "Present live sound systems, party mixes, music equipment rental.",
+    },
+    {
+      label: "Private Tutor",
+      emoji: "📖",
+      desc: "Offer homework assistance, test prep, subject tutoring, and lessons.",
+    },
+    {
+      label: "Graphic Designer / Printer",
+      emoji: "🎨",
+      desc: "Show logo designs, flyer creations, business card printing services.",
+    },
+    {
+      label: "Computer Repair Technician",
+      emoji: "💻",
+      desc: "Offer OS installations, laptop screen fixes, software upgrades.",
+    },
+    {
+      label: "House Painter",
+      emoji: "🖌️",
+      desc: "Present professional interior/exterior paint styling, textured walls.",
+    },
+    {
+      label: "Taxi / Minibus Operator",
+      emoji: "🚕",
+      desc: "Show taxi bookings, airport pickups, tours, and shuttle routes.",
+    },
+    {
+      label: "Delivery Partner",
+      emoji: "🛵",
+      desc: "Register as a verified delivery partner for transporting products.",
+      type: "delivery_partner",
+    },
   ];
 
   const ACCENTS = ["#4A80F0", "#11998E", "#F7971E", "#7C3AED", "#FF6B6B"];
@@ -1180,9 +2155,13 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
 
   const pickImage = async (onSelected: (uri: string) => void) => {
     try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permission Required", "We need camera roll permissions to select images.");
+        Alert.alert(
+          "Permission Required",
+          "We need camera roll permissions to select images.",
+        );
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -1199,11 +2178,13 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
     }
   };
 
-  const handleSelectProfession = (prof: typeof PROFESSIONS[0]) => {
+  const handleSelectProfession = (prof: (typeof PROFESSIONS)[0]) => {
     setSelectedProf(prof.label);
     setSelectedProfEmoji(prof.emoji);
     setBrandName(`${user?.displayName || "My"} ${prof.label}`);
-    setBrandTagline(`Expert ${prof.label.toLowerCase()} services and collections`);
+    setBrandTagline(
+      `Expert ${prof.label.toLowerCase()} services and collections`,
+    );
     setBrandAccent(ACCENTS[Math.floor(Math.random() * ACCENTS.length)]);
     setCoverImageUrl("");
     setStep("setup");
@@ -1228,7 +2209,7 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
 
       // Determine merchant type
       let mType = "basic_shop";
-      const matched = PROFESSIONS.find(p => p.label === selectedProf);
+      const matched = PROFESSIONS.find((p) => p.label === selectedProf);
       if (matched && matched.isShop) {
         mType = matched.type as string;
       } else {
@@ -1248,9 +2229,25 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
         merchant_type: mType,
         // Pre-stock some sample professional portfolio services if creating a brand new showcase
         products: [
-          { id: "temp-prof-1", name: `Bespoke ${selectedProf} Service`, price: 49.99, brand: brandName.trim(), rating: 5.0, category: "Services", image_url: "" },
-          { id: "temp-prof-2", name: `Premium Portfolio Showcase`, price: 99.99, brand: brandName.trim(), rating: 5.0, category: "Portfolio", image_url: "" }
-        ]
+          {
+            id: "temp-prof-1",
+            name: `Bespoke ${selectedProf} Service`,
+            price: 49.99,
+            brand: brandName.trim(),
+            rating: 5.0,
+            category: "Services",
+            image_url: "",
+          },
+          {
+            id: "temp-prof-2",
+            name: `Premium Portfolio Showcase`,
+            price: 99.99,
+            brand: brandName.trim(),
+            rating: 5.0,
+            category: "Portfolio",
+            image_url: "",
+          },
+        ],
       };
 
       await StoreService.createStore(config as any);
@@ -1258,7 +2255,10 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
       setStep("success");
       onSuccess();
     } catch (e: any) {
-      Alert.alert("Error", e.message || "Could not register your professional brand.");
+      Alert.alert(
+        "Error",
+        e.message || "Could not register your professional brand.",
+      );
     } finally {
       setLoading(false);
     }
@@ -1279,35 +2279,80 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
   if (!visible) return null;
 
   return (
-    <Modal transparent visible={visible} animationType="none" onRequestClose={handleClose}>
+    <Modal
+      transparent
+      visible={visible}
+      animationType="none"
+      onRequestClose={handleClose}
+    >
       <Animated.View style={[styles.sidebarBackdrop, backdropAnimatedStyle]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose} />
       </Animated.View>
 
-      <Animated.View style={[
-        styles.sidebarSheet,
-        sidebarAnimatedStyle,
-        { backgroundColor: colors.card, borderColor: colors.border, paddingTop: insets.top }
-      ]}>
+      <Animated.View
+        style={[
+          styles.sidebarSheet,
+          sidebarAnimatedStyle,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            paddingTop: insets.top,
+          },
+        ]}
+      >
         {/* Header */}
-        <View style={[styles.sidebarHeader, { flexDirection: "row", alignItems: "center", gap: 12 }]}>
-          <TouchableOpacity style={[styles.sidebarCloseBtn, { paddingRight: 6 }]} onPress={handleClose}>
+        <View
+          style={[
+            styles.sidebarHeader,
+            { flexDirection: "row", alignItems: "center", gap: 12 },
+          ]}
+        >
+          <TouchableOpacity
+            style={[styles.sidebarCloseBtn, { paddingRight: 6 }]}
+            onPress={handleClose}
+          >
             <Ionicons name="arrow-back" size={24} color={colors.foreground} />
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.sidebarSubtitle, { color: colors.mutedForeground }]}>
+            <Text
+              style={[
+                styles.sidebarSubtitle,
+                { color: colors.mutedForeground },
+              ]}
+            >
               Brand & Profession Inception
             </Text>
-            <Text style={[styles.sidebarTitle, { color: colors.foreground, fontSize: 18 }]}>
-              {step === "select" ? "Choose Your Path" : step === "setup" ? "Design Your Brand" : "Success!"}
+            <Text
+              style={[
+                styles.sidebarTitle,
+                { color: colors.foreground, fontSize: 18 },
+              ]}
+            >
+              {step === "select"
+                ? "Choose Your Path"
+                : step === "setup"
+                  ? "Design Your Brand"
+                  : "Success!"}
             </Text>
           </View>
         </View>
 
         {step === "select" ? (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 18, gap: 12, paddingBottom: 100 }}>
-            <Text style={{ fontSize: 13, fontFamily: "Inter_600SemiBold", color: colors.mutedForeground, marginBottom: 4 }}>
-              Select a path below to instantly build a highly polished professional showcase brand. Visitors of your profile can view your portfolios, services, products, and contact you directly.
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ padding: 18, gap: 12, paddingBottom: 100 }}
+          >
+            <Text
+              style={{
+                fontSize: 13,
+                fontFamily: "Inter_600SemiBold",
+                color: colors.mutedForeground,
+                marginBottom: 4,
+              }}
+            >
+              Select a path below to instantly build a highly polished
+              professional showcase brand. Visitors of your profile can view
+              your portfolios, services, products, and contact you directly.
             </Text>
 
             {PROFESSIONS.map((prof) => (
@@ -1326,20 +2371,50 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
                 }}
                 onPress={() => handleSelectProfession(prof)}
               >
-                <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.muted, alignItems: "center", justifyContent: "center" }}>
+                <View
+                  style={{
+                    width: 44,
+                    height: 44,
+                    borderRadius: 12,
+                    backgroundColor: colors.muted,
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
                   <Text style={{ fontSize: 24 }}>{prof.emoji}</Text>
                 </View>
                 <View style={{ flex: 1, gap: 2 }}>
-                  <Text style={{ color: colors.foreground, fontSize: 15, fontFamily: "Inter_700Bold" }}>{prof.label}</Text>
-                  <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_500Medium" }} numberOfLines={2}>{prof.desc}</Text>
+                  <Text
+                    style={{
+                      color: colors.foreground,
+                      fontSize: 15,
+                      fontFamily: "Inter_700Bold",
+                    }}
+                  >
+                    {prof.label}
+                  </Text>
+                  <Text
+                    style={{
+                      color: colors.mutedForeground,
+                      fontSize: 11,
+                      fontFamily: "Inter_500Medium",
+                    }}
+                    numberOfLines={2}
+                  >
+                    {prof.desc}
+                  </Text>
                 </View>
-                <Ionicons name="arrow-forward" size={18} color={colors.mutedForeground} />
+                <Ionicons
+                  name="arrow-forward"
+                  size={18}
+                  color={colors.mutedForeground}
+                />
               </Pressable>
             ))}
           </ScrollView>
         ) : step === "setup" ? (
           selectedProf === "Delivery Partner" ? (
-            <DeliveryRegistrationForm 
+            <DeliveryRegistrationForm
               userId={userId}
               onSuccess={() => {
                 setStep("success");
@@ -1348,129 +2423,307 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
               onCancel={() => setStep("select")}
             />
           ) : (
-          <>
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 18, gap: 16 }}>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, backgroundColor: colors.muted, padding: 10, borderRadius: 10 }}>
-                <Text style={{ fontSize: 20 }}>{selectedProfEmoji}</Text>
-                <View>
-                  <Text style={{ fontSize: 10, color: colors.mutedForeground, fontFamily: "Inter_700Bold", textTransform: "uppercase" }}>SELECTED PROFESSION</Text>
-                  <Text style={{ fontSize: 14, color: colors.foreground, fontFamily: "Inter_700Bold" }}>{selectedProf}</Text>
-                </View>
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Brand / Business Name</Text>
-                <TextInput
-                  style={[styles.modalInput, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]}
-                  placeholder="e.g. Nick's Elite Alterations"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={brandName}
-                  onChangeText={setBrandName}
-                />
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Brand Tagline / Bio</Text>
-                <TextInput
-                  style={[styles.modalInput, { backgroundColor: colors.input, borderColor: colors.border, color: colors.foreground }]}
-                  placeholder="e.g. Providing high-quality styling"
-                  placeholderTextColor={colors.mutedForeground}
-                  value={brandTagline}
-                  onChangeText={setBrandTagline}
-                />
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Showcase Cover Image</Text>
-                <Pressable
+            <>
+              <ScrollView
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ padding: 18, gap: 16 }}
+              >
+                <View
                   style={{
-                    backgroundColor: colors.input,
-                    borderColor: colors.border,
-                    borderWidth: 1.5,
-                    borderRadius: 12,
-                    height: 120,
-                    justifyContent: "center",
+                    flexDirection: "row",
                     alignItems: "center",
-                    overflow: "hidden",
+                    gap: 8,
+                    backgroundColor: colors.muted,
+                    padding: 10,
+                    borderRadius: 10,
                   }}
-                  onPress={() => pickImage(setCoverImageUrl)}
                 >
-                  {coverImageUrl ? (
-                    <>
-                      <Image source={{ uri: coverImageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-                      <View style={{ position: "absolute", bottom: 8, right: 8, backgroundColor: "rgba(0,0,0,0.7)", borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, flexDirection: "row", alignItems: "center", gap: 4 }}>
-                        <Ionicons name="camera" size={14} color="#fff" />
-                        <Text style={{ color: "#fff", fontSize: 11, fontFamily: "Inter_700Bold" }}>Change Image</Text>
-                      </View>
-                    </>
-                  ) : (
-                    <View style={{ alignItems: "center", gap: 6 }}>
-                      <Ionicons name="image-outline" size={32} color={colors.mutedForeground} />
-                      <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_600SemiBold" }}>Upload Cover Image</Text>
-                      <Text style={{ color: colors.mutedForeground, fontSize: 10 }}>Select professional banner from device</Text>
-                    </View>
-                  )}
-                </Pressable>
-              </View>
-
-              <View style={styles.modalInputGroup}>
-                <Text style={[styles.modalLabel, { color: colors.mutedForeground }]}>Brand Accent Color</Text>
-                <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
-                  {ACCENTS.map((c) => (
-                    <TouchableOpacity
-                      key={c}
+                  <Text style={{ fontSize: 20 }}>{selectedProfEmoji}</Text>
+                  <View>
+                    <Text
                       style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 19,
-                        backgroundColor: c,
-                        borderWidth: brandAccent === c ? 3 : 0,
-                        borderColor: colors.foreground,
+                        fontSize: 10,
+                        color: colors.mutedForeground,
+                        fontFamily: "Inter_700Bold",
+                        textTransform: "uppercase",
                       }}
-                      onPress={() => setBrandAccent(c)}
-                    />
-                  ))}
+                    >
+                      SELECTED PROFESSION
+                    </Text>
+                    <Text
+                      style={{
+                        fontSize: 14,
+                        color: colors.foreground,
+                        fontFamily: "Inter_700Bold",
+                      }}
+                    >
+                      {selectedProf}
+                    </Text>
+                  </View>
                 </View>
-              </View>
-            </ScrollView>
 
-            <View style={[styles.sidebarFooter, { borderTopColor: colors.border, backgroundColor: colors.card, flexDirection: "row", gap: 10 }]}>
-              <TouchableOpacity
-                style={[styles.sidebarSubmitBtn, { flex: 1, backgroundColor: colors.muted }]}
-                onPress={() => setStep("select")}
+                <View style={styles.modalInputGroup}>
+                  <Text
+                    style={[
+                      styles.modalLabel,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    Brand / Business Name
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.modalInput,
+                      {
+                        backgroundColor: colors.input,
+                        borderColor: colors.border,
+                        color: colors.foreground,
+                      },
+                    ]}
+                    placeholder="e.g. Nick's Elite Alterations"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={brandName}
+                    onChangeText={setBrandName}
+                  />
+                </View>
+
+                <View style={styles.modalInputGroup}>
+                  <Text
+                    style={[
+                      styles.modalLabel,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    Brand Tagline / Bio
+                  </Text>
+                  <TextInput
+                    style={[
+                      styles.modalInput,
+                      {
+                        backgroundColor: colors.input,
+                        borderColor: colors.border,
+                        color: colors.foreground,
+                      },
+                    ]}
+                    placeholder="e.g. Providing high-quality styling"
+                    placeholderTextColor={colors.mutedForeground}
+                    value={brandTagline}
+                    onChangeText={setBrandTagline}
+                  />
+                </View>
+
+                <View style={styles.modalInputGroup}>
+                  <Text
+                    style={[
+                      styles.modalLabel,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    Showcase Cover Image
+                  </Text>
+                  <Pressable
+                    style={{
+                      backgroundColor: colors.input,
+                      borderColor: colors.border,
+                      borderWidth: 1.5,
+                      borderRadius: 12,
+                      height: 120,
+                      justifyContent: "center",
+                      alignItems: "center",
+                      overflow: "hidden",
+                    }}
+                    onPress={() => pickImage(setCoverImageUrl)}
+                  >
+                    {coverImageUrl ? (
+                      <>
+                        <Image
+                          source={{ uri: coverImageUrl }}
+                          style={StyleSheet.absoluteFill}
+                          resizeMode="cover"
+                        />
+                        <View
+                          style={{
+                            position: "absolute",
+                            bottom: 8,
+                            right: 8,
+                            backgroundColor: "rgba(0,0,0,0.7)",
+                            borderRadius: 8,
+                            paddingHorizontal: 10,
+                            paddingVertical: 5,
+                            flexDirection: "row",
+                            alignItems: "center",
+                            gap: 4,
+                          }}
+                        >
+                          <Ionicons name="camera" size={14} color="#fff" />
+                          <Text
+                            style={{
+                              color: "#fff",
+                              fontSize: 11,
+                              fontFamily: "Inter_700Bold",
+                            }}
+                          >
+                            Change Image
+                          </Text>
+                        </View>
+                      </>
+                    ) : (
+                      <View style={{ alignItems: "center", gap: 6 }}>
+                        <Ionicons
+                          name="image-outline"
+                          size={32}
+                          color={colors.mutedForeground}
+                        />
+                        <Text
+                          style={{
+                            color: colors.mutedForeground,
+                            fontSize: 13,
+                            fontFamily: "Inter_600SemiBold",
+                          }}
+                        >
+                          Upload Cover Image
+                        </Text>
+                        <Text
+                          style={{
+                            color: colors.mutedForeground,
+                            fontSize: 10,
+                          }}
+                        >
+                          Select professional banner from device
+                        </Text>
+                      </View>
+                    )}
+                  </Pressable>
+                </View>
+
+                <View style={styles.modalInputGroup}>
+                  <Text
+                    style={[
+                      styles.modalLabel,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
+                    Brand Accent Color
+                  </Text>
+                  <View style={{ flexDirection: "row", gap: 10, marginTop: 6 }}>
+                    {ACCENTS.map((c) => (
+                      <TouchableOpacity
+                        key={c}
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: 19,
+                          backgroundColor: c,
+                          borderWidth: brandAccent === c ? 3 : 0,
+                          borderColor: colors.foreground,
+                        }}
+                        onPress={() => setBrandAccent(c)}
+                      />
+                    ))}
+                  </View>
+                </View>
+              </ScrollView>
+
+              <View
+                style={[
+                  styles.sidebarFooter,
+                  {
+                    borderTopColor: colors.border,
+                    backgroundColor: colors.card,
+                    flexDirection: "row",
+                    gap: 10,
+                  },
+                ]}
               >
-                <Text style={[styles.submitBtnText, { color: colors.foreground }]}>Back</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.sidebarSubmitBtn, { flex: 2, backgroundColor: brandAccent }]}
-                onPress={handleSaveProfession}
-                disabled={loading}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.submitBtnText}>Launch Brand</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </>
+                <TouchableOpacity
+                  style={[
+                    styles.sidebarSubmitBtn,
+                    { flex: 1, backgroundColor: colors.muted },
+                  ]}
+                  onPress={() => setStep("select")}
+                >
+                  <Text
+                    style={[styles.submitBtnText, { color: colors.foreground }]}
+                  >
+                    Back
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.sidebarSubmitBtn,
+                    { flex: 2, backgroundColor: brandAccent },
+                  ]}
+                  onPress={handleSaveProfession}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.submitBtnText}>Launch Brand</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </>
           )
         ) : (
-          <View style={[styles.successWrapper, { padding: 32, flex: 1, justifyContent: "center", alignItems: "center", gap: 16 }]}>
+          <View
+            style={[
+              styles.successWrapper,
+              {
+                padding: 32,
+                flex: 1,
+                justifyContent: "center",
+                alignItems: "center",
+                gap: 16,
+              },
+            ]}
+          >
             <Ionicons name="checkmark-circle" size={80} color="#22C55E" />
-            <Text style={[styles.successTitleText, { color: colors.foreground, fontSize: 22, fontFamily: "Inter_800ExtraBold" }]}>
-              {selectedProf === "Delivery Partner" ? "Application Submitted!" : "Brand Live & Compiled!"}
+            <Text
+              style={[
+                styles.successTitleText,
+                {
+                  color: colors.foreground,
+                  fontSize: 22,
+                  fontFamily: "Inter_800ExtraBold",
+                },
+              ]}
+            >
+              {selectedProf === "Delivery Partner"
+                ? "Application Submitted!"
+                : "Brand Live & Compiled!"}
             </Text>
-            <Text style={[styles.successDescText, { color: colors.mutedForeground, textAlign: "center", fontSize: 14, fontFamily: "Inter_500Medium" }]}>
+            <Text
+              style={[
+                styles.successDescText,
+                {
+                  color: colors.mutedForeground,
+                  textAlign: "center",
+                  fontSize: 14,
+                  fontFamily: "Inter_500Medium",
+                },
+              ]}
+            >
               {selectedProf === "Delivery Partner"
                 ? "Your delivery partner registration has been submitted and is pending verification. You will be notified once approved."
                 : `Congratulations! Your brand as a "${selectedProf}" is now fully set up. Visitors can browse your services, portfolio, and easily message you.`}
             </Text>
             <TouchableOpacity
-              style={[styles.sidebarSubmitBtn, { width: "100%", backgroundColor: colors.primary, marginTop: 14 }]}
+              style={[
+                styles.sidebarSubmitBtn,
+                {
+                  width: "100%",
+                  backgroundColor: colors.primary,
+                  marginTop: 14,
+                },
+              ]}
               onPress={handleClose}
             >
-              <Text style={styles.submitBtnText}>{selectedProf === "Delivery Partner" ? "Done" : "View My Showcase"}</Text>
+              <Text style={styles.submitBtnText}>
+                {selectedProf === "Delivery Partner"
+                  ? "Done"
+                  : "View My Showcase"}
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -1482,10 +2735,38 @@ function ProfessionSidebar({ visible, onClose, userId, user, store, onSuccess }:
 // ─── Mock Wishlist Data ───────────────────────────────────────────────────────
 
 const INITIAL_WISHLIST: WishlistItem[] = [
-  { id: "w1", productName: "Nike Air Max 90", brand: "Nike", price: 225.00, category: "Running", addedAt: "2d ago" },
-  { id: "w2", productName: "Adidas Yeezy 350 V2", brand: "Adidas", price: 320.00, category: "Lifestyle", addedAt: "5d ago" },
-  { id: "w3", productName: "Jordan 1 Retro High OG", brand: "Jordan", price: 180.00, category: "Basketball", addedAt: "1w ago" },
-  { id: "w4", productName: "New Balance 990v5", brand: "New Balance", price: 185.00, category: "Running", addedAt: "2w ago" },
+  {
+    id: "w1",
+    productName: "Nike Air Max 90",
+    brand: "Nike",
+    price: 225.0,
+    category: "Running",
+    addedAt: "2d ago",
+  },
+  {
+    id: "w2",
+    productName: "Adidas Yeezy 350 V2",
+    brand: "Adidas",
+    price: 320.0,
+    category: "Lifestyle",
+    addedAt: "5d ago",
+  },
+  {
+    id: "w3",
+    productName: "Jordan 1 Retro High OG",
+    brand: "Jordan",
+    price: 180.0,
+    category: "Basketball",
+    addedAt: "1w ago",
+  },
+  {
+    id: "w4",
+    productName: "New Balance 990v5",
+    brand: "New Balance",
+    price: 185.0,
+    category: "Running",
+    addedAt: "2w ago",
+  },
 ];
 
 // ─── Create Post Modal ────────────────────────────────────────────────────────
@@ -1497,7 +2778,12 @@ interface CreatePostModalProps {
   userId: string;
 }
 
-function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalProps) {
+function CreatePostModal({
+  visible,
+  onClose,
+  onPost,
+  userId,
+}: CreatePostModalProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const [content, setContent] = useState("");
@@ -1526,7 +2812,10 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permission Required", "We need access to your photos to attach an image.");
+      Alert.alert(
+        "Permission Required",
+        "We need access to your photos to attach an image.",
+      );
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -1548,12 +2837,12 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
       if (!result.canceled && result.assets?.length) {
         const uri = result.assets[0].uri;
         setAudioUri(uri);
-        
+
         // Logical check for music duration using temporary sound object
         try {
           const { sound, status } = await Audio.Sound.createAsync(
             { uri },
-            { shouldPlay: false }
+            { shouldPlay: false },
           );
           if (status.isLoaded) {
             const durationMs = status.durationMillis || 0;
@@ -1561,7 +2850,7 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
             if (durationMs > 60000) {
               Alert.alert(
                 "Audio Trimmed",
-                "Your audio track exceeds 1 minute. It will automatically be trimmed to play only the first 60 seconds."
+                "Your audio track exceeds 1 minute. It will automatically be trimmed to play only the first 60 seconds.",
               );
             }
           }
@@ -1579,19 +2868,22 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
     try {
       const permission = await Audio.requestPermissionsAsync();
       if (permission.status !== "granted") {
-        Alert.alert("Permission Required", "Microphone access is needed to record voice notes.");
+        Alert.alert(
+          "Permission Required",
+          "Microphone access is needed to record voice notes.",
+        );
         return;
       }
-      
+
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
       });
 
       const { recording } = await Audio.Recording.createAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
+        Audio.RecordingOptionsPresets.HIGH_QUALITY,
       );
-      
+
       // Auto-stop recording at 60 seconds (1 minute limit)
       recording.setOnRecordingStatusUpdate(async (status) => {
         if (status.durationMillis >= 60000) {
@@ -1601,11 +2893,14 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
             const uri = recording.getURI();
             setVoiceUri(uri);
             setRecording(null);
-            
+
             await Audio.setAudioModeAsync({
               allowsRecordingIOS: false,
             });
-            Alert.alert("Recording Limit", "Voice notes are limited to 1 minute maximum.");
+            Alert.alert(
+              "Recording Limit",
+              "Voice notes are limited to 1 minute maximum.",
+            );
           } catch (stopErr) {
             console.error("Auto stop recording failed", stopErr);
           }
@@ -1628,7 +2923,7 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
       const uri = recording.getURI();
       setVoiceUri(uri);
       setRecording(null);
-      
+
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
       });
@@ -1651,9 +2946,9 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
       try {
         const { sound } = await Audio.Sound.createAsync(
           { uri },
-          { shouldPlay: true }
+          { shouldPlay: true },
         );
-        
+
         sound.setOnPlaybackStatusUpdate(async (status) => {
           if (status.isLoaded) {
             if (status.positionMillis >= 60000) {
@@ -1682,7 +2977,7 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
       return;
     }
     setPosting(true);
-    
+
     const tags = tagsRaw
       .split(/[\s,#]+/)
       .map((t) => t.trim().replace(/^#/, ""))
@@ -1700,9 +2995,14 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
     }
 
     try {
-      const createdPost = await ProfileService.createPost(userId, trimmed, tags, mediaFiles);
+      const createdPost = await ProfileService.createPost(
+        userId,
+        trimmed,
+        tags,
+        mediaFiles,
+      );
       onPost(createdPost);
-      
+
       // Clear states
       setContent("");
       setTagsRaw("");
@@ -1748,28 +3048,62 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
       presentationStyle="pageSheet"
       onRequestClose={handleClose}
     >
-      <View style={[createPostStyles.fullScreenContainer, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <View
+        style={[
+          createPostStyles.fullScreenContainer,
+          { backgroundColor: colors.background, paddingTop: insets.top },
+        ]}
+      >
         {/* ── Header ── */}
-        <View style={[createPostStyles.header, { borderBottomColor: colors.border }]}>
-          <TouchableOpacity onPress={handleClose} style={createPostStyles.cancelBtn}>
-            <Text style={[createPostStyles.cancelText, { color: colors.mutedForeground }]}>Cancel</Text>
+        <View
+          style={[
+            createPostStyles.header,
+            { borderBottomColor: colors.border },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={handleClose}
+            style={createPostStyles.cancelBtn}
+          >
+            <Text
+              style={[
+                createPostStyles.cancelText,
+                { color: colors.mutedForeground },
+              ]}
+            >
+              Cancel
+            </Text>
           </TouchableOpacity>
-          <Text style={[createPostStyles.title, { color: colors.foreground }]}>New Post</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Text style={[createPostStyles.title, { color: colors.foreground }]}>
+            New Post
+          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
             {/* Dev diagnostic — remove before shipping to production */}
             <TouchableOpacity
-              style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: '#f59e0b22' }}
+              style={{
+                paddingHorizontal: 8,
+                paddingVertical: 4,
+                borderRadius: 6,
+                backgroundColor: "#f59e0b22",
+              }}
               onPress={async () => {
                 const report = await ProfileService.diagnoseBucket();
-                Alert.alert('Bucket Diagnostic', report);
+                Alert.alert("Bucket Diagnostic", report);
               }}
             >
-              <Text style={{ color: '#f59e0b', fontSize: 11, fontWeight: '600' }}>Test Bucket</Text>
+              <Text
+                style={{ color: "#f59e0b", fontSize: 11, fontWeight: "600" }}
+              >
+                Test Bucket
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[
                 createPostStyles.postBtn,
-                { backgroundColor: colors.primary, opacity: posting || !content.trim() ? 0.5 : 1 },
+                {
+                  backgroundColor: colors.primary,
+                  opacity: posting || !content.trim() ? 0.5 : 1,
+                },
               ]}
               onPress={handlePost}
               disabled={posting || !content.trim()}
@@ -1784,44 +3118,97 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
         </View>
 
         {/* ── Media toolbar ── */}
-        <View style={[createPostStyles.mediaToolbar, { borderBottomColor: colors.border }]}>
+        <View
+          style={[
+            createPostStyles.mediaToolbar,
+            { borderBottomColor: colors.border },
+          ]}
+        >
           <Pressable
             onPress={pickImage}
-            style={[createPostStyles.mediaBtn, imageUri ? { backgroundColor: colors.primary + "22" } : null]}
+            style={[
+              createPostStyles.mediaBtn,
+              imageUri ? { backgroundColor: colors.primary + "22" } : null,
+            ]}
           >
-            <Ionicons name="image-outline" size={22} color={imageUri ? colors.primary : colors.mutedForeground} />
-            <Text style={[createPostStyles.mediaBtnLabel, { color: imageUri ? colors.primary : colors.mutedForeground }]}>
+            <Ionicons
+              name="image-outline"
+              size={22}
+              color={imageUri ? colors.primary : colors.mutedForeground}
+            />
+            <Text
+              style={[
+                createPostStyles.mediaBtnLabel,
+                { color: imageUri ? colors.primary : colors.mutedForeground },
+              ]}
+            >
               {imageUri ? "Image ✓" : "Image"}
             </Text>
           </Pressable>
 
           <Pressable
             onPress={pickAudio}
-            style={[createPostStyles.mediaBtn, audioUri ? { backgroundColor: colors.primary + "22" } : null]}
+            style={[
+              createPostStyles.mediaBtn,
+              audioUri ? { backgroundColor: colors.primary + "22" } : null,
+            ]}
           >
-            <Ionicons name="musical-note-outline" size={22} color={audioUri ? colors.primary : colors.mutedForeground} />
-            <Text style={[createPostStyles.mediaBtnLabel, { color: audioUri ? colors.primary : colors.mutedForeground }]}>
+            <Ionicons
+              name="musical-note-outline"
+              size={22}
+              color={audioUri ? colors.primary : colors.mutedForeground}
+            />
+            <Text
+              style={[
+                createPostStyles.mediaBtnLabel,
+                { color: audioUri ? colors.primary : colors.mutedForeground },
+              ]}
+            >
               {audioUri ? "Audio ✓" : "Music"}
             </Text>
           </Pressable>
 
           <Pressable
-            onPress={isRecording ? stopRecording : (voiceUri ? () => setVoiceUri(null) : startRecording)}
+            onPress={
+              isRecording
+                ? stopRecording
+                : voiceUri
+                  ? () => setVoiceUri(null)
+                  : startRecording
+            }
             style={[
               createPostStyles.mediaBtn,
-              isRecording ? { backgroundColor: "#FF3B3022" } : (voiceUri ? { backgroundColor: colors.primary + "22" } : null)
+              isRecording
+                ? { backgroundColor: "#FF3B3022" }
+                : voiceUri
+                  ? { backgroundColor: colors.primary + "22" }
+                  : null,
             ]}
           >
             <Ionicons
               name={isRecording ? "stop-circle-outline" : "mic-outline"}
               size={22}
-              color={isRecording ? "#FF3B30" : (voiceUri ? colors.primary : colors.mutedForeground)}
+              color={
+                isRecording
+                  ? "#FF3B30"
+                  : voiceUri
+                    ? colors.primary
+                    : colors.mutedForeground
+              }
             />
-            <Text style={[
-              createPostStyles.mediaBtnLabel,
-              { color: isRecording ? "#FF3B30" : (voiceUri ? colors.primary : colors.mutedForeground) }
-            ]}>
-              {isRecording ? "Recording..." : (voiceUri ? "Voice ✓" : "Voice")}
+            <Text
+              style={[
+                createPostStyles.mediaBtnLabel,
+                {
+                  color: isRecording
+                    ? "#FF3B30"
+                    : voiceUri
+                      ? colors.primary
+                      : colors.mutedForeground,
+                },
+              ]}
+            >
+              {isRecording ? "Recording..." : voiceUri ? "Voice ✓" : "Voice"}
             </Text>
           </Pressable>
         </View>
@@ -1829,7 +3216,11 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
         {/* ── Image preview ── */}
         {imageUri ? (
           <View style={createPostStyles.imagePreviewWrapper}>
-            <Image source={{ uri: imageUri }} style={createPostStyles.imagePreview} resizeMode="cover" />
+            <Image
+              source={{ uri: imageUri }}
+              style={createPostStyles.imagePreview}
+              resizeMode="cover"
+            />
             <TouchableOpacity
               style={createPostStyles.removeImageBtn}
               onPress={() => setImageUri(null)}
@@ -1839,7 +3230,9 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
             {audioUri ? (
               <View style={createPostStyles.audioOverlay}>
                 <Ionicons name="musical-notes" size={14} color="#fff" />
-                <Text style={createPostStyles.audioOverlayText}>Music attached</Text>
+                <Text style={createPostStyles.audioOverlayText}>
+                  Music attached
+                </Text>
               </View>
             ) : null}
           </View>
@@ -1848,11 +3241,28 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
         {/* ── Voice preview player (if voice note exists) ── */}
         {voiceUri ? (
           <View style={createPostStyles.voiceNotePreviewWrapper}>
-            <View style={[createPostStyles.voiceNoteCard, { backgroundColor: colors.input, borderColor: colors.border }]}>
-              <TouchableOpacity onPress={() => togglePlayback(voiceUri)} style={createPostStyles.voicePlayBtn}>
-                <Ionicons name={isPlaying ? "pause" : "play"} size={20} color={colors.primary} />
+            <View
+              style={[
+                createPostStyles.voiceNoteCard,
+                { backgroundColor: colors.input, borderColor: colors.border },
+              ]}
+            >
+              <TouchableOpacity
+                onPress={() => togglePlayback(voiceUri)}
+                style={createPostStyles.voicePlayBtn}
+              >
+                <Ionicons
+                  name={isPlaying ? "pause" : "play"}
+                  size={20}
+                  color={colors.primary}
+                />
               </TouchableOpacity>
-              <Text style={[createPostStyles.voiceNoteText, { color: colors.foreground }]}>
+              <Text
+                style={[
+                  createPostStyles.voiceNoteText,
+                  { color: colors.foreground },
+                ]}
+              >
                 {isPlaying ? "Playing voice note..." : "Voice Note Recorded"}
               </Text>
               <TouchableOpacity
@@ -1885,7 +3295,12 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
           textAlignVertical="top"
         />
 
-        <Text style={[createPostStyles.charCount, { color: colors.mutedForeground }]}>
+        <Text
+          style={[
+            createPostStyles.charCount,
+            { color: colors.mutedForeground },
+          ]}
+        >
           {content.length}/500
         </Text>
 
@@ -1893,10 +3308,18 @@ function CreatePostModal({ visible, onClose, onPost, userId }: CreatePostModalPr
         <View
           style={[
             createPostStyles.tagsRow,
-            { borderColor: colors.border, backgroundColor: colors.input, marginBottom: insets.bottom + 16 },
+            {
+              borderColor: colors.border,
+              backgroundColor: colors.input,
+              marginBottom: insets.bottom + 16,
+            },
           ]}
         >
-          <Ionicons name="pricetag-outline" size={16} color={colors.mutedForeground} />
+          <Ionicons
+            name="pricetag-outline"
+            size={16}
+            color={colors.mutedForeground}
+          />
           <TextInput
             style={[createPostStyles.tagsInput, { color: colors.foreground }]}
             placeholder="Add tags, e.g. Nike AirMax Hype"
@@ -2076,14 +3499,18 @@ const createPostStyles = StyleSheet.create({
 // ─── Main ProfileScreen ───────────────────────────────────────────────────────
 
 interface ProfileScreenProps {
-
   userId: string;
   showBackButton?: boolean;
   onBack?: () => void;
   onEditPress?: () => void;
 }
 
-export function ProfileScreen({ userId, showBackButton, onBack, onEditPress }: ProfileScreenProps) {
+export function ProfileScreen({
+  userId,
+  showBackButton,
+  onBack,
+  onEditPress,
+}: ProfileScreenProps) {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const topPad = Platform.OS === "web" ? 67 : insets.top;
@@ -2097,7 +3524,7 @@ export function ProfileScreen({ userId, showBackButton, onBack, onEditPress }: P
   const hasShop = !!store || !!user?.title;
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-const [professionModalVisible, setProfessionModalVisible] = useState(false);
+  const [professionModalVisible, setProfessionModalVisible] = useState(false);
 
   // Local posts state — supports create + delete without refetching
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
@@ -2106,7 +3533,7 @@ const [professionModalVisible, setProfessionModalVisible] = useState(false);
 
   // Wishlist state
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>(
-    isOwn ? INITIAL_WISHLIST : []
+    isOwn ? INITIAL_WISHLIST : [],
   );
 
   // Sync remote posts → local state on first load
@@ -2146,7 +3573,7 @@ const [professionModalVisible, setProfessionModalVisible] = useState(false);
   useFocusEffect(
     useCallback(() => {
       handleRefresh();
-    }, [handleRefresh])
+    }, [handleRefresh]),
   );
 
   const renderPost = useCallback(
@@ -2157,14 +3584,19 @@ const [professionModalVisible, setProfessionModalVisible] = useState(false);
         onDelete={() => handleDeletePost(item.id)}
       />
     ),
-    [isOwn, handleDeletePost]
+    [isOwn, handleDeletePost],
   );
 
   const keyExtractor = useCallback((item: Post) => item.id, []);
 
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topPad }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, paddingTop: topPad },
+        ]}
+      >
         {showBackButton && (
           <TouchableOpacity style={styles.backBtn} onPress={onBack}>
             <Ionicons name="arrow-back" size={22} color={colors.foreground} />
@@ -2177,13 +3609,23 @@ const [professionModalVisible, setProfessionModalVisible] = useState(false);
 
   if (error || !user) {
     return (
-      <View style={[styles.container, styles.center, { backgroundColor: colors.background, paddingTop: topPad }]}>
+      <View
+        style={[
+          styles.container,
+          styles.center,
+          { backgroundColor: colors.background, paddingTop: topPad },
+        ]}
+      >
         {showBackButton && (
           <TouchableOpacity style={styles.backBtn} onPress={onBack}>
             <Ionicons name="arrow-back" size={22} color={colors.foreground} />
           </TouchableOpacity>
         )}
-        <Ionicons name="alert-circle-outline" size={48} color={colors.mutedForeground} />
+        <Ionicons
+          name="alert-circle-outline"
+          size={48}
+          color={colors.mutedForeground}
+        />
         <Text style={[styles.errorText, { color: colors.foreground }]}>
           {error ?? "User not found"}
         </Text>
@@ -2204,13 +3646,13 @@ const [professionModalVisible, setProfessionModalVisible] = useState(false);
         return null; // handled by FlatList
       case "collection":
         if (selectedItemId === "delivery_partner") {
-  return <DeliveryDashboard />;
-}
-if (store) {
+          return <DeliveryDashboard />;
+        }
+        if (store) {
           return (
             <View style={{ padding: 18, gap: 14 }}>
               {/* Horizontal selector bar for multiple stores/professions */}
-              {((stores.length > 1) || (isOwn && stores.length > 0)) && (
+              {(stores.length > 1 || (isOwn && stores.length > 0)) && (
                 <ScrollView
                   horizontal
                   showsHorizontalScrollIndicator={false}
@@ -2225,8 +3667,12 @@ if (store) {
                           flexDirection: "row",
                           alignItems: "center",
                           gap: 6,
-                          backgroundColor: isActive ? store.accent_color : colors.card,
-                          borderColor: isActive ? store.accent_color : colors.border,
+                          backgroundColor: isActive
+                            ? store.accent_color
+                            : colors.card,
+                          borderColor: isActive
+                            ? store.accent_color
+                            : colors.border,
                           borderWidth: 1.5,
                           borderRadius: 20,
                           paddingHorizontal: 12,
@@ -2247,32 +3693,49 @@ if (store) {
                       </TouchableOpacity>
                     );
                   })}
-{/* Delivery Partner selection pill */}
-<TouchableOpacity
-  style={{
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: selectedItemId === "delivery_partner" ? colors.accent : colors.muted,
-    borderColor: selectedItemId === "delivery_partner" ? colors.accent : colors.border,
-    borderWidth: 1.5,
-    borderRadius: 20,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  }}
-  onPress={() => setSelectedItemId("delivery_partner")}
->
-  <Ionicons name="bicycle" size={14} color={selectedItemId === "delivery_partner" ? "#fff" : colors.foreground} />
-  <Text
-    style={{
-      color: selectedItemId === "delivery_partner" ? "#fff" : colors.foreground,
-      fontSize: 12,
-      fontFamily: "Inter_700Bold",
-    }}
-  >
-    Delivery Partner
-  </Text>
-</TouchableOpacity>
+                  {/* Delivery Partner selection pill */}
+                  <TouchableOpacity
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 6,
+                      backgroundColor:
+                        selectedItemId === "delivery_partner"
+                          ? colors.accent
+                          : colors.muted,
+                      borderColor:
+                        selectedItemId === "delivery_partner"
+                          ? colors.accent
+                          : colors.border,
+                      borderWidth: 1.5,
+                      borderRadius: 20,
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                    }}
+                    onPress={() => setSelectedItemId("delivery_partner")}
+                  >
+                    <Ionicons
+                      name="bicycle"
+                      size={14}
+                      color={
+                        selectedItemId === "delivery_partner"
+                          ? "#fff"
+                          : colors.foreground
+                      }
+                    />
+                    <Text
+                      style={{
+                        color:
+                          selectedItemId === "delivery_partner"
+                            ? "#fff"
+                            : colors.foreground,
+                        fontSize: 12,
+                        fontFamily: "Inter_700Bold",
+                      }}
+                    >
+                      Delivery Partner
+                    </Text>
+                  </TouchableOpacity>
                   {isOwn && (
                     <TouchableOpacity
                       style={{
@@ -2288,7 +3751,11 @@ if (store) {
                       }}
                       onPress={() => setProfessionModalVisible(true)}
                     >
-                      <Ionicons name="add" size={14} color={colors.foreground} />
+                      <Ionicons
+                        name="add"
+                        size={14}
+                        color={colors.foreground}
+                      />
                       <Text
                         style={{
                           color: colors.foreground,
@@ -2303,14 +3770,36 @@ if (store) {
                 </ScrollView>
               )}
               {/* Premium Store Header Card */}
-              <View style={{ width: "100%", borderColor: store.accent_color + "77", borderWidth: 1.5, borderRadius: 16, overflow: "hidden", backgroundColor: colors.card }}>
+              <View
+                style={{
+                  width: "100%",
+                  borderColor: store.accent_color + "77",
+                  borderWidth: 1.5,
+                  borderRadius: 16,
+                  overflow: "hidden",
+                  backgroundColor: colors.card,
+                }}
+              >
                 {/* Cover gradient or image */}
-                <View style={{ height: 120, position: "relative", justifyContent: "flex-end" }}>
+                <View
+                  style={{
+                    height: 120,
+                    position: "relative",
+                    justifyContent: "flex-end",
+                  }}
+                >
                   {store.cover_image_url ? (
-                    <Image source={{ uri: store.cover_image_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                    <Image
+                      source={{ uri: store.cover_image_url }}
+                      style={StyleSheet.absoluteFill}
+                      resizeMode="cover"
+                    />
                   ) : (
                     <LinearGradient
-                      colors={[store.cover_gradient_start, store.cover_gradient_end]}
+                      colors={[
+                        store.cover_gradient_start,
+                        store.cover_gradient_end,
+                      ]}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={StyleSheet.absoluteFill}
@@ -2321,74 +3810,290 @@ if (store) {
                     style={StyleSheet.absoluteFill}
                   />
                   {/* Emoji overlay */}
-                  <View style={{ position: "absolute", bottom: -20, left: 16, width: 50, height: 50, borderRadius: 12, backgroundColor: colors.card, alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: colors.border, elevation: 4 }}>
+                  <View
+                    style={{
+                      position: "absolute",
+                      bottom: -20,
+                      left: 16,
+                      width: 50,
+                      height: 50,
+                      borderRadius: 12,
+                      backgroundColor: colors.card,
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderWidth: 2,
+                      borderColor: colors.border,
+                      elevation: 4,
+                    }}
+                  >
                     <Text style={{ fontSize: 26 }}>{store.emoji}</Text>
                   </View>
                 </View>
 
                 {/* Store details */}
                 <View style={{ padding: 16, paddingTop: 28, gap: 4 }}>
-                  <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                    }}
+                  >
                     <View style={{ flex: 1, marginRight: 8 }}>
-                      <Text style={{ color: colors.foreground, fontSize: 18, fontFamily: "Inter_800ExtraBold" }}>{store.name}</Text>
-                      <Text style={{ color: colors.mutedForeground, fontSize: 12, fontFamily: "Inter_500Medium" }} numberOfLines={1}>{store.tagline}</Text>
+                      <Text
+                        style={{
+                          color: colors.foreground,
+                          fontSize: 18,
+                          fontFamily: "Inter_800ExtraBold",
+                        }}
+                      >
+                        {store.name}
+                      </Text>
+                      <Text
+                        style={{
+                          color: colors.mutedForeground,
+                          fontSize: 12,
+                          fontFamily: "Inter_500Medium",
+                        }}
+                        numberOfLines={1}
+                      >
+                        {store.tagline}
+                      </Text>
                     </View>
                     {isOwn && (
                       <TouchableOpacity
-                        style={{ flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: store.accent_color, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10 }}
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 6,
+                          backgroundColor: store.accent_color,
+                          paddingHorizontal: 12,
+                          paddingVertical: 8,
+                          borderRadius: 10,
+                        }}
                         onPress={() => setModalVisible(true)}
                       >
-                        <Ionicons name="create-outline" size={16} color="#fff" />
-                        <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 12 }}>
-                          {store.merchant_type === "professional" ? "Edit Brand" : "Edit Shop"}
+                        <Ionicons
+                          name="create-outline"
+                          size={16}
+                          color="#fff"
+                        />
+                        <Text
+                          style={{
+                            color: "#fff",
+                            fontFamily: "Inter_700Bold",
+                            fontSize: 12,
+                          }}
+                        >
+                          {store.merchant_type === "professional"
+                            ? "Edit Brand"
+                            : "Edit Shop"}
                         </Text>
                       </TouchableOpacity>
                     )}
                   </View>
 
                   <View style={{ flexDirection: "row", gap: 8, marginTop: 8 }}>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.muted, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                      <Ionicons name={store.merchant_type === "professional" ? "sparkles-outline" : "cube-outline"} size={12} color={colors.mutedForeground} />
-                      <Text style={{ color: colors.foreground, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>
-                        {store.products?.length || 0} {store.merchant_type === "professional" ? "Services" : "Items"}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                        backgroundColor: colors.muted,
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <Ionicons
+                        name={
+                          store.merchant_type === "professional"
+                            ? "sparkles-outline"
+                            : "cube-outline"
+                        }
+                        size={12}
+                        color={colors.mutedForeground}
+                      />
+                      <Text
+                        style={{
+                          color: colors.foreground,
+                          fontSize: 11,
+                          fontFamily: "Inter_600SemiBold",
+                        }}
+                      >
+                        {store.products?.length || 0}{" "}
+                        {store.merchant_type === "professional"
+                          ? "Services"
+                          : "Items"}
                       </Text>
                     </View>
-                    <View style={{ flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: colors.muted, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
-                      <Ionicons name={store.merchant_type === "professional" ? "briefcase-outline" : "storefront-outline"} size={12} color={colors.mutedForeground} />
-                      <Text style={{ color: colors.foreground, fontSize: 11, fontFamily: "Inter_600SemiBold" }} numberOfLines={1}>
-                        {store.merchant_type === "basic_shop" ? "Basic Store" : store.merchant_type === "vendor" ? "Vendor Store" : `${user?.title || "Professional"}`}
+                    <View
+                      style={{
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 4,
+                        backgroundColor: colors.muted,
+                        paddingHorizontal: 8,
+                        paddingVertical: 4,
+                        borderRadius: 6,
+                      }}
+                    >
+                      <Ionicons
+                        name={
+                          store.merchant_type === "professional"
+                            ? "briefcase-outline"
+                            : "storefront-outline"
+                        }
+                        size={12}
+                        color={colors.mutedForeground}
+                      />
+                      <Text
+                        style={{
+                          color: colors.foreground,
+                          fontSize: 11,
+                          fontFamily: "Inter_600SemiBold",
+                        }}
+                        numberOfLines={1}
+                      >
+                        {store.merchant_type === "basic_shop"
+                          ? "Basic Store"
+                          : store.merchant_type === "vendor"
+                            ? "Vendor Store"
+                            : `${user?.title || "Professional"}`}
                       </Text>
                     </View>
                   </View>
                 </View>
               </View>
 
-              {(!store.products || store.products.length === 0) ? (
+              {!store.products || store.products.length === 0 ? (
                 <EmptyTab
-                  icon={store.merchant_type === "professional" ? "briefcase-outline" : "storefront-outline"}
-                  title={store.merchant_type === "professional" ? "No Services Yet" : "No Products Yet"}
-                  subtitle={store.merchant_type === "professional" ? "Your portfolio services will appear here" : "Your store products will appear here"}
+                  icon={
+                    store.merchant_type === "professional"
+                      ? "briefcase-outline"
+                      : "storefront-outline"
+                  }
+                  title={
+                    store.merchant_type === "professional"
+                      ? "No Services Yet"
+                      : "No Products Yet"
+                  }
+                  subtitle={
+                    store.merchant_type === "professional"
+                      ? "Your portfolio services will appear here"
+                      : "Your store products will appear here"
+                  }
                 />
               ) : (
-                <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 8 }}>
-                  {store.products.map(p => (
-                    <View key={p.id} style={{ width: CARD_W, backgroundColor: colors.card, borderColor: colors.border, borderWidth: 1, borderRadius: 16, overflow: "hidden", elevation: 4 }}>
-                      <View style={{ height: 120, backgroundColor: colors.muted, alignItems: "center", justifyContent: "center", position: "relative" }}>
+                <View
+                  style={{
+                    flexDirection: "row",
+                    flexWrap: "wrap",
+                    gap: 12,
+                    marginTop: 8,
+                  }}
+                >
+                  {store.products.map((p) => (
+                    <View
+                      key={p.id}
+                      style={{
+                        width: CARD_W,
+                        backgroundColor: colors.card,
+                        borderColor: colors.border,
+                        borderWidth: 1,
+                        borderRadius: 16,
+                        overflow: "hidden",
+                        elevation: 4,
+                      }}
+                    >
+                      <View
+                        style={{
+                          height: 120,
+                          backgroundColor: colors.muted,
+                          alignItems: "center",
+                          justifyContent: "center",
+                          position: "relative",
+                        }}
+                      >
                         {p.image_url ? (
-                          <Image source={{ uri: p.image_url }} style={{ width: "100%", height: "100%", resizeMode: "cover" }} />
+                          <Image
+                            source={{ uri: p.image_url }}
+                            style={{
+                              width: "100%",
+                              height: "100%",
+                              resizeMode: "cover",
+                            }}
+                          />
                         ) : (
-                          <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" }}>
+                          <View
+                            style={{
+                              width: 44,
+                              height: 44,
+                              borderRadius: 12,
+                              backgroundColor: colors.card,
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
                             <Text style={{ fontSize: 24 }}>{store.emoji}</Text>
                           </View>
                         )}
-                        <View style={{ position: "absolute", top: 8, right: 8, backgroundColor: store.accent_color, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ color: "#fff", fontSize: 9, fontFamily: "Inter_700Bold", textTransform: "uppercase" }}>{p.category || (store.merchant_type === "professional" ? "Service" : "Shoes")}</Text>
+                        <View
+                          style={{
+                            position: "absolute",
+                            top: 8,
+                            right: 8,
+                            backgroundColor: store.accent_color,
+                            borderRadius: 6,
+                            paddingHorizontal: 6,
+                            paddingVertical: 2,
+                          }}
+                        >
+                          <Text
+                            style={{
+                              color: "#fff",
+                              fontSize: 9,
+                              fontFamily: "Inter_700Bold",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {p.category ||
+                              (store.merchant_type === "professional"
+                                ? "Service"
+                                : "Shoes")}
+                          </Text>
                         </View>
                       </View>
                       <View style={{ padding: 10, gap: 2 }}>
-                        <Text style={{ color: colors.mutedForeground, fontSize: 10, fontFamily: "Inter_600SemiBold" }}>{p.brand || `${user?.title || "Professional"}`}</Text>
-                        <Text style={{ color: colors.foreground, fontSize: 13, fontFamily: "Inter_700Bold" }} numberOfLines={1}>{p.name}</Text>
-                        <Text style={{ color: store.accent_color, fontSize: 14, fontFamily: "Inter_800ExtraBold", marginTop: 2 }}>${Number(p.price).toFixed(2)}</Text>
+                        <Text
+                          style={{
+                            color: colors.mutedForeground,
+                            fontSize: 10,
+                            fontFamily: "Inter_600SemiBold",
+                          }}
+                        >
+                          {p.brand || `${user?.title || "Professional"}`}
+                        </Text>
+                        <Text
+                          style={{
+                            color: colors.foreground,
+                            fontSize: 13,
+                            fontFamily: "Inter_700Bold",
+                          }}
+                          numberOfLines={1}
+                        >
+                          {p.name}
+                        </Text>
+                        <Text
+                          style={{
+                            color: store.accent_color,
+                            fontSize: 14,
+                            fontFamily: "Inter_800ExtraBold",
+                            marginTop: 2,
+                          }}
+                        >
+                          ${Number(p.price).toFixed(2)}
+                        </Text>
                       </View>
                     </View>
                   ))}
@@ -2402,7 +4107,11 @@ if (store) {
             <EmptyTab
               icon="storefront-outline"
               title="No Active Brand or Shops"
-              subtitle={isOwn ? "Setup a professional showcase, design portfolio, or digital storefront catalog to list your crafts, services, and products." : "This user hasn't active storefronts or portfolios yet."}
+              subtitle={
+                isOwn
+                  ? "Setup a professional showcase, design portfolio, or digital storefront catalog to list your crafts, services, and products."
+                  : "This user hasn't active storefronts or portfolios yet."
+              }
             />
             {isOwn && (
               <TouchableOpacity
@@ -2416,7 +4125,13 @@ if (store) {
                 }}
                 onPress={() => setProfessionModalVisible(true)}
               >
-                <Text style={{ color: "#fff", fontFamily: "Inter_700Bold", fontSize: 14 }}>
+                <Text
+                  style={{
+                    color: "#fff",
+                    fontFamily: "Inter_700Bold",
+                    fontSize: 14,
+                  }}
+                >
                   Launch Brand or Shop
                 </Text>
               </TouchableOpacity>
@@ -2430,19 +4145,43 @@ if (store) {
               <EmptyTab
                 icon="heart-outline"
                 title="Wishlist is Empty"
-                subtitle={isOwn ? "Browse the marketplace and save items you love" : "This user hasn't added items to their wishlist yet"}
+                subtitle={
+                  isOwn
+                    ? "Browse the marketplace and save items you love"
+                    : "This user hasn't added items to their wishlist yet"
+                }
               />
             </View>
           );
         }
         return (
           <View style={{ padding: 16, gap: 12 }}>
-            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-              <Text style={{ color: colors.foreground, fontSize: 16, fontFamily: "Inter_700Bold" }}>
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                justifyContent: "space-between",
+                marginBottom: 4,
+              }}
+            >
+              <Text
+                style={{
+                  color: colors.foreground,
+                  fontSize: 16,
+                  fontFamily: "Inter_700Bold",
+                }}
+              >
                 Saved Items
               </Text>
-              <Text style={{ color: colors.mutedForeground, fontSize: 13, fontFamily: "Inter_500Medium" }}>
-                {wishlistItems.length} {wishlistItems.length === 1 ? "item" : "items"}
+              <Text
+                style={{
+                  color: colors.mutedForeground,
+                  fontSize: 13,
+                  fontFamily: "Inter_500Medium",
+                }}
+              >
+                {wishlistItems.length}{" "}
+                {wishlistItems.length === 1 ? "item" : "items"}
               </Text>
             </View>
             {wishlistItems.map((item) => (
@@ -2450,44 +4189,94 @@ if (store) {
                 key={item.id}
                 style={[
                   styles.wishlistCard,
-                  { backgroundColor: colors.card, borderColor: colors.border }
+                  { backgroundColor: colors.card, borderColor: colors.border },
                 ]}
               >
                 {/* Product icon placeholder */}
-                <View style={[styles.wishlistImgPlaceholder, { backgroundColor: colors.muted }]}>
-                  <Ionicons name="footsteps-outline" size={28} color={colors.mutedForeground} />
+                <View
+                  style={[
+                    styles.wishlistImgPlaceholder,
+                    { backgroundColor: colors.muted },
+                  ]}
+                >
+                  <Ionicons
+                    name="footsteps-outline"
+                    size={28}
+                    color={colors.mutedForeground}
+                  />
                 </View>
                 {/* Details */}
                 <View style={{ flex: 1, gap: 3 }}>
-                  <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_600SemiBold" }}>
+                  <Text
+                    style={{
+                      color: colors.mutedForeground,
+                      fontSize: 11,
+                      fontFamily: "Inter_600SemiBold",
+                    }}
+                  >
                     {item.brand} · {item.category}
                   </Text>
-                  <Text style={{ color: colors.foreground, fontSize: 14, fontFamily: "Inter_700Bold" }} numberOfLines={1}>
+                  <Text
+                    style={{
+                      color: colors.foreground,
+                      fontSize: 14,
+                      fontFamily: "Inter_700Bold",
+                    }}
+                    numberOfLines={1}
+                  >
                     {item.productName}
                   </Text>
-                  <Text style={{ color: colors.primary, fontSize: 15, fontFamily: "Inter_800ExtraBold" }}>
+                  <Text
+                    style={{
+                      color: colors.primary,
+                      fontSize: 15,
+                      fontFamily: "Inter_800ExtraBold",
+                    }}
+                  >
                     ${item.price.toFixed(2)}
                   </Text>
-                  <Text style={{ color: colors.mutedForeground, fontSize: 11, fontFamily: "Inter_400Regular" }}>
+                  <Text
+                    style={{
+                      color: colors.mutedForeground,
+                      fontSize: 11,
+                      fontFamily: "Inter_400Regular",
+                    }}
+                  >
                     Added {item.addedAt}
                   </Text>
                 </View>
                 {/* Actions */}
                 <View style={{ gap: 8, alignItems: "center" }}>
                   <TouchableOpacity
-                    style={[styles.wishlistActionBtn, { backgroundColor: colors.primary }]}
+                    style={[
+                      styles.wishlistActionBtn,
+                      { backgroundColor: colors.primary },
+                    ]}
                     onPress={() => {}}
                   >
                     <Ionicons name="cart-outline" size={16} color="#fff" />
                   </TouchableOpacity>
                   {isOwn && (
                     <TouchableOpacity
-                      style={[styles.wishlistActionBtn, { backgroundColor: "#EF444415", borderWidth: 1, borderColor: "#EF444430" }]}
+                      style={[
+                        styles.wishlistActionBtn,
+                        {
+                          backgroundColor: "#EF444415",
+                          borderWidth: 1,
+                          borderColor: "#EF444430",
+                        },
+                      ]}
                       onPress={() =>
-                        setWishlistItems((prev) => prev.filter((w) => w.id !== item.id))
+                        setWishlistItems((prev) =>
+                          prev.filter((w) => w.id !== item.id),
+                        )
                       }
                     >
-                      <Ionicons name="heart-dislike-outline" size={16} color="#EF4444" />
+                      <Ionicons
+                        name="heart-dislike-outline"
+                        size={16}
+                        color="#EF4444"
+                      />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -2504,7 +4293,18 @@ if (store) {
 
   const headerContent = (
     <>
-      <View style={[styles.pageHeader, { paddingTop: topPad + 8, flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 10 }]}>
+      <View
+        style={[
+          styles.pageHeader,
+          {
+            paddingTop: topPad + 8,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            zIndex: 10,
+          },
+        ]}
+      >
         {showBackButton ? (
           <TouchableOpacity
             style={[styles.backCircle, { backgroundColor: "rgba(0,0,0,0.45)" }]}
@@ -2518,10 +4318,17 @@ if (store) {
 
         {isOwn && (
           <TouchableOpacity
-            style={[styles.headerIconBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+            style={[
+              styles.headerIconBtn,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
             onPress={() => setProfessionModalVisible(true)}
           >
-            <Ionicons name="ellipsis-horizontal" size={20} color={colors.foreground} />
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={20}
+              color={colors.foreground}
+            />
           </TouchableOpacity>
         )}
       </View>
@@ -2551,21 +4358,50 @@ if (store) {
           ListHeaderComponent={
             <>
               {headerContent}
-              <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} hasShop={hasShop} />
+              <ProfileTabs
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                hasShop={hasShop}
+              />
               {/* Create Post button — own profile only */}
               {isOwn && (
                 <TouchableOpacity
-                  style={[styles.createPostBtn, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  style={[
+                    styles.createPostBtn,
+                    {
+                      backgroundColor: colors.card,
+                      borderColor: colors.border,
+                    },
+                  ]}
                   onPress={() => setCreatePostVisible(true)}
                   activeOpacity={0.8}
                 >
-                  <View style={[styles.createPostAvatar, { backgroundColor: colors.muted }]}>
-                    <Ionicons name="person-outline" size={18} color={colors.mutedForeground} />
+                  <View
+                    style={[
+                      styles.createPostAvatar,
+                      { backgroundColor: colors.muted },
+                    ]}
+                  >
+                    <Ionicons
+                      name="person-outline"
+                      size={18}
+                      color={colors.mutedForeground}
+                    />
                   </View>
-                  <Text style={[styles.createPostPlaceholder, { color: colors.mutedForeground }]}>
+                  <Text
+                    style={[
+                      styles.createPostPlaceholder,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
                     Share a drop, review, or find...
                   </Text>
-                  <View style={[styles.createPostPillBtn, { backgroundColor: colors.primary }]}>
+                  <View
+                    style={[
+                      styles.createPostPillBtn,
+                      { backgroundColor: colors.primary },
+                    ]}
+                  >
                     <Ionicons name="add" size={16} color="#fff" />
                     <Text style={styles.createPostPillText}>Post</Text>
                   </View>
@@ -2578,7 +4414,11 @@ if (store) {
             <EmptyTab
               icon="newspaper-outline"
               title="No Posts Yet"
-              subtitle={isOwn ? "Be the first to share something!" : "This user hasn't posted yet"}
+              subtitle={
+                isOwn
+                  ? "Be the first to share something!"
+                  : "This user hasn't posted yet"
+              }
             />
           }
           showsVerticalScrollIndicator={false}
@@ -2618,7 +4458,11 @@ if (store) {
         stickyHeaderIndices={[1]}
       >
         <View>{headerContent}</View>
-        <ProfileTabs activeTab={activeTab} onTabChange={setActiveTab} hasShop={hasShop} />
+        <ProfileTabs
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          hasShop={hasShop}
+        />
         <View>{renderTabContent()}</View>
       </ScrollView>
       <ShopVendorSidebar

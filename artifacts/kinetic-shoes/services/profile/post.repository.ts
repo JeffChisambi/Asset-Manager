@@ -1,27 +1,31 @@
-import { supabase } from '@/lib/supabase';
-import { Post } from '@/types/profile';
+import { supabase } from "@/lib/supabase";
+import { Post } from "@/types/profile";
 
-const BUCKET = 'post_media';
+const BUCKET = "post_media";
 
 export interface IPostRepository {
-  createPost(userId: string, post: Omit<Post, 'id' | 'userId' | 'createdAt'>, mediaFiles?: { uri: string; name: string }[]): Promise<Post>;
+  createPost(
+    userId: string,
+    post: Omit<Post, "id" | "userId" | "createdAt">,
+    mediaFiles?: { uri: string; name: string }[],
+  ): Promise<Post>;
   getPostsByUser(userId: string): Promise<Post[]>;
 }
 
 export class SupabasePostRepository implements IPostRepository {
   async createPost(
     userId: string,
-    post: Omit<Post, 'id' | 'userId' | 'createdAt'>,
-    mediaFiles?: { uri: string; name: string }[]
+    post: Omit<Post, "id" | "userId" | "createdAt">,
+    mediaFiles?: { uri: string; name: string }[],
   ): Promise<Post> {
     const mediaUrls: string[] = [];
 
     // 1. Determine type prefix for each file so the card can reliably distinguish
     // media types regardless of whether Supabase or local URIs are used.
-    const typePrefix = (name: string): 'image' | 'music' | 'voice' => {
-      if (name.startsWith('image')) return 'image';
-      if (name.startsWith('music')) return 'music';
-      return 'voice';
+    const typePrefix = (name: string): "image" | "music" | "voice" => {
+      if (name.startsWith("image")) return "image";
+      if (name.startsWith("music")) return "music";
+      return "voice";
     };
 
     // 2. Upload files to Supabase storage using XMLHttpRequest blob conversion.
@@ -35,19 +39,24 @@ export class SupabasePostRepository implements IPostRepository {
         try {
           const blob: Blob = await new Promise((resolve, reject) => {
             const xhr = new XMLHttpRequest();
-            xhr.onload = function () { resolve(xhr.response); };
-            xhr.onerror = function () { reject(new TypeError('Local file read failed')); };
-            xhr.responseType = 'blob';
-            xhr.open('GET', file.uri, true);
+            xhr.onload = function () {
+              resolve(xhr.response);
+            };
+            xhr.onerror = function () {
+              reject(new TypeError("Local file read failed"));
+            };
+            xhr.responseType = "blob";
+            xhr.open("GET", file.uri, true);
             xhr.send(null);
           });
 
-          const fileExt = file.name.split('.').pop() || 'bin';
+          const fileExt = file.name.split(".").pop() || "bin";
           const uniquePath = `posts/${userId}/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${fileExt}`;
 
-          let contentType = 'application/octet-stream';
-          if (prefix === 'image') contentType = 'image/jpeg';
-          else if (prefix === 'music' || prefix === 'voice') contentType = 'audio/x-m4a';
+          let contentType = "application/octet-stream";
+          if (prefix === "image") contentType = "image/jpeg";
+          else if (prefix === "music" || prefix === "voice")
+            contentType = "audio/x-m4a";
 
           const { data, error } = await supabase.storage
             .from(BUCKET)
@@ -59,11 +68,11 @@ export class SupabasePostRepository implements IPostRepository {
               .getPublicUrl(data.path);
             if (urlData?.publicUrl) {
               resolvedUrl = urlData.publicUrl;
-              console.log('[post_media] Upload success:', resolvedUrl);
+              console.log("[post_media] Upload success:", resolvedUrl);
             }
           } else if (error) {
             // Log the full error so we can diagnose RLS / bucket issues
-            console.error('[post_media] Upload FAILED:', {
+            console.error("[post_media] Upload FAILED:", {
               message: error.message,
               statusCode: (error as any).statusCode,
               error: (error as any).error,
@@ -72,7 +81,7 @@ export class SupabasePostRepository implements IPostRepository {
             });
           }
         } catch (uploadErr) {
-          console.error('[post_media] XHR / blob error:', uploadErr);
+          console.error("[post_media] XHR / blob error:", uploadErr);
         }
 
         // Encode the type as a prefix so ProfilePostCard can detect it reliably
@@ -97,10 +106,13 @@ export class SupabasePostRepository implements IPostRepository {
 
     // 2. Insert post row into Supabase "posts" table (gracefully fails when table/connection is missing)
     try {
-      const { error } = await supabase.from('posts').insert([newPost]);
+      const { error } = await supabase.from("posts").insert([newPost]);
       if (error) throw error;
     } catch (insertErr) {
-      console.warn("Supabase database insert post failed (offline fallback active):", insertErr);
+      console.warn(
+        "Supabase database insert post failed (offline fallback active):",
+        insertErr,
+      );
     }
 
     return newPost;
@@ -108,16 +120,28 @@ export class SupabasePostRepository implements IPostRepository {
 
   async getPostsByUser(userId: string): Promise<Post[]> {
     try {
-      const { data, error } = await supabase
-        .from('posts')
-        .select('*')
-        .eq('userId', userId)
-        .order('createdAt', { ascending: false });
-        
+      const queryPromise = supabase
+        .from("posts")
+        .select("*")
+        .eq("userId", userId)
+        .order("createdAt", { ascending: false });
+
+      const timeoutPromise = new Promise<Post[]>((_, reject) =>
+        setTimeout(() => reject(new Error("Query timeout")), 5000),
+      );
+
+      const { data, error } = (await Promise.race([
+        queryPromise,
+        timeoutPromise,
+      ])) as any;
+
       if (error) throw error;
       return (data as Post[]) || [];
     } catch (err) {
-      console.warn("Supabase get posts failed, returning empty list:", err);
+      console.warn(
+        "Supabase get posts failed or timed out, returning empty list:",
+        err,
+      );
       return [];
     }
   }
@@ -132,35 +156,41 @@ export class SupabasePostRepository implements IPostRepository {
 
     // 1. Check auth session
     const { data: session } = await supabase.auth.getSession();
-    lines.push(`Auth session: ${session?.session ? `uid=${session.session.user.id}` : 'NONE (anonymous)'}`);
+    lines.push(
+      `Auth session: ${session?.session ? `uid=${session.session.user.id}` : "NONE (anonymous)"}`,
+    );
 
     // 2. Check bucket exists
-    const { data: buckets, error: bucketErr } = await supabase.storage.listBuckets();
+    const { data: buckets, error: bucketErr } =
+      await supabase.storage.listBuckets();
     if (bucketErr) {
       lines.push(`listBuckets error: ${bucketErr.message}`);
     } else {
-      const found = buckets?.find(b => b.id === BUCKET);
-      lines.push(`Bucket '${BUCKET}': ${found ? 'EXISTS (public=' + found.public + ')' : 'NOT FOUND'}`);
+      const found = buckets?.find((b) => b.id === BUCKET);
+      lines.push(
+        `Bucket '${BUCKET}': ${found ? "EXISTS (public=" + found.public + ")" : "NOT FOUND"}`,
+      );
     }
 
     // 3. Try a tiny probe upload (1-byte text file)
-    const probe = new Blob(['1'], { type: 'text/plain' });
+    const probe = new Blob(["1"], { type: "text/plain" });
     const probePath = `probe/${Date.now()}.txt`;
     const { error: uploadErr } = await supabase.storage
       .from(BUCKET)
-      .upload(probePath, probe, { contentType: 'text/plain' });
+      .upload(probePath, probe, { contentType: "text/plain" });
 
     if (uploadErr) {
-      lines.push(`Probe upload FAILED: [${(uploadErr as any).statusCode}] ${uploadErr.message}`);
+      lines.push(
+        `Probe upload FAILED: [${(uploadErr as any).statusCode}] ${uploadErr.message}`,
+      );
     } else {
       lines.push(`Probe upload SUCCESS — bucket is writable`);
       // Clean up probe file
       await supabase.storage.from(BUCKET).remove([probePath]);
     }
 
-    const report = lines.join('\n');
-    console.log('[diagnoseBucket]\n' + report);
+    const report = lines.join("\n");
+    console.log("[diagnoseBucket]\n" + report);
     return report;
   }
 }
-

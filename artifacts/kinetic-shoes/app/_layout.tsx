@@ -39,7 +39,7 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
       const val = await AsyncStorage.getItem("hasLoggedIn");
       const isAuth = val === "true";
       const inAuthGroup = segments[0] === "login" || segments[0] === "signup";
-      
+
       if (!isAuth && !inAuthGroup) {
         router.replace("/login");
       } else if (isAuth && inAuthGroup) {
@@ -56,41 +56,47 @@ function RootLayoutNav() {
   return (
     <AuthGuard>
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="login" options={{ headerShown: false, animation: "fade" }} />
-        <Stack.Screen name="signup" options={{ headerShown: false, animation: "fade" }} />
+        <Stack.Screen
+          name="login"
+          options={{ headerShown: false, animation: "fade" }}
+        />
+        <Stack.Screen
+          name="signup"
+          options={{ headerShown: false, animation: "fade" }}
+        />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="profile/[userId]"
-        options={{ headerShown: false, animation: "slide_from_right" }}
-      />
-      <Stack.Screen
-        name="chat/[id]"
-        options={{ headerShown: false, animation: "slide_from_right" }}
-      />
-      <Stack.Screen
-        name="chat/new-group"
-        options={{ headerShown: false, animation: "slide_from_bottom" }}
-      />
-      <Stack.Screen
-        name="call/voice"
-        options={{
-          headerShown: false,
-          animation: "slide_from_bottom",
-          presentation: "fullScreenModal",
-        }}
-      />
-      <Stack.Screen
-        name="call/video"
-        options={{
-          headerShown: false,
-          animation: "slide_from_bottom",
-          presentation: "fullScreenModal",
-        }}
-      />
-      <Stack.Screen
-        name="settings"
-        options={{ headerShown: false, animation: "slide_from_right" }}
-      />
+        <Stack.Screen
+          name="profile/[userId]"
+          options={{ headerShown: false, animation: "slide_from_right" }}
+        />
+        <Stack.Screen
+          name="chat/[id]"
+          options={{ headerShown: false, animation: "slide_from_right" }}
+        />
+        <Stack.Screen
+          name="chat/new-group"
+          options={{ headerShown: false, animation: "slide_from_bottom" }}
+        />
+        <Stack.Screen
+          name="call/voice"
+          options={{
+            headerShown: false,
+            animation: "slide_from_bottom",
+            presentation: "fullScreenModal",
+          }}
+        />
+        <Stack.Screen
+          name="call/video"
+          options={{
+            headerShown: false,
+            animation: "slide_from_bottom",
+            presentation: "fullScreenModal",
+          }}
+        />
+        <Stack.Screen
+          name="settings"
+          options={{ headerShown: false, animation: "slide_from_right" }}
+        />
       </Stack>
     </AuthGuard>
   );

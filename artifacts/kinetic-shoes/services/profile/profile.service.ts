@@ -2,7 +2,10 @@ import { getPostsByUser } from "@/mock/posts";
 import { User, Post } from "@/types/profile";
 import { SEED_USERS } from "@/context/ChatContext";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SupabaseProfileRepository, IProfileRepository } from "./profile.repository";
+import {
+  SupabaseProfileRepository,
+  IProfileRepository,
+} from "./profile.repository";
 
 import { SupabasePostRepository } from "./post.repository";
 
@@ -15,10 +18,18 @@ export abstract class BaseProfileService {
 
   abstract getUser(userId: string): Promise<User | null>;
   abstract updateProfile(userId: string, data: Partial<User>): Promise<void>;
-  abstract createInitialProfile(userId: string, data: Partial<User>): Promise<void>;
+  abstract createInitialProfile(
+    userId: string,
+    data: Partial<User>,
+  ): Promise<void>;
 
   abstract getPosts(userId: string): Promise<Post[]>;
-  abstract createPost(userId: string, content: string, tags: string[], mediaFiles?: { uri: string; name: string }[]): Promise<Post>;
+  abstract createPost(
+    userId: string,
+    content: string,
+    tags: string[],
+    mediaFiles?: { uri: string; name: string }[],
+  ): Promise<Post>;
   abstract followUser(userId: string): Promise<void>;
   abstract unfollowUser(userId: string): Promise<void>;
   abstract sendFriendRequest(userId: string): Promise<void>;
@@ -45,7 +56,10 @@ async function loadLocalProfile(userId: string): Promise<Partial<User> | null> {
   }
 }
 
-async function saveLocalProfile(userId: string, data: Partial<User>): Promise<void> {
+async function saveLocalProfile(
+  userId: string,
+  data: Partial<User>,
+): Promise<void> {
   try {
     // Merge with any existing local data so a partial update doesn't wipe fields
     const existing = (await loadLocalProfile(userId)) ?? {};
@@ -140,15 +154,31 @@ export class ProfileServiceImpl extends BaseProfileService {
         // Overlay every defined local field onto whatever we got above
         user = {
           ...user,
-          ...(localData.displayName !== undefined && { displayName: localData.displayName }),
-          ...(localData.username !== undefined && { username: localData.username }),
+          ...(localData.displayName !== undefined && {
+            displayName: localData.displayName,
+          }),
+          ...(localData.username !== undefined && {
+            username: localData.username,
+          }),
           ...(localData.bio !== undefined && { bio: localData.bio }),
-          ...(localData.location !== undefined && { location: localData.location }),
-          ...(localData.website !== undefined && { website: localData.website }),
-          ...(localData.avatarColor !== undefined && { avatarColor: localData.avatarColor }),
-          ...(localData.coverColor !== undefined && { coverColor: localData.coverColor }),
-          ...(localData.avatarUrl !== undefined && { avatarUrl: localData.avatarUrl }),
-          ...(localData.coverUrl !== undefined && { coverUrl: localData.coverUrl }),
+          ...(localData.location !== undefined && {
+            location: localData.location,
+          }),
+          ...(localData.website !== undefined && {
+            website: localData.website,
+          }),
+          ...(localData.avatarColor !== undefined && {
+            avatarColor: localData.avatarColor,
+          }),
+          ...(localData.coverColor !== undefined && {
+            coverColor: localData.coverColor,
+          }),
+          ...(localData.avatarUrl !== undefined && {
+            avatarUrl: localData.avatarUrl,
+          }),
+          ...(localData.coverUrl !== undefined && {
+            coverUrl: localData.coverUrl,
+          }),
           ...(localData.title !== undefined && { title: localData.title }),
         };
       } else {
@@ -195,7 +225,10 @@ export class ProfileServiceImpl extends BaseProfileService {
     }
   }
 
-  async createInitialProfile(userId: string, data: Partial<User>): Promise<void> {
+  async createInitialProfile(
+    userId: string,
+    data: Partial<User>,
+  ): Promise<void> {
     await saveLocalProfile(userId, data);
     try {
       await this.repository.createProfile(userId, data);
@@ -206,16 +239,24 @@ export class ProfileServiceImpl extends BaseProfileService {
 
   async getPosts(userId: string): Promise<Post[]> {
     const postRepo = new SupabasePostRepository();
-    // 1. Try Supabase
+
+    // 1. Try Supabase with 5 second timeout
     try {
-      const posts = await postRepo.getPostsByUser(userId);
+      const postsPromise = postRepo.getPostsByUser(userId);
+      const timeoutPromise = new Promise<Post[]>((_, reject) =>
+        setTimeout(() => reject(new Error("Supabase timeout")), 5000),
+      );
+      const posts = await Promise.race([postsPromise, timeoutPromise]);
       if (posts && posts.length > 0) {
         return posts;
       }
     } catch (err) {
-      console.warn("Supabase fetch posts failed, falling back to cache/mock", err);
+      console.warn(
+        "Supabase fetch posts failed or timed out, falling back to cache/mock",
+        err,
+      );
     }
-    
+
     // 2. Try AsyncStorage cache
     try {
       const cachedRaw = await AsyncStorage.getItem(`profile_posts_${userId}`);
@@ -230,27 +271,43 @@ export class ProfileServiceImpl extends BaseProfileService {
     return getPostsByUser(userId);
   }
 
-  async createPost(userId: string, content: string, tags: string[], mediaFiles?: { uri: string; name: string }[]): Promise<Post> {
+  async createPost(
+    userId: string,
+    content: string,
+    tags: string[],
+    mediaFiles?: { uri: string; name: string }[],
+  ): Promise<Post> {
     const postRepo = new SupabasePostRepository();
-    const newPost = await postRepo.createPost(userId, {
-      content,
-      tags,
-      likes: 0,
-      comments: 0,
-      shares: 0,
-      isLiked: false,
-      isSaved: false,
-    }, mediaFiles);
-    
+    const newPost = await postRepo.createPost(
+      userId,
+      {
+        content,
+        tags,
+        likes: 0,
+        comments: 0,
+        shares: 0,
+        isLiked: false,
+        isSaved: false,
+      },
+      mediaFiles,
+    );
+
     // Also save locally in AsyncStorage for fallback / local caching
     try {
-      const currentLocalPostsRaw = await AsyncStorage.getItem(`profile_posts_${userId}`);
-      const currentLocalPosts: Post[] = currentLocalPostsRaw ? JSON.parse(currentLocalPostsRaw) : [];
-      await AsyncStorage.setItem(`profile_posts_${userId}`, JSON.stringify([newPost, ...currentLocalPosts]));
+      const currentLocalPostsRaw = await AsyncStorage.getItem(
+        `profile_posts_${userId}`,
+      );
+      const currentLocalPosts: Post[] = currentLocalPostsRaw
+        ? JSON.parse(currentLocalPostsRaw)
+        : [];
+      await AsyncStorage.setItem(
+        `profile_posts_${userId}`,
+        JSON.stringify([newPost, ...currentLocalPosts]),
+      );
     } catch (err) {
       console.warn("Error caching new post locally:", err);
     }
-    
+
     return newPost;
   }
 

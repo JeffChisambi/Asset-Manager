@@ -1,13 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Audio } from "expo-av";
 import React, { useEffect, useRef, useState } from "react";
-import {
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { useColors } from "@/hooks/useColors";
 
@@ -20,7 +14,9 @@ interface VoiceMessageBubbleProps {
 
 function formatDuration(s: number) {
   const m = Math.floor(s / 60);
-  return `${m}:${Math.floor(s % 60).toString().padStart(2, "0")}`;
+  return `${m}:${Math.floor(s % 60)
+    .toString()
+    .padStart(2, "0")}`;
 }
 
 function formatTime(ts: number) {
@@ -32,7 +28,7 @@ function formatTime(ts: number) {
 
 const BAR_COUNT = 28;
 const BAR_HEIGHTS = Array.from({ length: BAR_COUNT }, (_, i) =>
-  Math.max(4, Math.round(8 + Math.sin(i * 1.3) * 6 + Math.cos(i * 0.7) * 4))
+  Math.max(4, Math.round(8 + Math.sin(i * 1.3) * 6 + Math.cos(i * 0.7) * 4)),
 );
 
 export function VoiceMessageBubble({
@@ -82,7 +78,7 @@ export function VoiceMessageBubble({
             sound.unloadAsync();
             soundRef.current = null;
           }
-        }
+        },
       );
       soundRef.current = sound;
       setIsPlaying(true);
@@ -110,7 +106,14 @@ export function VoiceMessageBubble({
         <View style={styles.content}>
           <Pressable
             onPress={togglePlay}
-            style={[styles.playBtn, { backgroundColor: isMine ? "rgba(255,255,255,0.25)" : colors.primary + "20" }]}
+            style={[
+              styles.playBtn,
+              {
+                backgroundColor: isMine
+                  ? "rgba(255,255,255,0.25)"
+                  : colors.primary + "20",
+              },
+            ]}
           >
             <Ionicons
               name={isPlaying ? "pause" : "play"}

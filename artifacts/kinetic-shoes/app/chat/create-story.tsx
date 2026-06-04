@@ -21,10 +21,29 @@ import { useChat } from "@/context/ChatContext";
 import { useColors } from "@/hooks/useColors";
 
 const BG_COLORS = [
-  "#13B734", "#FF6B6B", "#4ECDC4", "#FFD93D",
-  "#A29BFE", "#FD79A8", "#00B894", "#E17055",
+  "#13B734",
+  "#FF6B6B",
+  "#4ECDC4",
+  "#FFD93D",
+  "#A29BFE",
+  "#FD79A8",
+  "#00B894",
+  "#E17055",
 ];
-const STICKERS = ["😀", "😂", "😍", "🔥", "🎉", "🙏", "✅", "💚", "🛍️", "📦", "🚚", "⭐"];
+const STICKERS = [
+  "😀",
+  "😂",
+  "😍",
+  "🔥",
+  "🎉",
+  "🙏",
+  "✅",
+  "💚",
+  "🛍️",
+  "📦",
+  "🚚",
+  "⭐",
+];
 
 export default function CreateStoryScreen() {
   const colors = useColors();
@@ -51,16 +70,30 @@ export default function CreateStoryScreen() {
     if (mediaUri) {
       addStory({ type: mediaType === "video" ? "video" : "image", mediaUri });
     } else if (voiceUri) {
-      addStory({ type: "voice", mediaUri: voiceUri, audioDuration: recordingDuration, backgroundColor: BG_COLORS[bgIndex] });
+      addStory({
+        type: "voice",
+        mediaUri: voiceUri,
+        audioDuration: recordingDuration,
+        backgroundColor: BG_COLORS[bgIndex],
+      });
     } else if (selectedSticker) {
-      addStory({ type: "sticker", sticker: selectedSticker, backgroundColor: BG_COLORS[bgIndex] });
+      addStory({
+        type: "sticker",
+        sticker: selectedSticker,
+        backgroundColor: BG_COLORS[bgIndex],
+      });
     } else if (text.trim()) {
-      addStory({ type: "text", text: text.trim(), backgroundColor: BG_COLORS[bgIndex] });
+      addStory({
+        type: "text",
+        text: text.trim(),
+        backgroundColor: BG_COLORS[bgIndex],
+      });
     } else {
       return;
     }
-    
-    if (Platform.OS !== "web") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    if (Platform.OS !== "web")
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     router.back();
   };
 
@@ -81,8 +114,13 @@ export default function CreateStoryScreen() {
     if (Platform.OS === "web") return;
     const { granted } = await Audio.requestPermissionsAsync();
     if (!granted) return;
-    await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-    const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: true,
+      playsInSilentModeIOS: true,
+    });
+    const { recording } = await Audio.Recording.createAsync(
+      Audio.RecordingOptionsPresets.HIGH_QUALITY,
+    );
     recordingRef.current = recording;
     setVoiceUri(null);
     setMediaUri(null);
@@ -127,12 +165,19 @@ export default function CreateStoryScreen() {
 
   return (
     <KeyboardAvoidingView
-      style={[styles.root, { backgroundColor: mediaUri ? "#000" : BG_COLORS[bgIndex] }]}
+      style={[
+        styles.root,
+        { backgroundColor: mediaUri ? "#000" : BG_COLORS[bgIndex] },
+      ]}
       behavior="padding"
     >
       {/* Background Media */}
       {mediaUri && mediaType === "image" && (
-        <Image source={{ uri: mediaUri }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        <Image
+          source={{ uri: mediaUri }}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
       )}
       {mediaUri && mediaType === "video" && (
         <View style={[StyleSheet.absoluteFill, styles.videoPreview]}>
@@ -143,14 +188,18 @@ export default function CreateStoryScreen() {
 
       {/* Header */}
       <View style={[styles.header, { paddingTop: topPad + 12 }]}>
-        <Pressable onPress={() => router.back()} hitSlop={12} style={styles.iconBtn}>
+        <Pressable
+          onPress={() => router.back()}
+          hitSlop={12}
+          style={styles.iconBtn}
+        >
           <Ionicons name="close" size={28} color="#FFF" />
         </Pressable>
-        
+
         <View style={styles.headerActions}>
           {!mediaUri && (
-            <Pressable 
-              onPress={() => setBgIndex((i) => (i + 1) % BG_COLORS.length)} 
+            <Pressable
+              onPress={() => setBgIndex((i) => (i + 1) % BG_COLORS.length)}
               style={styles.iconBtn}
             >
               <Ionicons name="color-palette" size={24} color="#FFF" />
@@ -178,17 +227,30 @@ export default function CreateStoryScreen() {
         )}
         {(isRecording || voiceUri) && (
           <View style={styles.voicePreview}>
-            <Ionicons name={voiceUri ? "mic-circle" : "radio-button-on"} size={64} color="#FFF" />
-            <Text style={styles.voicePreviewTitle}>{voiceUri ? "Voice status ready" : "Recording voice status"}</Text>
+            <Ionicons
+              name={voiceUri ? "mic-circle" : "radio-button-on"}
+              size={64}
+              color="#FFF"
+            />
+            <Text style={styles.voicePreviewTitle}>
+              {voiceUri ? "Voice status ready" : "Recording voice status"}
+            </Text>
             <Text style={styles.voicePreviewTime}>
-              {Math.floor(recordingDuration / 60)}:{(recordingDuration % 60).toString().padStart(2, "0")}
+              {Math.floor(recordingDuration / 60)}:
+              {(recordingDuration % 60).toString().padStart(2, "0")}
             </Text>
             {isRecording && (
               <View style={styles.voiceActions}>
-                <Pressable onPress={cancelRecording} style={styles.voiceActionBtn}>
+                <Pressable
+                  onPress={cancelRecording}
+                  style={styles.voiceActionBtn}
+                >
                   <Ionicons name="close" size={22} color="#FFF" />
                 </Pressable>
-                <Pressable onPress={finishRecording} style={[styles.voiceActionBtn, styles.voiceDoneBtn]}>
+                <Pressable
+                  onPress={finishRecording}
+                  style={[styles.voiceActionBtn, styles.voiceDoneBtn]}
+                >
                   <Ionicons name="checkmark" size={22} color="#000" />
                 </Pressable>
               </View>
@@ -203,20 +265,40 @@ export default function CreateStoryScreen() {
           <Pressable onPress={pickMedia} style={styles.toolBtn}>
             <Ionicons name="image" size={24} color="#FFF" />
           </Pressable>
-          <Pressable onPress={startRecording} style={[styles.toolBtn, isRecording && { opacity: 0.5 }]} disabled={isRecording || Platform.OS === "web"}>
+          <Pressable
+            onPress={startRecording}
+            style={[styles.toolBtn, isRecording && { opacity: 0.5 }]}
+            disabled={isRecording || Platform.OS === "web"}
+          >
             <Ionicons name="mic" size={24} color="#FFF" />
           </Pressable>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.stickerRail}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.stickerRail}
+          >
             {STICKERS.map((sticker) => (
-              <Pressable key={sticker} onPress={() => chooseSticker(sticker)} style={styles.storyStickerBtn}>
+              <Pressable
+                key={sticker}
+                onPress={() => chooseSticker(sticker)}
+                style={styles.storyStickerBtn}
+              >
                 <Text style={styles.storyStickerText}>{sticker}</Text>
               </Pressable>
             ))}
           </ScrollView>
         </View>
 
-        <Pressable 
-          style={[styles.postBtn, { opacity: (text.trim() || mediaUri || voiceUri || selectedSticker) ? 1 : 0.5 }]}
+        <Pressable
+          style={[
+            styles.postBtn,
+            {
+              opacity:
+                text.trim() || mediaUri || voiceUri || selectedSticker
+                  ? 1
+                  : 0.5,
+            },
+          ]}
           onPress={handlePost}
           disabled={!text.trim() && !mediaUri && !voiceUri && !selectedSticker}
         >

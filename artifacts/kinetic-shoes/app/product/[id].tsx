@@ -32,20 +32,26 @@ const fallbackProductImage = require("@/assets/logo and icon/doorsteplogo.png");
 const SHOP_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   "Super Store": { bg: "#13B734", text: "#FFFFFF" },
   "Basic Store": { bg: "#11998E", text: "#FFFFFF" },
-  "Vendor":      { bg: "#F7971E", text: "#FFFFFF" },
+  Vendor: { bg: "#F7971E", text: "#FFFFFF" },
 };
 
 const getApiBaseUrl = () => {
   const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "");
-  if (configuredUrl) return configuredUrl.endsWith("/api") ? configuredUrl : `${configuredUrl}/api`;
-  return Platform.OS === "android" ? "http://10.0.2.2:5001/api" : "http://localhost:5001/api";
+  if (configuredUrl)
+    return configuredUrl.endsWith("/api")
+      ? configuredUrl
+      : `${configuredUrl}/api`;
+  return Platform.OS === "android"
+    ? "http://10.0.2.2:5001/api"
+    : "http://localhost:5001/api";
 };
 
 export default function ProductDetailPage() {
   const colors = useColors();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { addToCart } = useCart();
+  const { addToCart, getCartCount } = useCart();
+  const cartCount = getCartCount();
 
   const [quantity, setQuantity] = useState(1);
   const [cartAdded, setCartAdded] = useState(false);
@@ -64,20 +70,21 @@ export default function ProductDetailPage() {
       try {
         const baseUrl = getApiBaseUrl();
         const res = await fetch(`${baseUrl}/public/products/${id}`);
-        
+
         if (res.ok) {
           const data = await res.json();
           setDbProduct(data.product);
           setDbStore(data.store);
         } else {
           // Fallback to local service (useful for newly created 'temp-' products that haven't synced)
-          const { StoreService } = await import("@/services/store/store.service");
+          const { StoreService } =
+            await import("@/services/store/store.service");
           const allStores = await StoreService.searchStores();
           let foundProd = null;
           let foundStore = null;
           for (const s of allStores) {
             if (s.products) {
-              const p = s.products.find(prod => prod.id === id);
+              const p = s.products.find((prod) => prod.id === id);
               if (p) {
                 foundProd = p;
                 foundStore = s;
@@ -100,29 +107,42 @@ export default function ProductDetailPage() {
     fetchDbProduct();
   }, [id]);
 
-  const product = dbProduct ? {
-    id: dbProduct.id,
-    shopId: dbProduct.store_id,
-    shopName: dbStore?.name || "Store",
-    shopType: (dbStore?.merchant_type === "basic_shop" ? "Basic Store" : dbStore?.merchant_type === "vendor" ? "Vendor" : "Super Store") as any,
-    name: dbProduct.name,
-    price: Number(dbProduct.price),
-    originalPrice: dbProduct.discountPrice ? Number(dbProduct.discountPrice) : undefined,
-    image: dbProduct.image_url ? { uri: dbProduct.image_url } : undefined,
-    brand: dbProduct.brand || dbStore?.name || "Doorstep",
-    rating: dbProduct.rating || 5.0,
-    reviews: 8,
-    availableItems: dbProduct.availableItems || 0,
-    category: dbProduct.category || "General",
-    tags: [dbProduct.category || "General"],
-    description: dbProduct.description || `A quality product from ${dbStore?.name || "this Doorstep merchant"}.`,
-  } : null;
+  const product = dbProduct
+    ? {
+        id: dbProduct.id,
+        shopId: dbProduct.store_id,
+        shopName: dbStore?.name || "Store",
+        shopType: (dbStore?.merchant_type === "basic_shop"
+          ? "Basic Store"
+          : dbStore?.merchant_type === "vendor"
+            ? "Vendor"
+            : "Super Store") as any,
+        name: dbProduct.name,
+        price: Number(dbProduct.price),
+        originalPrice: dbProduct.discountPrice
+          ? Number(dbProduct.discountPrice)
+          : undefined,
+        image: dbProduct.image_url ? { uri: dbProduct.image_url } : undefined,
+        brand: dbProduct.brand || dbStore?.name || "Doorstep",
+        rating: dbProduct.rating || 5.0,
+        reviews: 8,
+        availableItems: dbProduct.availableItems || 0,
+        category: dbProduct.category || "General",
+        tags: [dbProduct.category || "General"],
+        description:
+          dbProduct.description ||
+          `A quality product from ${dbStore?.name || "this Doorstep merchant"}.`,
+      }
+    : null;
 
   const store = dbStore;
-  const badge = product ? (SHOP_TYPE_COLORS[product.shopType] ?? SHOP_TYPE_COLORS["Basic Store"]) : null;
+  const badge = product
+    ? (SHOP_TYPE_COLORS[product.shopType] ?? SHOP_TYPE_COLORS["Basic Store"])
+    : null;
 
   const SIZES = [38, 39, 40, 41, 42, 43, 44, 45];
-  const isShoes = product?.tags?.includes("Shoes") || product?.category === "Shoes";
+  const isShoes =
+    product?.tags?.includes("Shoes") || product?.category === "Shoes";
   const requiresSize = isShoes;
 
   const cartBtnStyle = useAnimatedStyle(() => ({
@@ -131,30 +151,45 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if ((requiresSize && !selectedSize) || !product) return;
-    
-    addToCart({
-      productId: product.id,
-      name: product.name,
-      price: product.price,
-      brand: product.brand,
-      rating: product.rating,
-      category: product.tags[0] || "General",
-      imageUrl: product.image ? (product.image as any).uri : undefined,
-      imageSource: undefined,
-      shopId: product.shopId,
-      shopName: product.shopName,
-      shopType: product.shopType,
-      selectedSize: selectedSize || 0,
-    }, quantity);
 
-    cartScale.value = withSequence(withSpring(0.92, { damping: 8 }), withSpring(1));
+    addToCart(
+      {
+        productId: product.id,
+        name: product.name,
+        price: product.price,
+        brand: product.brand,
+        rating: product.rating,
+        category: product.tags[0] || "General",
+        imageUrl: product.image ? (product.image as any).uri : undefined,
+        imageSource: undefined,
+        shopId: product.shopId,
+        shopName: product.shopName,
+        shopType: product.shopType,
+        selectedSize: selectedSize || 0,
+      },
+      quantity,
+    );
+
+    cartScale.value = withSequence(
+      withSpring(0.92, { damping: 8 }),
+      withSpring(1),
+    );
     setCartAdded(true);
     setTimeout(() => setCartAdded(false), 2000);
   };
 
   if (loadingDb) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background, justifyContent: "center", alignItems: "center" }]}>
+      <View
+        style={[
+          styles.container,
+          {
+            backgroundColor: colors.background,
+            justifyContent: "center",
+            alignItems: "center",
+          },
+        ]}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </View>
     );
@@ -162,12 +197,21 @@ export default function ProductDetailPage() {
 
   if (!product) {
     return (
-      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: colors.background, paddingTop: insets.top },
+        ]}
+      >
         <Pressable style={styles.backBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={colors.foreground} />
         </Pressable>
         <View style={styles.notFound}>
-          <Text style={[styles.notFoundText, { color: colors.mutedForeground }]}>Product not found</Text>
+          <Text
+            style={[styles.notFoundText, { color: colors.mutedForeground }]}
+          >
+            Product not found
+          </Text>
         </View>
       </View>
     );
@@ -175,11 +219,17 @@ export default function ProductDetailPage() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
-
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      >
         {/* ── Hero Image ── */}
         <View style={styles.imageContainer}>
-          <Image source={product.image || fallbackProductImage} style={styles.heroImage} resizeMode="cover" />
+          <Image
+            source={product.image || fallbackProductImage}
+            style={styles.heroImage}
+            resizeMode="cover"
+          />
           <LinearGradient
             colors={["transparent", "rgba(0,0,0,0.55)"]}
             style={StyleSheet.absoluteFill}
@@ -187,18 +237,44 @@ export default function ProductDetailPage() {
 
           {/* Back + fav buttons */}
           <View style={[styles.imageTopRow, { top: insets.top + 12 }]}>
-            <Pressable style={styles.imageCircleBtn} onPress={() => router.back()}>
+            <Pressable
+              style={styles.imageCircleBtn}
+              onPress={() => router.back()}
+              hitSlop={8}
+            >
               <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
             </Pressable>
-            <Pressable style={styles.imageCircleBtn}>
-              <Ionicons name="heart-outline" size={22} color="#FFFFFF" />
-            </Pressable>
+            <View style={styles.imageTopActions}>
+              <Pressable style={styles.imageCircleBtn} hitSlop={8}>
+                <Ionicons name="heart-outline" size={22} color="#FFFFFF" />
+              </Pressable>
+              <Pressable
+                style={styles.imageCircleBtn}
+                onPress={() => router.push("/(tabs)/add")}
+                hitSlop={8}
+                accessibilityLabel="Open cart"
+              >
+                <Ionicons name="cart-outline" size={22} color="#FFFFFF" />
+                {cartCount > 0 && (
+                  <View style={styles.cartBadge}>
+                    <Text style={styles.cartBadgeText}>{cartCount}</Text>
+                  </View>
+                )}
+              </Pressable>
+            </View>
           </View>
 
           {/* Tags overlay */}
           <View style={styles.imageTags}>
             {product.tags.map((tag) => (
-              <View key={tag} style={[styles.imageTag, tag === "Sale" && { backgroundColor: "#EF4444" }, tag === "Limited" && { backgroundColor: "#7C3AED" }]}>
+              <View
+                key={tag}
+                style={[
+                  styles.imageTag,
+                  tag === "Sale" && { backgroundColor: "#EF4444" },
+                  tag === "Limited" && { backgroundColor: "#7C3AED" },
+                ]}
+              >
                 <Text style={styles.imageTagText}>{tag}</Text>
               </View>
             ))}
@@ -207,17 +283,22 @@ export default function ProductDetailPage() {
 
         {/* ── Content ── */}
         <View style={{ paddingHorizontal: 20 }}>
-
           {/* Shop badge + name */}
           <View style={styles.shopRow}>
             {badge && (
               <View style={[styles.shopBadge, { backgroundColor: badge.bg }]}>
-                <Text style={[styles.shopBadgeText, { color: badge.text }]}>{product.shopType}</Text>
+                <Text style={[styles.shopBadgeText, { color: badge.text }]}>
+                  {product.shopType}
+                </Text>
               </View>
             )}
             <Pressable
               onPress={() => {
-                if (store) router.push({ pathname: "/store/[id]", params: { id: product.shopId } });
+                if (store)
+                  router.push({
+                    pathname: "/store/[id]",
+                    params: { id: product.shopId },
+                  });
               }}
             >
               <Text style={[styles.shopName, { color: colors.primary }]}>
@@ -227,37 +308,72 @@ export default function ProductDetailPage() {
           </View>
 
           {/* Title */}
-          <Text style={[styles.productBrand, { color: colors.mutedForeground }]}>{product.brand}</Text>
-          <Text style={[styles.productName, { color: colors.foreground }]}>{product.name}</Text>
+          <Text
+            style={[styles.productBrand, { color: colors.mutedForeground }]}
+          >
+            {product.brand}
+          </Text>
+          <Text style={[styles.productName, { color: colors.foreground }]}>
+            {product.name}
+          </Text>
 
           {/* Rating */}
           <View style={styles.ratingRow}>
             {[...Array(5)].map((_, i) => (
-              <Ionicons key={i} name="star" size={14} color={i < Math.floor(product.rating) ? "#FFB300" : colors.muted} />
+              <Ionicons
+                key={i}
+                name="star"
+                size={14}
+                color={
+                  i < Math.floor(product.rating) ? "#FFB300" : colors.muted
+                }
+              />
             ))}
-            <Text style={[styles.ratingValue, { color: colors.foreground }]}>{product.rating}</Text>
-            <Text style={[styles.reviewCount, { color: colors.mutedForeground }]}>({product.reviews} reviews)</Text>
+            <Text style={[styles.ratingValue, { color: colors.foreground }]}>
+              {product.rating}
+            </Text>
+            <Text
+              style={[styles.reviewCount, { color: colors.mutedForeground }]}
+            >
+              ({product.reviews} reviews)
+            </Text>
           </View>
 
           {/* Price */}
           <View style={styles.priceRow}>
-            <Text style={[styles.price, { color: colors.foreground }]}>${product.price.toFixed(2)}</Text>
+            <Text style={[styles.price, { color: colors.foreground }]}>
+              ${product.price.toFixed(2)}
+            </Text>
             {product.originalPrice && (
-              <Text style={styles.originalPrice}>${product.originalPrice.toFixed(2)}</Text>
+              <Text style={styles.originalPrice}>
+                ${product.originalPrice.toFixed(2)}
+              </Text>
             )}
             {product.originalPrice && (
               <View style={styles.discountBadge}>
                 <Text style={styles.discountText}>
-                  {Math.round((1 - product.price / product.originalPrice) * 100)}% OFF
+                  {Math.round(
+                    (1 - product.price / product.originalPrice) * 100,
+                  )}
+                  % OFF
                 </Text>
               </View>
             )}
           </View>
 
           {/* Description */}
-          <View style={[styles.descCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
-            <Text style={[styles.descLabel, { color: colors.foreground }]}>About this product</Text>
-            <Text style={[styles.descText, { color: colors.mutedForeground }]}>{product.description}</Text>
+          <View
+            style={[
+              styles.descCard,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
+          >
+            <Text style={[styles.descLabel, { color: colors.foreground }]}>
+              About this product
+            </Text>
+            <Text style={[styles.descText, { color: colors.mutedForeground }]}>
+              {product.description}
+            </Text>
           </View>
 
           {/* Availability */}
@@ -271,7 +387,9 @@ export default function ProductDetailPage() {
           {/* Size selector */}
           {requiresSize && (
             <>
-              <Text style={[styles.sizeLabel, { color: colors.foreground }]}>Select Size (EU)</Text>
+              <Text style={[styles.sizeLabel, { color: colors.foreground }]}>
+                Select Size (EU)
+              </Text>
               <View style={styles.sizeGrid}>
                 {SIZES.map((size) => (
                   <Pressable
@@ -280,15 +398,28 @@ export default function ProductDetailPage() {
                     style={[
                       styles.sizeBtn,
                       {
-                        backgroundColor: selectedSize === size ? colors.foreground : colors.card,
-                        borderColor: selectedSize === size ? colors.foreground : colors.border,
+                        backgroundColor:
+                          selectedSize === size
+                            ? colors.foreground
+                            : colors.card,
+                        borderColor:
+                          selectedSize === size
+                            ? colors.foreground
+                            : colors.border,
                       },
                     ]}
                   >
-                    <Text style={[
-                      styles.sizeBtnText,
-                      { color: selectedSize === size ? colors.background : colors.foreground },
-                    ]}>
+                    <Text
+                      style={[
+                        styles.sizeBtnText,
+                        {
+                          color:
+                            selectedSize === size
+                              ? colors.background
+                              : colors.foreground,
+                        },
+                      ]}
+                    >
                       {size}
                     </Text>
                   </Pressable>
@@ -299,18 +430,29 @@ export default function ProductDetailPage() {
 
           {/* Quantity */}
           <View style={styles.qtyRow}>
-            <Text style={[styles.qtyLabel, { color: colors.foreground }]}>Quantity</Text>
-            <View style={[styles.qtyControl, { backgroundColor: colors.card, borderColor: colors.border }]}>
+            <Text style={[styles.qtyLabel, { color: colors.foreground }]}>
+              Quantity
+            </Text>
+            <View
+              style={[
+                styles.qtyControl,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
               <Pressable
                 style={styles.qtyBtn}
                 onPress={() => setQuantity((q) => Math.max(1, q - 1))}
               >
                 <Ionicons name="remove" size={20} color={colors.foreground} />
               </Pressable>
-              <Text style={[styles.qtyValue, { color: colors.foreground }]}>{quantity}</Text>
+              <Text style={[styles.qtyValue, { color: colors.foreground }]}>
+                {quantity}
+              </Text>
               <Pressable
                 style={styles.qtyBtn}
-                onPress={() => setQuantity((q) => Math.min(product.availableItems, q + 1))}
+                onPress={() =>
+                  setQuantity((q) => Math.min(product.availableItems, q + 1))
+                }
               >
                 <Ionicons name="add" size={20} color={colors.foreground} />
               </Pressable>
@@ -320,22 +462,53 @@ export default function ProductDetailPage() {
           {/* Store info card */}
           {store && (
             <Pressable
-              style={[styles.storeInfoCard, { backgroundColor: colors.card, borderColor: colors.border }]}
-              onPress={() => router.push({ pathname: "/store/[id]", params: { id: product.shopId } })}
+              style={[
+                styles.storeInfoCard,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+              onPress={() =>
+                router.push({
+                  pathname: "/store/[id]",
+                  params: { id: product.shopId },
+                })
+              }
             >
-              <View style={[styles.storeEmoji, { backgroundColor: (store.accentColor || store.accent_color || colors.primary) + "22" }]}>
+              <View
+                style={[
+                  styles.storeEmoji,
+                  {
+                    backgroundColor:
+                      (store.accentColor ||
+                        store.accent_color ||
+                        colors.primary) + "22",
+                  },
+                ]}
+              >
                 <Text style={{ fontSize: 24 }}>{store.emoji || "🛍️"}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.storeInfoName, { color: colors.foreground }]}>{store.name}</Text>
+                <Text
+                  style={[styles.storeInfoName, { color: colors.foreground }]}
+                >
+                  {store.name}
+                </Text>
                 <View style={styles.storeInfoMeta}>
                   <Ionicons name="star" size={12} color="#FFB300" />
-                  <Text style={[styles.storeInfoText, { color: colors.mutedForeground }]}>
+                  <Text
+                    style={[
+                      styles.storeInfoText,
+                      { color: colors.mutedForeground },
+                    ]}
+                  >
                     {store.rating} · {store.deliveryTime}
                   </Text>
                 </View>
               </View>
-              <Ionicons name="chevron-forward" size={20} color={colors.mutedForeground} />
+              <Ionicons
+                name="chevron-forward"
+                size={20}
+                color={colors.mutedForeground}
+              />
             </Pressable>
           )}
         </View>
@@ -350,7 +523,9 @@ export default function ProductDetailPage() {
         ]}
       >
         <View style={styles.totalRow}>
-          <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>Total</Text>
+          <Text style={[styles.totalLabel, { color: colors.mutedForeground }]}>
+            Total
+          </Text>
           <Text style={[styles.totalValue, { color: colors.foreground }]}>
             ${(product.price * quantity).toFixed(2)}
           </Text>
@@ -360,8 +535,13 @@ export default function ProductDetailPage() {
             style={[
               styles.addToCartBtn,
               {
-                backgroundColor: (requiresSize && !selectedSize) ? colors.muted : (cartAdded ? "#22C55E" : colors.foreground),
-                opacity: (requiresSize && !selectedSize) ? 0.6 : 1,
+                backgroundColor:
+                  requiresSize && !selectedSize
+                    ? colors.muted
+                    : cartAdded
+                      ? "#22C55E"
+                      : colors.foreground,
+                opacity: requiresSize && !selectedSize ? 0.6 : 1,
               },
             ]}
             onPress={handleAddToCart}
@@ -371,8 +551,17 @@ export default function ProductDetailPage() {
               size={20}
               color={cartAdded ? "#FFFFFF" : colors.background}
             />
-            <Text style={[styles.addToCartText, { color: cartAdded ? "#FFFFFF" : colors.background }]}>
-              {(requiresSize && !selectedSize) ? "Pick a Size" : cartAdded ? "Added!" : "Add to Cart"}
+            <Text
+              style={[
+                styles.addToCartText,
+                { color: cartAdded ? "#FFFFFF" : colors.background },
+              ]}
+            >
+              {requiresSize && !selectedSize
+                ? "Pick a Size"
+                : cartAdded
+                  ? "Added!"
+                  : "Add to Cart"}
             </Text>
           </Pressable>
         </Animated.View>
@@ -398,6 +587,11 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     zIndex: 10,
   },
+  imageTopActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   imageCircleBtn: {
     width: 42,
     height: 42,
@@ -405,6 +599,26 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.35)",
     alignItems: "center",
     justifyContent: "center",
+  },
+  cartBadge: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: "#EF4444",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: "#FFFFFF",
+  },
+  cartBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontFamily: "Inter_800ExtraBold",
+    lineHeight: 12,
   },
   imageTags: {
     position: "absolute",
@@ -436,8 +650,18 @@ const styles = StyleSheet.create({
   },
   shopBadgeText: { fontSize: 12, fontFamily: "Inter_700Bold" },
   shopName: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
-  productBrand: { fontSize: 14, fontFamily: "Inter_700Bold", marginBottom: 6, letterSpacing: 0.5 },
-  productName: { fontSize: 26, fontFamily: "Inter_800ExtraBold", marginBottom: 12, lineHeight: 32 },
+  productBrand: {
+    fontSize: 14,
+    fontFamily: "Inter_700Bold",
+    marginBottom: 6,
+    letterSpacing: 0.5,
+  },
+  productName: {
+    fontSize: 26,
+    fontFamily: "Inter_800ExtraBold",
+    marginBottom: 12,
+    lineHeight: 32,
+  },
 
   // Rating
   ratingRow: {
@@ -489,7 +713,12 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 20,
   },
-  availDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#22C55E" },
+  availDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#22C55E",
+  },
   availText: { fontSize: 13, fontFamily: "Inter_600SemiBold" },
 
   // Sizes
@@ -526,7 +755,11 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   qtyBtn: { paddingHorizontal: 16, paddingVertical: 10 },
-  qtyValue: { fontSize: 16, fontFamily: "Inter_700Bold", paddingHorizontal: 16 },
+  qtyValue: {
+    fontSize: 16,
+    fontFamily: "Inter_700Bold",
+    paddingHorizontal: 16,
+  },
 
   // Store info
   storeInfoCard: {

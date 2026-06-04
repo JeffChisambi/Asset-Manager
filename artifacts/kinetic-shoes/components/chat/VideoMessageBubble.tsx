@@ -30,7 +30,12 @@ function formatTime(ts: number) {
   return `${h % 12 || 12}:${m.toString().padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
 }
 
-export function VideoMessageBubble({ videoUri, isMine, timestamp, status }: VideoMessageBubbleProps) {
+export function VideoMessageBubble({
+  videoUri,
+  isMine,
+  timestamp,
+  status,
+}: VideoMessageBubbleProps) {
   const colors = useColors();
   const [expanded, setExpanded] = useState(false);
   const previewRef = useRef<Video | null>(null);
@@ -44,7 +49,12 @@ export function VideoMessageBubble({ videoUri, isMine, timestamp, status }: Vide
             styles.bubble,
             isMine
               ? { borderBottomRightRadius: 4, backgroundColor: colors.primary }
-              : { borderBottomLeftRadius: 4, borderColor: colors.border, borderWidth: 1, backgroundColor: colors.muted },
+              : {
+                  borderBottomLeftRadius: 4,
+                  borderColor: colors.border,
+                  borderWidth: 1,
+                  backgroundColor: colors.muted,
+                },
           ]}
         >
           <View style={styles.previewWrap}>
@@ -64,13 +74,27 @@ export function VideoMessageBubble({ videoUri, isMine, timestamp, status }: Vide
               )}
             </View>
           </View>
-          <Text style={[styles.time, { color: isMine ? "rgba(255,255,255,0.7)" : colors.mutedForeground }]}>
+          <Text
+            style={[
+              styles.time,
+              {
+                color: isMine
+                  ? "rgba(255,255,255,0.7)"
+                  : colors.mutedForeground,
+              },
+            ]}
+          >
             {formatTime(timestamp)}
           </Text>
         </Pressable>
       </View>
 
-      <Modal visible={expanded} transparent animationType="fade" onRequestClose={() => setExpanded(false)}>
+      <Modal
+        visible={expanded}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setExpanded(false)}
+      >
         <SafeAreaView style={styles.modalBg}>
           <Pressable onPress={() => setExpanded(false)} style={styles.closeBtn}>
             <Ionicons name="close" size={28} color="#FFF" />

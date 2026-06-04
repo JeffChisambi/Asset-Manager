@@ -165,9 +165,9 @@ importers:
       cors:
         specifier: ^2.8.6
         version: 2.8.6
-      drizzle-orm:
-        specifier: 'catalog:'
-        version: 0.45.2(@types/pg@8.20.0)(pg@8.20.0)
+      dotenv:
+        specifier: ^16.4.5
+        version: 16.4.7
       express:
         specifier: ^5.2.1
         version: 5.2.1

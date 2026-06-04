@@ -21,8 +21,14 @@ import { supabase } from "@/lib/supabase";
 import { ProfileService } from "@/services/profile/profile.service";
 
 const AVATAR_COLORS = [
-  "#13B734", "#FF6B6B", "#4ECDC4", "#FFD93D",
-  "#A29BFE", "#FD79A8", "#00B894", "#E17055",
+  "#13B734",
+  "#FF6B6B",
+  "#4ECDC4",
+  "#FFD93D",
+  "#A29BFE",
+  "#FD79A8",
+  "#00B894",
+  "#E17055",
 ];
 
 function randomColor() {
@@ -41,7 +47,7 @@ export default function SignupScreen() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
   const [generalError, setGeneralError] = useState("");
@@ -75,19 +81,19 @@ export default function SignupScreen() {
 
     const eErr = validateEmail(email);
     const pErr = validatePassword(password);
-    
+
     if (eErr || pErr) {
       if (eErr) setEmailError(eErr);
       if (pErr) setPasswordError(pErr);
       return;
     }
-    
+
     if (Platform.OS !== "web") {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    
+
     setIsLoading(true);
-    
+
     // Attempt Supabase Auth (Strict JWT & Email Verification)
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -101,9 +107,16 @@ export default function SignupScreen() {
 
     if (error) {
       setIsLoading(false);
-      // Fallback if URL isn't configured, otherwise show real error
-      if (error.message.includes("URL") || error.message.includes("fetch")) {
-        setGeneralError("Backend not configured. Please add your Supabase URL in lib/supabase.ts");
+      // Fallback if URL isn't configured or if the network is unavailable
+      if (
+        error.message.includes("URL") ||
+        error.message.includes("fetch") ||
+        error.message.includes("Network request failed") ||
+        error.message.includes("AuthRetryableFetchError")
+      ) {
+        setGeneralError(
+          "Unable to reach Supabase. Please check your internet connection and verify the Supabase URL in lib/supabase.ts",
+        );
       } else {
         setGeneralError(error.message);
       }
@@ -112,7 +125,9 @@ export default function SignupScreen() {
 
     // Success: Profile setup for Chat
     const dn = fullName.trim();
-    const un = dn.toLowerCase().replace(/[^a-z0-9_]/g, "") + Math.floor(Math.random() * 1000);
+    const un =
+      dn.toLowerCase().replace(/[^a-z0-9_]/g, "") +
+      Math.floor(Math.random() * 1000);
     const userId = data.user?.id || "me_" + Date.now();
     const avatarColor = randomColor();
 
@@ -152,12 +167,21 @@ export default function SignupScreen() {
       style={[styles.container, { backgroundColor: colors.background }]}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.content}>
           {/* Logo Section */}
           <View style={styles.header}>
-            <Image source={doorstepLogo} style={styles.logo} resizeMode="contain" />
-            <Text style={[styles.title, { color: colors.foreground }]}>Create Account</Text>
+            <Image
+              source={doorstepLogo}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={[styles.title, { color: colors.foreground }]}>
+              Create Account
+            </Text>
             <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
               Join Doorstep today.
             </Text>
@@ -166,9 +190,21 @@ export default function SignupScreen() {
           {/* Form Section */}
           <View style={styles.form}>
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: colors.foreground }]}>Full Name</Text>
-              <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: colors.border }]}>
-                <Ionicons name="person-outline" size={20} color={colors.mutedForeground} style={styles.inputIcon} />
+              <Text style={[styles.label, { color: colors.foreground }]}>
+                Full Name
+              </Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  { backgroundColor: colors.card, borderColor: colors.border },
+                ]}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={20}
+                  color={colors.mutedForeground}
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={[styles.input, { color: colors.foreground }]}
                   placeholder="Enter your full name"
@@ -181,35 +217,86 @@ export default function SignupScreen() {
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: colors.foreground }]}>Email</Text>
-              <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: emailError ? colors.destructive : colors.border }]}>
-                <Ionicons name="mail-outline" size={20} color={emailError ? colors.destructive : colors.mutedForeground} style={styles.inputIcon} />
+              <Text style={[styles.label, { color: colors.foreground }]}>
+                Email
+              </Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: emailError
+                      ? colors.destructive
+                      : colors.border,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="mail-outline"
+                  size={20}
+                  color={
+                    emailError ? colors.destructive : colors.mutedForeground
+                  }
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={[styles.input, { color: colors.foreground }]}
                   placeholder="Enter your email"
                   placeholderTextColor={colors.mutedForeground}
                   value={email}
-                  onChangeText={(t) => { setEmail(t); setEmailError(""); }}
+                  onChangeText={(t) => {
+                    setEmail(t);
+                    setEmailError("");
+                  }}
                   autoCapitalize="none"
                   keyboardType="email-address"
                 />
               </View>
-              {!!emailError && <Text style={[styles.errorText, { color: colors.destructive }]}>{emailError}</Text>}
+              {!!emailError && (
+                <Text style={[styles.errorText, { color: colors.destructive }]}>
+                  {emailError}
+                </Text>
+              )}
             </View>
 
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, { color: colors.foreground }]}>Password</Text>
-              <View style={[styles.inputWrapper, { backgroundColor: colors.card, borderColor: passwordError ? colors.destructive : colors.border }]}>
-                <Ionicons name="lock-closed-outline" size={20} color={passwordError ? colors.destructive : colors.mutedForeground} style={styles.inputIcon} />
+              <Text style={[styles.label, { color: colors.foreground }]}>
+                Password
+              </Text>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  {
+                    backgroundColor: colors.card,
+                    borderColor: passwordError
+                      ? colors.destructive
+                      : colors.border,
+                  },
+                ]}
+              >
+                <Ionicons
+                  name="lock-closed-outline"
+                  size={20}
+                  color={
+                    passwordError ? colors.destructive : colors.mutedForeground
+                  }
+                  style={styles.inputIcon}
+                />
                 <TextInput
                   style={[styles.input, { color: colors.foreground }]}
                   placeholder="Create a password"
                   placeholderTextColor={colors.mutedForeground}
                   value={password}
-                  onChangeText={(t) => { setPassword(t); setPasswordError(""); }}
+                  onChangeText={(t) => {
+                    setPassword(t);
+                    setPasswordError("");
+                  }}
                   secureTextEntry={!showPassword}
                 />
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+                <TouchableOpacity
+                  onPress={() => setShowPassword(!showPassword)}
+                  style={styles.eyeIcon}
+                >
                   <Ionicons
                     name={showPassword ? "eye-off-outline" : "eye-outline"}
                     size={20}
@@ -217,10 +304,27 @@ export default function SignupScreen() {
                   />
                 </TouchableOpacity>
               </View>
-              {!!passwordError && <Text style={[styles.errorText, { color: colors.destructive }]}>{passwordError}</Text>}
+              {!!passwordError && (
+                <Text style={[styles.errorText, { color: colors.destructive }]}>
+                  {passwordError}
+                </Text>
+              )}
             </View>
 
-            {!!generalError && <Text style={[styles.errorText, { color: colors.destructive, textAlign: "center", marginTop: 8 }]}>{generalError}</Text>}
+            {!!generalError && (
+              <Text
+                style={[
+                  styles.errorText,
+                  {
+                    color: colors.destructive,
+                    textAlign: "center",
+                    marginTop: 8,
+                  },
+                ]}
+              >
+                {generalError}
+              </Text>
+            )}
 
             <TouchableOpacity
               style={[
@@ -234,18 +338,29 @@ export default function SignupScreen() {
               {isLoading ? (
                 <ActivityIndicator color={colors.background} />
               ) : (
-                <Text style={[styles.signupButtonText, { color: colors.background }]}>Sign up</Text>
+                <Text
+                  style={[
+                    styles.signupButtonText,
+                    { color: colors.background },
+                  ]}
+                >
+                  Sign up
+                </Text>
               )}
             </TouchableOpacity>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
-            <Text style={[styles.footerText, { color: colors.mutedForeground }]}>
+            <Text
+              style={[styles.footerText, { color: colors.mutedForeground }]}
+            >
               Already have an account?{" "}
             </Text>
             <TouchableOpacity onPress={() => router.push("/login")}>
-              <Text style={[styles.loginText, { color: colors.primary }]}>Sign in</Text>
+              <Text style={[styles.loginText, { color: colors.primary }]}>
+                Sign in
+              </Text>
             </TouchableOpacity>
           </View>
         </View>

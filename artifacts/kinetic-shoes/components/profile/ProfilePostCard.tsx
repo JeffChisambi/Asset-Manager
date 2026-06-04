@@ -39,7 +39,9 @@ const ActionButton = memo(
   ({ icon, count, active, activeColor, onPress }: ActionButtonProps) => {
     const colors = useColors();
     const scale = useSharedValue(1);
-    const color = active ? activeColor ?? colors.primary : colors.mutedForeground;
+    const color = active
+      ? (activeColor ?? colors.primary)
+      : colors.mutedForeground;
 
     const animStyle = useAnimatedStyle(() => ({
       transform: [{ scale: scale.value }],
@@ -62,7 +64,7 @@ const ActionButton = memo(
         </Animated.View>
       </Pressable>
     );
-  }
+  },
 );
 
 interface PostOptionsMenuProps {
@@ -71,43 +73,65 @@ interface PostOptionsMenuProps {
   onDelete: () => void;
 }
 
-const PostOptionsMenu = memo(({ visible, onClose, onDelete }: PostOptionsMenuProps) => {
-  const colors = useColors();
-  if (!visible) return null;
-  return (
-    <Modal transparent visible animationType="fade" onRequestClose={onClose}>
-      <Pressable style={styles.optionsBackdrop} onPress={onClose}>
-        <View style={[styles.optionsSheet, { backgroundColor: colors.card, borderColor: colors.border }]}>
-          <Text style={[styles.optionsTitle, { color: colors.mutedForeground }]}>Post Options</Text>
-          <TouchableOpacity
-            style={[styles.optionsRow, { borderTopColor: colors.border }]}
-            onPress={() => {
-              onClose();
-              Alert.alert(
-                "Delete Post",
-                "Are you sure you want to permanently delete this post?",
-                [
-                  { text: "Cancel", style: "cancel" },
-                  { text: "Delete", style: "destructive", onPress: onDelete },
-                ]
-              );
-            }}
+const PostOptionsMenu = memo(
+  ({ visible, onClose, onDelete }: PostOptionsMenuProps) => {
+    const colors = useColors();
+    if (!visible) return null;
+    return (
+      <Modal transparent visible animationType="fade" onRequestClose={onClose}>
+        <Pressable style={styles.optionsBackdrop} onPress={onClose}>
+          <View
+            style={[
+              styles.optionsSheet,
+              { backgroundColor: colors.card, borderColor: colors.border },
+            ]}
           >
-            <Ionicons name="trash-outline" size={18} color="#EF4444" />
-            <Text style={styles.optionsDeleteText}>Delete Post</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.optionsRow, { borderTopColor: colors.border }]}
-            onPress={onClose}
-          >
-            <Ionicons name="close-outline" size={18} color={colors.mutedForeground} />
-            <Text style={[styles.optionsCancelText, { color: colors.mutedForeground }]}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </Pressable>
-    </Modal>
-  );
-});
+            <Text
+              style={[styles.optionsTitle, { color: colors.mutedForeground }]}
+            >
+              Post Options
+            </Text>
+            <TouchableOpacity
+              style={[styles.optionsRow, { borderTopColor: colors.border }]}
+              onPress={() => {
+                onClose();
+                Alert.alert(
+                  "Delete Post",
+                  "Are you sure you want to permanently delete this post?",
+                  [
+                    { text: "Cancel", style: "cancel" },
+                    { text: "Delete", style: "destructive", onPress: onDelete },
+                  ],
+                );
+              }}
+            >
+              <Ionicons name="trash-outline" size={18} color="#EF4444" />
+              <Text style={styles.optionsDeleteText}>Delete Post</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.optionsRow, { borderTopColor: colors.border }]}
+              onPress={onClose}
+            >
+              <Ionicons
+                name="close-outline"
+                size={18}
+                color={colors.mutedForeground}
+              />
+              <Text
+                style={[
+                  styles.optionsCancelText,
+                  { color: colors.mutedForeground },
+                ]}
+              >
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+    );
+  },
+);
 
 interface ProfilePostCardProps {
   post: Post;
@@ -115,264 +139,350 @@ interface ProfilePostCardProps {
   onDelete?: () => void;
 }
 
-export const ProfilePostCard = memo(({ post, isOwn, onDelete }: ProfilePostCardProps) => {
-  const colors = useColors();
-  const [liked, setLiked] = useState(post.isLiked);
-  const [saved, setSaved] = useState(post.isSaved);
-  const [likeCount, setLikeCount] = useState(post.likes);
-  const [optionsVisible, setOptionsVisible] = useState(false);
+export const ProfilePostCard = memo(
+  ({ post, isOwn, onDelete }: ProfilePostCardProps) => {
+    const colors = useColors();
+    const [liked, setLiked] = useState(post.isLiked);
+    const [saved, setSaved] = useState(post.isSaved);
+    const [likeCount, setLikeCount] = useState(post.likes);
+    const [optionsVisible, setOptionsVisible] = useState(false);
 
-  // Audio Playback State
-  const [sound, setSound] = useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [position, setPosition] = useState(0);
-  const [duration, setDuration] = useState(1);
+    // Audio Playback State
+    const [sound, setSound] = useState<Audio.Sound | null>(null);
+    const [isPlaying, setIsPlaying] = useState(false);
+    const [position, setPosition] = useState(0);
+    const [duration, setDuration] = useState(1);
 
-  // Parse type-prefixed media URLs: "image::url", "music::url", "voice::url"
-  // Falls back to legacy heuristic detection for backwards compatibility.
-  const parseMediaUrls = (urls?: string[]) => {
-    if (!urls?.length) return { imageUrl: undefined, audioUrl: undefined, voiceUrl: undefined };
-    let imageUrl: string | undefined;
-    let audioUrl: string | undefined;
-    let voiceUrl: string | undefined;
+    // Parse type-prefixed media URLs: "image::url", "music::url", "voice::url"
+    // Falls back to legacy heuristic detection for backwards compatibility.
+    const parseMediaUrls = (urls?: string[]) => {
+      if (!urls?.length)
+        return {
+          imageUrl: undefined,
+          audioUrl: undefined,
+          voiceUrl: undefined,
+        };
+      let imageUrl: string | undefined;
+      let audioUrl: string | undefined;
+      let voiceUrl: string | undefined;
 
-    for (const raw of urls) {
-      if (raw.startsWith('image::')) {
-        imageUrl = raw.slice('image::'.length);
-      } else if (raw.startsWith('music::')) {
-        audioUrl = raw.slice('music::'.length);
-      } else if (raw.startsWith('voice::')) {
-        voiceUrl = raw.slice('voice::'.length);
-      } else {
-        // Legacy fallback for posts created before the prefix scheme
-        const lower = raw.toLowerCase();
-        if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp')) {
-          imageUrl = imageUrl ?? raw;
-        } else if (lower.includes('music') || lower.endsWith('.mp3')) {
-          audioUrl = audioUrl ?? raw;
-        } else if (lower.includes('voice') || lower.endsWith('.m4a') || lower.endsWith('.aac')) {
-          voiceUrl = voiceUrl ?? raw;
+      for (const raw of urls) {
+        if (raw.startsWith("image::")) {
+          imageUrl = raw.slice("image::".length);
+        } else if (raw.startsWith("music::")) {
+          audioUrl = raw.slice("music::".length);
+        } else if (raw.startsWith("voice::")) {
+          voiceUrl = raw.slice("voice::".length);
         } else {
-          // Unknown — treat as image if no image found yet
-          imageUrl = imageUrl ?? raw;
+          // Legacy fallback for posts created before the prefix scheme
+          const lower = raw.toLowerCase();
+          if (
+            lower.endsWith(".jpg") ||
+            lower.endsWith(".jpeg") ||
+            lower.endsWith(".png") ||
+            lower.endsWith(".webp")
+          ) {
+            imageUrl = imageUrl ?? raw;
+          } else if (lower.includes("music") || lower.endsWith(".mp3")) {
+            audioUrl = audioUrl ?? raw;
+          } else if (
+            lower.includes("voice") ||
+            lower.endsWith(".m4a") ||
+            lower.endsWith(".aac")
+          ) {
+            voiceUrl = voiceUrl ?? raw;
+          } else {
+            // Unknown — treat as image if no image found yet
+            imageUrl = imageUrl ?? raw;
+          }
         }
       }
-    }
-    return { imageUrl, audioUrl, voiceUrl };
-  };
+      return { imageUrl, audioUrl, voiceUrl };
+    };
 
-  const { imageUrl, audioUrl, voiceUrl } = parseMediaUrls(post.mediaUrls);
+    const { imageUrl, audioUrl, voiceUrl } = parseMediaUrls(post.mediaUrls);
 
-  const playPauseAudio = async (url: string) => {
-    if (sound) {
-      if (isPlaying) {
-        await sound.pauseAsync();
-        setIsPlaying(false);
-      } else {
-        await sound.playAsync();
-        setIsPlaying(true);
-      }
-    } else {
-      try {
-        const { sound: newSound } = await Audio.Sound.createAsync(
-          { uri: url },
-          { shouldPlay: true }
-        );
-        
-        newSound.setOnPlaybackStatusUpdate(async (status) => {
-          if (status.isLoaded) {
-            setPosition(status.positionMillis);
-            setDuration(Math.min(status.durationMillis || 1, 60000));
-            
-            if (status.positionMillis >= 60000) {
-              await newSound.stopAsync();
-              setIsPlaying(false);
-              setSound(null);
-            } else if (status.didJustFinish) {
-              setIsPlaying(false);
-              setSound(null);
-            }
-          }
-        });
-        
-        setSound(newSound);
-        setIsPlaying(true);
-      } catch (err) {
-        console.warn("Playback error", err);
-        Alert.alert("Playback Error", "Could not play audio.");
-      }
-    }
-  };
-
-  React.useEffect(() => {
-    return () => {
+    const playPauseAudio = async (url: string) => {
       if (sound) {
-        sound.unloadAsync();
+        if (isPlaying) {
+          await sound.pauseAsync();
+          setIsPlaying(false);
+        } else {
+          await sound.playAsync();
+          setIsPlaying(true);
+        }
+      } else {
+        try {
+          const { sound: newSound } = await Audio.Sound.createAsync(
+            { uri: url },
+            { shouldPlay: true },
+          );
+
+          newSound.setOnPlaybackStatusUpdate(async (status) => {
+            if (status.isLoaded) {
+              setPosition(status.positionMillis);
+              setDuration(Math.min(status.durationMillis || 1, 60000));
+
+              if (status.positionMillis >= 60000) {
+                await newSound.stopAsync();
+                setIsPlaying(false);
+                setSound(null);
+              } else if (status.didJustFinish) {
+                setIsPlaying(false);
+                setSound(null);
+              }
+            }
+          });
+
+          setSound(newSound);
+          setIsPlaying(true);
+        } catch (err) {
+          console.warn("Playback error", err);
+          Alert.alert("Playback Error", "Could not play audio.");
+        }
       }
     };
-  }, [sound]);
 
-  const handleLike = () => {
-    const next = !liked;
-    setLiked(next);
-    setLikeCount((c) => c + (next ? 1 : -1));
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
+    React.useEffect(() => {
+      return () => {
+        if (sound) {
+          sound.unloadAsync();
+        }
+      };
+    }, [sound]);
 
-  const handleSave = () => {
-    setSaved((s) => !s);
-    if (Platform.OS !== "web")
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
+    const handleLike = () => {
+      const next = !liked;
+      setLiked(next);
+      setLikeCount((c) => c + (next ? 1 : -1));
+      if (Platform.OS !== "web")
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    };
 
-  return (
-    <View
-      style={[
-        styles.card,
-        { backgroundColor: colors.card, borderColor: colors.border },
-      ]}
-    >
-      {/* Header row — timestamp + options button for own posts */}
-      <View style={styles.cardHeader}>
-        <Text style={[styles.time, { color: colors.mutedForeground }]}>
-          {post.createdAt}
-        </Text>
-        {isOwn && (
-          <TouchableOpacity
-            style={[styles.moreBtn, { backgroundColor: colors.muted }]}
-            onPress={() => setOptionsVisible(true)}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <Feather name="more-horizontal" size={16} color={colors.mutedForeground} />
-          </TouchableOpacity>
-        )}
-      </View>
+    const handleSave = () => {
+      setSaved((s) => !s);
+      if (Platform.OS !== "web")
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    };
 
-      <Text style={[styles.content, { color: colors.foreground }]}>
-        {post.content}
-      </Text>
-
-      {/* Attached image preview with optional music track */}
-      {imageUrl && (
-        <View style={styles.imageWrapper}>
-          <Image
-            source={{ uri: imageUrl }}
-            style={styles.mediaImage}
-            resizeMode="cover"
-          />
-          {audioUrl && (
+    return (
+      <View
+        style={[
+          styles.card,
+          { backgroundColor: colors.card, borderColor: colors.border },
+        ]}
+      >
+        {/* Header row — timestamp + options button for own posts */}
+        <View style={styles.cardHeader}>
+          <Text style={[styles.time, { color: colors.mutedForeground }]}>
+            {post.createdAt}
+          </Text>
+          {isOwn && (
             <TouchableOpacity
-              onPress={() => playPauseAudio(audioUrl)}
-              style={[styles.musicBadgeOverlay, { backgroundColor: "rgba(0, 0, 0, 0.6)" }]}
+              style={[styles.moreBtn, { backgroundColor: colors.muted }]}
+              onPress={() => setOptionsVisible(true)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Ionicons name={isPlaying && sound ? "pause" : "musical-notes"} size={14} color="#fff" />
-              <Text style={styles.musicOverlayText}>
-                {isPlaying ? "Playing Music" : "Attached Track"}
-              </Text>
+              <Feather
+                name="more-horizontal"
+                size={16}
+                color={colors.mutedForeground}
+              />
             </TouchableOpacity>
           )}
         </View>
-      )}
 
-      {/* Standalone music preview when no image is attached */}
-      {!imageUrl && audioUrl && (
-        <View style={[styles.audioCard, { backgroundColor: colors.border + "22", borderColor: colors.border }]}>
-          <TouchableOpacity onPress={() => playPauseAudio(audioUrl)} style={[styles.playBtn, { backgroundColor: colors.primary }]}>
-            <Ionicons name={isPlaying && sound ? "pause" : "musical-notes"} size={16} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.audioDetails}>
-            <Text style={[styles.audioLabel, { color: colors.foreground }]}>Attached Audio Track</Text>
-            <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
-              <View style={[styles.progressBarFill, { width: `${(position / duration) * 100}%`, backgroundColor: colors.primary }]} />
-            </View>
+        <Text style={[styles.content, { color: colors.foreground }]}>
+          {post.content}
+        </Text>
+
+        {/* Attached image preview with optional music track */}
+        {imageUrl && (
+          <View style={styles.imageWrapper}>
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.mediaImage}
+              resizeMode="cover"
+            />
+            {audioUrl && (
+              <TouchableOpacity
+                onPress={() => playPauseAudio(audioUrl)}
+                style={[
+                  styles.musicBadgeOverlay,
+                  { backgroundColor: "rgba(0, 0, 0, 0.6)" },
+                ]}
+              >
+                <Ionicons
+                  name={isPlaying && sound ? "pause" : "musical-notes"}
+                  size={14}
+                  color="#fff"
+                />
+                <Text style={styles.musicOverlayText}>
+                  {isPlaying ? "Playing Music" : "Attached Track"}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
-        </View>
-      )}
+        )}
 
-      {/* Attached Voice Note */}
-      {voiceUrl && (
-        <View style={[styles.audioCard, { backgroundColor: colors.border + "22", borderColor: colors.border }]}>
-          <TouchableOpacity onPress={() => playPauseAudio(voiceUrl)} style={[styles.playBtn, { backgroundColor: colors.primary }]}>
-            <Ionicons name={isPlaying && sound ? "pause" : "mic"} size={16} color="#fff" />
-          </TouchableOpacity>
-          <View style={styles.audioDetails}>
-            <Text style={[styles.audioLabel, { color: colors.foreground }]}>Voice Note</Text>
-            <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
-              <View style={[styles.progressBarFill, { width: `${(position / duration) * 100}%`, backgroundColor: colors.primary }]} />
-            </View>
-          </View>
-        </View>
-      )}
-
-      {post.productTag && (
-        <View
-          style={[
-            styles.productTag,
-            { backgroundColor: colors.secondary, borderColor: colors.border },
-          ]}
-        >
-          <Ionicons name="pricetag-outline" size={13} color={colors.primary} />
-          <Text style={[styles.productTagText, { color: colors.primary }]}>
-            {post.productTag.brand} · {post.productTag.name} ·{" "}
-            <Text style={styles.productTagPrice}>
-              ${post.productTag.price.toFixed(2)}
-            </Text>
-          </Text>
-        </View>
-      )}
-
-      {(post.tags?.length ?? 0) > 0 && (
-        <View style={styles.tags}>
-          {post.tags!.map((tag) => (
-            <Text
-              key={tag}
-              style={[styles.tag, { color: colors.primary }]}
+        {/* Standalone music preview when no image is attached */}
+        {!imageUrl && audioUrl && (
+          <View
+            style={[
+              styles.audioCard,
+              {
+                backgroundColor: colors.border + "22",
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => playPauseAudio(audioUrl)}
+              style={[styles.playBtn, { backgroundColor: colors.primary }]}
             >
-              #{tag}
+              <Ionicons
+                name={isPlaying && sound ? "pause" : "musical-notes"}
+                size={16}
+                color="#fff"
+              />
+            </TouchableOpacity>
+            <View style={styles.audioDetails}>
+              <Text style={[styles.audioLabel, { color: colors.foreground }]}>
+                Attached Audio Track
+              </Text>
+              <View
+                style={[
+                  styles.progressBarBg,
+                  { backgroundColor: colors.border },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      width: `${(position / duration) * 100}%`,
+                      backgroundColor: colors.primary,
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          </View>
+        )}
+
+        {/* Attached Voice Note */}
+        {voiceUrl && (
+          <View
+            style={[
+              styles.audioCard,
+              {
+                backgroundColor: colors.border + "22",
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              onPress={() => playPauseAudio(voiceUrl)}
+              style={[styles.playBtn, { backgroundColor: colors.primary }]}
+            >
+              <Ionicons
+                name={isPlaying && sound ? "pause" : "mic"}
+                size={16}
+                color="#fff"
+              />
+            </TouchableOpacity>
+            <View style={styles.audioDetails}>
+              <Text style={[styles.audioLabel, { color: colors.foreground }]}>
+                Voice Note
+              </Text>
+              <View
+                style={[
+                  styles.progressBarBg,
+                  { backgroundColor: colors.border },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.progressBarFill,
+                    {
+                      width: `${(position / duration) * 100}%`,
+                      backgroundColor: colors.primary,
+                    },
+                  ]}
+                />
+              </View>
+            </View>
+          </View>
+        )}
+
+        {post.productTag && (
+          <View
+            style={[
+              styles.productTag,
+              { backgroundColor: colors.secondary, borderColor: colors.border },
+            ]}
+          >
+            <Ionicons
+              name="pricetag-outline"
+              size={13}
+              color={colors.primary}
+            />
+            <Text style={[styles.productTagText, { color: colors.primary }]}>
+              {post.productTag.brand} · {post.productTag.name} ·{" "}
+              <Text style={styles.productTagPrice}>
+                ${post.productTag.price.toFixed(2)}
+              </Text>
             </Text>
-          ))}
+          </View>
+        )}
+
+        {(post.tags?.length ?? 0) > 0 && (
+          <View style={styles.tags}>
+            {post.tags!.map((tag) => (
+              <Text key={tag} style={[styles.tag, { color: colors.primary }]}>
+                #{tag}
+              </Text>
+            ))}
+          </View>
+        )}
+
+        <View style={[styles.separator, { backgroundColor: colors.border }]} />
+
+        <View style={styles.actions}>
+          <ActionButton
+            icon={liked ? "heart" : "heart-outline"}
+            count={likeCount}
+            active={liked}
+            activeColor="#EF4444"
+            onPress={handleLike}
+          />
+          <ActionButton
+            icon="chatbubble-outline"
+            count={post.comments}
+            onPress={() => {}}
+          />
+          <ActionButton
+            icon="arrow-redo-outline"
+            count={post.shares}
+            onPress={() => {}}
+          />
+          <View style={styles.spacer} />
+          <ActionButton
+            icon={saved ? "bookmark" : "bookmark-outline"}
+            active={saved}
+            onPress={handleSave}
+          />
         </View>
-      )}
 
-      <View
-        style={[styles.separator, { backgroundColor: colors.border }]}
-      />
-
-      <View style={styles.actions}>
-        <ActionButton
-          icon={liked ? "heart" : "heart-outline"}
-          count={likeCount}
-          active={liked}
-          activeColor="#EF4444"
-          onPress={handleLike}
-        />
-        <ActionButton
-          icon="chatbubble-outline"
-          count={post.comments}
-          onPress={() => {}}
-        />
-        <ActionButton
-          icon="arrow-redo-outline"
-          count={post.shares}
-          onPress={() => {}}
-        />
-        <View style={styles.spacer} />
-        <ActionButton
-          icon={saved ? "bookmark" : "bookmark-outline"}
-          active={saved}
-          onPress={handleSave}
+        <PostOptionsMenu
+          visible={optionsVisible}
+          onClose={() => setOptionsVisible(false)}
+          onDelete={() => onDelete?.()}
         />
       </View>
-
-      <PostOptionsMenu
-        visible={optionsVisible}
-        onClose={() => setOptionsVisible(false)}
-        onDelete={() => onDelete?.()}
-      />
-    </View>
-  );
-});
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   card: {
