@@ -19,6 +19,7 @@ import { useColors } from "@/hooks/useColors";
 import { useChat } from "@/context/ChatContext";
 import { supabase } from "@/lib/supabase";
 import { ProfileService } from "@/services/profile/profile.service";
+import { getApiBase } from "@/lib/api";
 
 const AVATAR_COLORS = [
   "#13B734",
@@ -130,15 +131,39 @@ export default function SignupScreen() {
       Math.floor(Math.random() * 1000);
     const userId = data.user?.id || "me_" + Date.now();
     const avatarColor = randomColor();
+    const token = data.session?.access_token ?? "";
 
-    setCurrentUser({
-      id: userId,
-      username: un,
-      displayName: dn,
-      avatarColor: avatarColor,
-      bio: "Sneaker enthusiast",
-      isBot: false,
-    });
+    // Sync chat profile with API server (non-blocking)
+    if (token) {
+      const base = getApiBase();
+      if (base) {
+        fetch(`${base}/api/chat/profile/sync`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            username: un,
+            displayName: dn,
+            avatarColor,
+            bio: "Doorstep shopper",
+          }),
+        }).catch(() => {});
+      }
+    }
+
+    setCurrentUser(
+      {
+        id: userId,
+        username: un,
+        displayName: dn,
+        avatarColor,
+        bio: "Sneaker enthusiast",
+        isBot: false,
+      },
+      token,
+    );
 
     // Save profile to Supabase
     try {

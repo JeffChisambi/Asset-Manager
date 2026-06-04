@@ -21,7 +21,7 @@ import Animated, { FadeInDown, FadeInRight } from "react-native-reanimated";
 import { FriendRequestCard } from "@/components/chat/FriendRequestCard";
 import { ConversationRow } from "@/components/chat/ConversationRow";
 import { UserAvatar } from "@/components/chat/UserAvatar";
-import { SEED_USERS, useChat, type AppUser } from "@/context/ChatContext";
+import { useChat, type AppUser } from "@/context/ChatContext";
 import { useColors } from "@/hooks/useColors";
 
 const AVATAR_COLORS = [
@@ -52,7 +52,8 @@ function UserSearchModal({
   const handleSearch = useCallback(
     (q: string) => {
       setQuery(q);
-      setResults(searchUsers(q));
+      if (!q.trim()) { setResults([]); return; }
+      searchUsers(q).then((found) => setResults(found)).catch(() => {});
     },
     [searchUsers]
   );
@@ -217,6 +218,7 @@ export default function ChatScreen() {
     getLastMessage,
     getUser,
     getOrCreateDirectConversation,
+    ensureDirectConversation,
     acceptFriendRequest,
     rejectFriendRequest,
     cancelFriendRequest,
@@ -605,8 +607,8 @@ export default function ChatScreen() {
                     </View>
                   </Pressable>
                   <Pressable 
-                    onPress={() => {
-                      const convId = getOrCreateDirectConversation(friend.id);
+                    onPress={async () => {
+                      const convId = await ensureDirectConversation(friend.id);
                       if (convId) router.push(`/chat/${convId}`);
                     }}
                     style={({ pressed }) => [

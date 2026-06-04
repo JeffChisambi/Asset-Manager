@@ -1,0 +1,25 @@
+Here's a much stronger version:
+
+> Perform a comprehensive audit of the entire codebase and system architecture. Identify and fix all bugs, defects, logic errors, edge-case failures, performance bottlenecks, security vulnerabilities, race conditions, memory leaks, UI/UX inconsistencies, and integration issues. Review every module, component, service, API, database interaction, and configuration file for correctness and completeness.
+>
+> Detect any incomplete, placeholder, stubbed, partially implemented, deprecated, or unfinished features and either complete them according to the existing system design and requirements or clearly document why they cannot be completed.
+>
+> Approach the review with the rigor of a senior systems engineer: do not make assumptions, verify behavior through code analysis, dependency tracing, type checking, testing, and runtime validation. Ensure that fixes do not introduce regressions and maintain consistency with the existing architecture and coding standards.
+>
+> Specifically:
+>
+> * Find and eliminate all compile-time and runtime errors.
+> * Resolve warnings where they indicate potential defects.
+> * Identify dead code, redundant code, and architectural inconsistencies.
+> * Verify data integrity, state management, authentication, authorization, and security controls.
+> * Validate API contracts, database schemas, migrations, and external integrations.
+> * Check for scalability, maintainability, and performance issues.
+> * Ensure all user-facing functionality works as intended.
+> * Complete unfinished implementations and missing business logic.
+> * Add or update tests where necessary to validate fixes.
+>
+> Continue auditing until no known bugs, incomplete implementations, failing tests, build errors, linting errors, type errors, or critical warnings remain. Produce a detailed report of findings, root causes, fixes applied, remaining risks, and recommendations for future improvements.
+
+For an AI coding agent (Claude Code, Cursor, Codex, etc.), an even more aggressive version is:
+
+> Act as a world-class principal engineer conducting a production-readiness audit. Assume bugs and incomplete implementations exist until proven otherwise. Systematically inspect every file, dependency, configuration, API, database interaction, UI flow, and business process. Fix all discovered issues, complete unfinished functionality, eliminate technical debt where practical, add missing tests, and verify all changes through automated testing. Do not stop at obvious errors—search for hidden edge cases, architectural weaknesses, security vulnerabilities, concurrency issues, performance bottlenecks, and maintainability problems. Continue iterating until the project builds successfully, tests pass, functionality is complete, and the system is production-ready. Generate a final audit report summarizing all findings, fixes, validations performed, and any remaining concerns.

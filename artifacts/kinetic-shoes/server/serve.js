@@ -5,6 +5,7 @@
  * - GET / or /manifest with expo-platform header → platform manifest JSON
  * - GET / without expo-platform → landing page HTML
  * Everything else falls through to static file serving from ./static-build/.
+ * All /api/* requests are proxied to the API server on port 3000.
  *
  * Zero external dependencies — uses only Node.js built-ins (http, fs, path).
  */
@@ -16,6 +17,7 @@ const path = require("path");
 const STATIC_ROOT = path.resolve(__dirname, "..", "static-build");
 const TEMPLATE_PATH = path.resolve(__dirname, "templates", "landing-page.html");
 const basePath = (process.env.BASE_PATH || "/").replace(/\/+$/, "");
+const API_PORT = parseInt(process.env.API_PORT || "3000", 10);
 
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -43,6 +45,27 @@ function getAppName() {
   } catch {
     return "App Landing Page";
   }
+}
+
+function proxyToApi(req, res) {
+  const options = {
+    hostname: "localhost",
+    port: API_PORT,
+    path: req.url,
+    method: req.method,
+    headers: { ...req.headers, host: `localhost:${API_PORT}` },
+  };
+  const proxyReq = http.request(options, (proxyRes) => {
+    res.writeHead(proxyRes.statusCode || 502, proxyRes.headers);
+    proxyRes.pipe(res, { end: true });
+  });
+  proxyReq.on("error", () => {
+    if (!res.headersSent) {
+      res.writeHead(502, { "content-type": "application/json" });
+    }
+    res.end(JSON.stringify({ error: "API server unavailable" }));
+  });
+  req.pipe(proxyReq, { end: true });
 }
 
 function serveManifest(platform, res) {
@@ -113,6 +136,11 @@ const server = http.createServer((req, res) => {
 
   if (basePath && pathname.startsWith(basePath)) {
     pathname = pathname.slice(basePath.length) || "/";
+  }
+
+  // Proxy all /api/* requests to the API server
+  if (pathname.startsWith("/api/")) {
+    return proxyToApi(req, res);
   }
 
   if (pathname === "/" || pathname === "/manifest") {

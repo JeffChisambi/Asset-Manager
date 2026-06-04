@@ -1,30 +1,27 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { supabase } from "@/lib/supabase";
 import React, {
   createContext,
   useCallback,
   useContext,
   useEffect,
+  useMemo,
+  useRef,
   useState,
 } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { supabase } from "@/lib/supabase";
+import { chatApiCall } from "@/lib/api";
+import { getApiBase } from "@/lib/api";
 
-export type MessageType =
-  | "text"
-  | "voice"
-  | "image"
-  | "video"
-  | "file"
-  | "sticker"
-  | "contact";
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export type AppUser = {
   id: string;
   username: string;
   displayName: string;
   avatarColor: string;
-  bio: string;
+  bio?: string;
+  isBot?: boolean;
   location?: string;
-  isBot: boolean;
 };
 
 export type FriendRequest = {
@@ -35,25 +32,11 @@ export type FriendRequest = {
   createdAt: number;
 };
 
-export type Story = {
-  id: string;
-  userId: string;
-  type: "text" | "image" | "video" | "voice" | "sticker";
-  mediaUri?: string;
-  audioDuration?: number;
-  text?: string;
-  sticker?: string;
-  backgroundColor?: string; // For text stories
-  createdAt: number;
-  expiresAt: number; // 12 hours after creation
-  viewers: string[]; // User IDs who have viewed this story
-};
-
 export type Conversation = {
   id: string;
   type: "direct" | "group";
-  name?: string;
   memberIds: string[];
+  name?: string;
   createdAt: number;
   createdBy?: string;
   groupMode?: "standard" | "anonymous";
@@ -61,209 +44,60 @@ export type Conversation = {
   allowedLocations?: string[];
 };
 
+type ContactPayload = { name: string; phone: string };
+
 export type Message = {
   id: string;
   conversationId: string;
   senderId: string;
-  type: MessageType;
+  type: "text" | "image" | "voice" | "video" | "file" | "sticker" | "contact";
   text?: string;
+  imageUri?: string;
   audioUri?: string;
   audioDuration?: number;
-  imageUri?: string;
   videoUri?: string;
-  fileUri?: string;
   fileName?: string;
   fileSize?: number;
   fileMimeType?: string;
+  fileUri?: string;
   sticker?: string;
-  contact?: {
-    id?: string;
-    displayName: string;
-    username?: string;
-    phone?: string;
-    avatarColor?: string;
-  };
+  contact?: ContactPayload;
   timestamp: number;
-  status?: "sending" | "sent" | "failed";
+  status?: "sending" | "sent" | "error";
+};
+
+export type Story = {
+  id: string;
+  userId: string;
+  type: "image" | "video" | "voice" | "text";
+  mediaUri?: string;
+  text?: string;
+  sticker?: string;
+  backgroundColor?: string;
+  audioDuration?: number;
+  createdAt: number;
+  expiresAt: number;
+  viewers: string[];
 };
 
 export type MediaPayload =
-  | { type: "text"; text: string }
   | { type: "voice"; audioUri: string; audioDuration: number }
   | { type: "image"; imageUri: string }
-  | {
-      type: "video";
-      videoUri: string;
-      fileName?: string;
-      fileSize?: number;
-      fileMimeType?: string;
-    }
-  | {
-      type: "file";
-      fileUri: string;
-      fileName: string;
-      fileSize: number;
-      fileMimeType?: string;
-    }
+  | { type: "video"; videoUri: string; fileName?: string; fileSize?: number; fileMimeType?: string }
+  | { type: "file"; fileUri: string; fileName: string; fileSize: number; fileMimeType: string }
   | { type: "sticker"; sticker: string }
-  | { type: "contact"; contact: NonNullable<Message["contact"]> };
-
-export type GroupMode = "standard" | "anonymous";
+  | { type: "contact"; contact: ContactPayload }
+  | { type: "text"; text: string };
 
 export type CreateGroupOptions = {
   name: string;
   memberIds: string[];
-  groupMode?: GroupMode;
+  groupMode?: "standard" | "anonymous";
   memberLimit?: number;
   allowedLocations?: string[];
 };
 
-export const SEED_USERS: AppUser[] = [
-  {
-    id: "bot_1",
-    username: "localmarket",
-    displayName: "Local Market",
-    avatarColor: "#FF6B6B",
-    bio: "Doorstep shopper",
-    isBot: true,
-  },
-  {
-    id: "bot_2",
-    username: "marketconnect",
-    displayName: "Alex Chen",
-    avatarColor: "#4ECDC4",
-    bio: "Local merchant connector",
-    isBot: true,
-  },
-  {
-    id: "bot_3",
-    username: "sam_services",
-    displayName: "Sam Rivera",
-    avatarColor: "#FFD93D",
-    bio: "Service finder",
-    isBot: true,
-  },
-  {
-    id: "bot_4",
-    username: "taylorshop",
-    displayName: "Taylor Kim",
-    avatarColor: "#A29BFE",
-    bio: "Puma & lifestyle kicks 🌸",
-    isBot: true,
-  },
-  {
-    id: "bot_5",
-    username: "retrofinds",
-    displayName: "Riley Park",
-    avatarColor: "#FD79A8",
-    bio: "Vintage and local finds",
-    isBot: true,
-  },
-  {
-    id: "bot_6",
-    username: "freshdrops",
-    displayName: "Casey Local",
-    avatarColor: "#00B894",
-    bio: "Watching new Doorstep listings",
-    isBot: true,
-  },
-];
-
-const BOT_REPLIES = [
-  "Just copped a pair of Travis Scott 1s 🔥",
-  "Have you seen today's Doorstep picks?",
-  "That merchant responds quickly.",
-  "That colorway is absolute fire 🔥",
-  "Local delivery is moving fast today.",
-  "W or L? I personally love the design",
-  "That shop has good reviews.",
-  "I would message the merchant before checkout.",
-  "New listings are landing this afternoon.",
-  "My collection just hit 50 pairs 😤",
-  "The hype on this drop is REAL bro",
-  "Already copped mine on SNKRS. You in?",
-  "Looking for nearby stock if you see any.",
-  "The resale on these is crazy rn",
-];
-
-function genId() {
-  return Date.now().toString(36) + Math.random().toString(36).substr(2, 9);
-}
-
-const MIN_ANONYMOUS_INVITES = 5;
-
-function normalizeLocation(value?: string) {
-  return value?.trim().toLowerCase() ?? "";
-}
-
-function isLocationAllowed(
-  userLocation: string | undefined,
-  allowedLocations: string[],
-) {
-  if (allowedLocations.length === 0) return true;
-  const normalizedUserLocation = normalizeLocation(userLocation);
-  if (!normalizedUserLocation) return false;
-  return allowedLocations.some(
-    (location) => normalizeLocation(location) === normalizedUserLocation,
-  );
-}
-
-function resolveUserById(userId: string, currentUser: AppUser | null) {
-  return (
-    SEED_USERS.find((user) => user.id === userId) ??
-    (currentUser?.id === userId ? currentUser : undefined)
-  );
-}
-
-async function uploadFileToSupabase(
-  localUri: string,
-  type: "image" | "video" | "file" | "voice",
-  fileName: string,
-): Promise<string> {
-  try {
-    const response = await fetch(localUri);
-    const blob = await response.blob();
-
-    const ext =
-      fileName.split(".").pop() ||
-      (type === "image"
-        ? "jpg"
-        : type === "video"
-          ? "mp4"
-          : type === "voice"
-            ? "m4a"
-            : "bin");
-    const uniqueName = `attachments/${Date.now()}_${Math.random().toString(36).substr(2, 9)}.${ext}`;
-    const bucketName = "chat_attachments";
-    const fallbackType =
-      type === "image"
-        ? "image/jpeg"
-        : type === "video"
-          ? "video/mp4"
-          : type === "voice"
-            ? "audio/x-m4a"
-            : "application/octet-stream";
-
-    const { data, error } = await supabase.storage
-      .from(bucketName)
-      .upload(uniqueName, blob, {
-        contentType: blob.type || fallbackType,
-      });
-
-    if (error) throw error;
-
-    const { data: urlData } = supabase.storage
-      .from(bucketName)
-      .getPublicUrl(uniqueName);
-
-    return urlData.publicUrl;
-  } catch (err) {
-    console.warn("Supabase storage upload error:", err);
-    throw err;
-  }
-}
-
-type ChatContextType = {
+export type ChatContextType = {
   currentUser: AppUser | null;
   allUsers: AppUser[];
   friendRequests: FriendRequest[];
@@ -272,16 +106,16 @@ type ChatContextType = {
   messages: Record<string, Message[]>;
   stories: Story[];
   isLoaded: boolean;
-
-  setCurrentUser: (user: AppUser) => void;
-  searchUsers: (query: string) => AppUser[];
+  setCurrentUser: (user: AppUser, token?: string) => void;
+  searchUsers: (query: string) => Promise<AppUser[]>;
   sendFriendRequest: (toId: string) => void;
   acceptFriendRequest: (requestId: string) => void;
   rejectFriendRequest: (requestId: string) => void;
   cancelFriendRequest: (requestId: string) => void;
   getOrCreateDirectConversation: (friendId: string) => string;
+  ensureDirectConversation: (friendId: string) => Promise<string>;
   sendMessage: (conversationId: string, text: string) => void;
-  sendMediaMessage: (conversationId: string, payload: MediaPayload) => void;
+  sendMediaMessage: (conversationId: string, payload: MediaPayload) => Promise<void>;
   createGroup: (options: CreateGroupOptions) => string;
   addGroupMember: (conversationId: string, userId: string) => void;
   removeGroupMember: (conversationId: string, userId: string) => void;
@@ -294,10 +128,10 @@ type ChatContextType = {
   isFriend: (userId: string) => boolean;
   hasPendingRequest: (toId: string) => boolean;
   getUnreadCount: () => number;
+  getConversationUnreadCount: (conversationId: string) => number;
   markConversationAsRead: (conversationId: string) => void;
   deleteMessage: (conversationId: string, messageId: string) => void;
   deleteConversation: (conversationId: string) => void;
-  getConversationUnreadCount: (conversationId: string) => number;
   addStory: (payload: {
     type: Story["type"];
     mediaUri?: string;
@@ -308,23 +142,177 @@ type ChatContextType = {
   }) => void;
   deleteStory: (storyId: string) => void;
   markStoryAsViewed: (storyId: string) => void;
-  getActiveStories: () => Record<string, Story[]>; // Grouped by userId
+  getActiveStories: () => Record<string, Story[]>;
 };
+
+// ─── Exported for backward compat (empty — no more bots) ─────────────────────
+export const SEED_USERS: AppUser[] = [];
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function genId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+function genUUID(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
+interface ApiProfile {
+  id: string;
+  username: string;
+  displayName?: string;
+  display_name?: string;
+  avatarColor?: string;
+  avatar_color?: string;
+  bio?: string;
+}
+
+interface ApiRequest {
+  id: number;
+  fromId?: string;
+  from_id?: string;
+  toId?: string;
+  to_id?: string;
+  status: string;
+  createdAt?: string;
+  created_at?: string;
+  updatedAt?: string;
+  updated_at?: string;
+}
+
+interface ApiConversation {
+  id: string;
+  type: string;
+  name?: string;
+  createdBy?: string;
+  created_by?: string;
+  memberIds?: string[];
+  createdAt?: string;
+  created_at?: string;
+}
+
+interface ApiMessage {
+  id: string;
+  conversationId?: string;
+  conversation_id?: string;
+  senderId?: string;
+  sender_id?: string;
+  type: string;
+  text?: string;
+  mediaUrl?: string;
+  media_url?: string;
+  fileName?: string;
+  file_name?: string;
+  fileSize?: number;
+  file_size?: number;
+  fileMimeType?: string;
+  file_mime_type?: string;
+  audioDuration?: number;
+  audio_duration?: number;
+  sticker?: string;
+  createdAt?: string;
+  created_at?: string;
+}
+
+interface PollResult {
+  messages: ApiMessage[];
+  friendRequests: ApiRequest[];
+  timestamp: number;
+}
+
+function mapProfile(p: ApiProfile): AppUser {
+  return {
+    id: p.id,
+    username: p.username,
+    displayName: p.displayName ?? p.display_name ?? p.username,
+    avatarColor: p.avatarColor ?? p.avatar_color ?? "#13B734",
+    bio: p.bio ?? "",
+    isBot: false,
+  };
+}
+
+function mapRequest(r: ApiRequest): FriendRequest {
+  return {
+    id: String(r.id),
+    fromId: r.fromId ?? r.from_id ?? "",
+    toId: r.toId ?? r.to_id ?? "",
+    status: (r.status as FriendRequest["status"]) ?? "pending",
+    createdAt: r.createdAt || r.created_at ? new Date(r.createdAt ?? r.created_at ?? "").getTime() : Date.now(),
+  };
+}
+
+function mapConversation(c: ApiConversation): Conversation {
+  return {
+    id: c.id,
+    type: (c.type as "direct" | "group") ?? "direct",
+    memberIds: c.memberIds ?? [],
+    name: c.name,
+    createdAt: c.createdAt || c.created_at ? new Date(c.createdAt ?? c.created_at ?? "").getTime() : Date.now(),
+    createdBy: c.createdBy ?? c.created_by,
+  };
+}
+
+function mapMessage(m: ApiMessage): Message {
+  const convId = m.conversationId ?? m.conversation_id ?? "";
+  const senderId = m.senderId ?? m.sender_id ?? "";
+  const ts = m.createdAt ?? m.created_at;
+  const timestamp = ts ? new Date(ts).getTime() : Date.now();
+  const mediaUrl = m.mediaUrl ?? m.media_url;
+  const type = (m.type as Message["type"]) ?? "text";
+
+  const base: Message = {
+    id: m.id,
+    conversationId: convId,
+    senderId,
+    type,
+    timestamp,
+    status: "sent",
+  };
+
+  if (type === "text") return { ...base, text: m.text };
+  if (type === "image") return { ...base, imageUri: mediaUrl };
+  if (type === "voice") return { ...base, audioUri: mediaUrl, audioDuration: m.audioDuration ?? m.audio_duration };
+  if (type === "video") return { ...base, videoUri: mediaUrl, fileName: m.fileName ?? m.file_name, fileSize: m.fileSize ?? m.file_size, fileMimeType: m.fileMimeType ?? m.file_mime_type };
+  if (type === "file") return { ...base, fileUri: mediaUrl, fileName: m.fileName ?? m.file_name, fileSize: m.fileSize ?? m.file_size, fileMimeType: m.fileMimeType ?? m.file_mime_type };
+  if (type === "sticker") return { ...base, sticker: m.sticker };
+  return { ...base, text: m.text };
+}
+
+async function uploadFileToSupabase(
+  uri: string,
+  kind: string,
+  name: string | undefined,
+): Promise<string> {
+  const bucket = "chat_attachments";
+  const response = await fetch(uri);
+  const blob = await response.blob();
+  const ext =
+    name?.split(".").pop() ??
+    (kind === "voice" ? "m4a" : kind === "video" ? "mp4" : "jpg");
+  const remotePath = `${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .upload(remotePath, blob, {
+      contentType: blob.type || "application/octet-stream",
+      upsert: false,
+    });
+  if (error) throw error;
+  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path);
+  return urlData.publicUrl;
+}
+
+// ─── Context ──────────────────────────────────────────────────────────────────
 
 const ChatContext = createContext<ChatContextType | null>(null);
-const STORAGE_KEY = "kinetic_chat_v3";
-
-type PersistedState = {
-  currentUser: AppUser | null;
-  friendRequests: FriendRequest[];
-  conversations: Conversation[];
-  messages: Record<string, Message[]>;
-  lastRead: Record<string, number>;
-  stories: Story[];
-};
 
 export function ChatProvider({ children }: { children: React.ReactNode }) {
+  const [authToken, setAuthTokenState] = useState<string | null>(null);
   const [currentUser, setCurrentUserState] = useState<AppUser | null>(null);
+  const [userCache, setUserCache] = useState<Record<string, AppUser>>({});
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [messages, setMessages] = useState<Record<string, Message[]>>({});
@@ -332,154 +320,295 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   const [stories, setStories] = useState<Story[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
 
-  useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
-      if (raw) {
-        try {
-          const s: PersistedState = JSON.parse(raw);
-          if (s.currentUser) {
-            setCurrentUserState(s.currentUser);
-          } else {
-            setCurrentUserState({
-              id: "me_" + Date.now(),
-              username: "doorstep_user",
-              displayName: "Doorstep User",
-              avatarColor: "#13B734",
-              bio: "Sneaker enthusiast",
-              location: "",
-              isBot: false,
-            });
-          }
-          setFriendRequests(s.friendRequests ?? []);
-          setConversations(s.conversations ?? []);
-          setMessages(s.messages ?? {});
-          setLastRead(s.lastRead ?? {});
+  // Stable refs for closures that outlive renders
+  const tokenRef = useRef<string | null>(null);
+  const currentUserRef = useRef<AppUser | null>(null);
+  const conversationsRef = useRef<Conversation[]>([]);
+  const userCacheRef = useRef<Record<string, AppUser>>({});
+  const pollTs = useRef<number>(Date.now() - 60_000);
 
-          // Filter out expired stories on load
-          const now = Date.now();
-          const activeStories = (s.stories ?? []).filter(
-            (story) => story.expiresAt > now,
-          );
-          setStories(activeStories);
-        } catch {
-          setCurrentUserState({
-            id: "me_" + Date.now(),
-            username: "doorstep_user",
-            displayName: "Doorstep User",
-            avatarColor: "#13B734",
-            bio: "Sneaker enthusiast",
-            location: "",
-            isBot: false,
-          });
-        }
-      } else {
-        setCurrentUserState({
-          id: "me_" + Date.now(),
-          username: "doorstep_user",
-          displayName: "Doorstep User",
-          avatarColor: "#13B734",
-          bio: "Sneaker enthusiast",
-          location: "",
-          isBot: false,
-        });
-      }
-      setIsLoaded(true);
+  useEffect(() => { tokenRef.current = authToken; }, [authToken]);
+  useEffect(() => { currentUserRef.current = currentUser; }, [currentUser]);
+  useEffect(() => { conversationsRef.current = conversations; }, [conversations]);
+  useEffect(() => { userCacheRef.current = userCache; }, [userCache]);
+
+  // ── Persist lastRead & stories ──────────────────────────────────────────────
+  useEffect(() => {
+    AsyncStorage.setItem("chatLastRead", JSON.stringify(lastRead)).catch(() => {});
+  }, [lastRead]);
+
+  useEffect(() => {
+    AsyncStorage.setItem("chatStories", JSON.stringify(stories)).catch(() => {});
+  }, [stories]);
+
+  // ── Internal helpers ────────────────────────────────────────────────────────
+
+  const addToUserCache = useCallback((profiles: AppUser[]) => {
+    if (!profiles.length) return;
+    setUserCache((prev) => {
+      const next = { ...prev };
+      profiles.forEach((u) => { next[u.id] = u; });
+      return next;
     });
   }, []);
 
-  useEffect(() => {
-    if (!isLoaded) return;
-    const state: PersistedState = {
-      currentUser,
-      friendRequests,
-      conversations,
-      messages,
-      lastRead,
-      stories: stories.filter((s) => s.expiresAt > Date.now()), // Only persist active stories
-    };
-    AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  }, [
-    currentUser,
-    friendRequests,
-    conversations,
-    messages,
-    lastRead,
-    stories,
-    isLoaded,
-  ]);
+  const loadUserProfiles = useCallback(async (ids: string[], token: string) => {
+    const toFetch = ids.filter((id) => !userCacheRef.current[id]);
+    if (!toFetch.length) return;
+    const data = await chatApiCall<ApiProfile[]>(
+      `/api/chat/users?ids=${toFetch.join(",")}`, "GET", token,
+    );
+    if (data) addToUserCache(data.map(mapProfile));
+  }, [addToUserCache]);
 
-  const friends = SEED_USERS.filter((u) =>
-    friendRequests.some(
-      (r) =>
-        r.status === "accepted" &&
-        ((r.fromId === currentUser?.id && r.toId === u.id) ||
-          (r.toId === currentUser?.id && r.fromId === u.id)),
-    ),
-  );
+  const loadFriendRequests = useCallback(async (token: string, myId: string) => {
+    const data = await chatApiCall<ApiRequest[]>("/api/chat/friend-requests", "GET", token);
+    if (!data) return;
+    setFriendRequests(data.map(mapRequest));
+    // Pre-load friend profiles
+    const friendIds = data
+      .filter((r) => r.status === "accepted")
+      .map((r) => (r.fromId ?? r.from_id) === myId
+        ? (r.toId ?? r.to_id ?? "")
+        : (r.fromId ?? r.from_id ?? ""))
+      .filter(Boolean);
+    if (friendIds.length) await loadUserProfiles(friendIds, token);
+  }, [loadUserProfiles]);
 
-  const setCurrentUser = useCallback((user: AppUser) => {
-    setCurrentUserState(user);
+  const loadConversations = useCallback(async (token: string) => {
+    const data = await chatApiCall<ApiConversation[]>("/api/chat/conversations", "GET", token);
+    if (!data) return;
+    const mapped = data.map(mapConversation);
+    setConversations(mapped);
+    // Load member profiles
+    const memberIds = [...new Set(mapped.flatMap((c) => c.memberIds))];
+    if (memberIds.length) await loadUserProfiles(memberIds, token);
+  }, [loadUserProfiles]);
+
+  const loadConvMessages = useCallback(async (convId: string, token: string) => {
+    const data = await chatApiCall<ApiMessage[]>(
+      `/api/chat/conversations/${convId}/messages`, "GET", token,
+    );
+    if (!data) return;
+    setMessages((prev) => ({
+      ...prev,
+      [convId]: data.map(mapMessage),
+    }));
   }, []);
 
-  const searchUsers = useCallback(
-    (query: string): AppUser[] => {
-      if (!query.trim() || !currentUser) return [];
-      const q = query.toLowerCase();
-      return SEED_USERS.filter(
-        (u) =>
-          (u.username.toLowerCase().includes(q) ||
-            u.displayName.toLowerCase().includes(q)) &&
-          u.id !== currentUser.id,
-      );
-    },
-    [currentUser],
-  );
+  // ── Initialise ──────────────────────────────────────────────────────────────
 
-  const sendFriendRequest = useCallback(
-    (toId: string) => {
-      if (!currentUser) return;
-      const exists = friendRequests.some(
-        (r) =>
-          (r.fromId === currentUser.id && r.toId === toId) ||
-          (r.toId === currentUser.id && r.fromId === toId),
-      );
-      if (exists) return;
-      const newReq: FriendRequest = {
-        id: genId(),
-        fromId: currentUser.id,
-        toId,
-        status: "pending",
-        createdAt: Date.now(),
-      };
-      setFriendRequests((prev) => [...prev, newReq]);
-      const target = SEED_USERS.find((u) => u.id === toId);
-      if (target?.isBot) {
-        setTimeout(() => {
-          setFriendRequests((prev) =>
-            prev.map((r) =>
-              r.id === newReq.id ? { ...r, status: "accepted" } : r,
-            ),
-          );
-        }, 2500);
+  useEffect(() => {
+    async function init() {
+      try {
+        const [token, savedLastRead, savedStories] = await Promise.all([
+          AsyncStorage.getItem("chatAuthToken"),
+          AsyncStorage.getItem("chatLastRead"),
+          AsyncStorage.getItem("chatStories"),
+        ]);
+
+        if (savedLastRead) {
+          try { setLastRead(JSON.parse(savedLastRead)); } catch {}
+        }
+        if (savedStories) {
+          try {
+            const parsed: Story[] = JSON.parse(savedStories);
+            const now = Date.now();
+            setStories(parsed.filter((s) => s.expiresAt > now));
+          } catch {}
+        }
+
+        if (token) {
+          tokenRef.current = token;
+          setAuthTokenState(token);
+          const profile = await chatApiCall<ApiProfile>("/api/chat/profile/me", "GET", token);
+          if (profile) {
+            const user = mapProfile(profile);
+            currentUserRef.current = user;
+            setCurrentUserState(user);
+            addToUserCache([user]);
+            pollTs.current = Date.now() - 60_000;
+            await Promise.all([
+              loadFriendRequests(token, user.id),
+              loadConversations(token),
+            ]);
+          }
+        }
+      } catch (err) {
+        console.warn("ChatContext init:", err);
       }
-    },
-    [currentUser, friendRequests],
-  );
+      setIsLoaded(true);
+    }
+    init();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Polling ─────────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    if (!authToken) return;
+
+    const doPoll = async () => {
+      const token = tokenRef.current;
+      const me = currentUserRef.current;
+      if (!token || !me) return;
+
+      const data = await chatApiCall<PollResult>(
+        `/api/chat/poll?since=${pollTs.current}`, "GET", token,
+      );
+      if (!data) return;
+      pollTs.current = data.timestamp;
+
+      if (data.messages.length) {
+        setMessages((prev) => {
+          const next = { ...prev };
+          for (const m of data.messages) {
+            const cid = m.conversationId ?? m.conversation_id ?? "";
+            const existing = next[cid] ?? [];
+            if (!existing.some((x) => x.id === m.id)) {
+              next[cid] = [...existing, mapMessage(m)];
+            }
+          }
+          return next;
+        });
+        // Check for unknown conversations
+        const newConvIds = [...new Set(
+          data.messages.map((m) => m.conversationId ?? m.conversation_id ?? ""),
+        )];
+        const currentConvs = conversationsRef.current;
+        if (newConvIds.some((id) => !currentConvs.find((c) => c.id === id))) {
+          loadConversations(token);
+        }
+      }
+
+      if (data.friendRequests.length) {
+        setFriendRequests((prev) => {
+          const next = [...prev];
+          for (const req of data.friendRequests) {
+            const idx = next.findIndex((r) => r.id === String(req.id));
+            const mapped = mapRequest(req);
+            if (idx >= 0) next[idx] = mapped;
+            else next.push(mapped);
+          }
+          return next;
+        });
+        // Load profiles for newly accepted friends
+        const newAcceptedIds = data.friendRequests
+          .filter((r) => r.status === "accepted")
+          .map((r) =>
+            (r.fromId ?? r.from_id) === me.id
+              ? (r.toId ?? r.to_id ?? "")
+              : (r.fromId ?? r.from_id ?? ""),
+          )
+          .filter((id) => id && !userCacheRef.current[id]);
+        if (newAcceptedIds.length) loadUserProfiles(newAcceptedIds, token);
+      }
+    };
+
+    const interval = setInterval(doPoll, 5000);
+    return () => clearInterval(interval);
+  }, [authToken, loadConversations, loadUserProfiles]);
+
+  // ── Derived ──────────────────────────────────────────────────────────────────
+
+  const friends = useMemo<AppUser[]>(() => {
+    if (!currentUser) return [];
+    return friendRequests
+      .filter(
+        (r) =>
+          r.status === "accepted" &&
+          (r.fromId === currentUser.id || r.toId === currentUser.id),
+      )
+      .map((r) =>
+        userCache[r.fromId === currentUser.id ? r.toId : r.fromId],
+      )
+      .filter(Boolean) as AppUser[];
+  }, [friendRequests, currentUser, userCache]);
+
+  // ── Public API ────────────────────────────────────────────────────────────────
+
+  const setCurrentUser = useCallback((user: AppUser, token?: string) => {
+    setCurrentUserState(user);
+    currentUserRef.current = user;
+    addToUserCache([user]);
+    if (token) {
+      tokenRef.current = token;
+      setAuthTokenState(token);
+      AsyncStorage.setItem("chatAuthToken", token).catch(() => {});
+      // Kick off data load
+      Promise.all([
+        loadFriendRequests(token, user.id),
+        loadConversations(token),
+      ]).catch(() => {});
+    }
+  }, [addToUserCache, loadFriendRequests, loadConversations]);
+
+  const searchUsers = useCallback(async (query: string): Promise<AppUser[]> => {
+    const q = query.trim();
+    if (!q || !tokenRef.current) return [];
+    const data = await chatApiCall<ApiProfile[]>(
+      `/api/chat/users/search?q=${encodeURIComponent(q)}`, "GET", tokenRef.current,
+    );
+    if (!data) return [];
+    const users = data.map(mapProfile);
+    addToUserCache(users);
+    return users;
+  }, [addToUserCache]);
+
+  const sendFriendRequest = useCallback((toId: string) => {
+    const token = tokenRef.current;
+    const me = currentUserRef.current;
+    if (!token || !me) return;
+    // Optimistic
+    const optimistic: FriendRequest = {
+      id: genId(),
+      fromId: me.id,
+      toId,
+      status: "pending",
+      createdAt: Date.now(),
+    };
+    setFriendRequests((prev) => {
+      if (prev.some((r) =>
+        (r.fromId === me.id && r.toId === toId) ||
+        (r.toId === me.id && r.fromId === toId)
+      )) return prev;
+      return [...prev, optimistic];
+    });
+    chatApiCall<ApiRequest>("/api/chat/friend-requests", "POST", token, { toId }).then((res) => {
+      if (res) {
+        setFriendRequests((prev) =>
+          prev.map((r) => r.id === optimistic.id ? mapRequest(res) : r),
+        );
+      }
+    }).catch(() => {});
+  }, []);
 
   const acceptFriendRequest = useCallback((requestId: string) => {
+    const token = tokenRef.current;
     setFriendRequests((prev) =>
-      prev.map((r) => (r.id === requestId ? { ...r, status: "accepted" } : r)),
+      prev.map((r) => r.id === requestId ? { ...r, status: "accepted" } : r),
     );
+    if (token) {
+      chatApiCall(`/api/chat/friend-requests/${requestId}`, "PATCH", token, { action: "accept" }).catch(() => {});
+    }
   }, []);
 
   const rejectFriendRequest = useCallback((requestId: string) => {
+    const token = tokenRef.current;
     setFriendRequests((prev) =>
-      prev.map((r) => (r.id === requestId ? { ...r, status: "rejected" } : r)),
+      prev.map((r) => r.id === requestId ? { ...r, status: "rejected" } : r),
     );
+    if (token) {
+      chatApiCall(`/api/chat/friend-requests/${requestId}`, "PATCH", token, { action: "reject" }).catch(() => {});
+    }
   }, []);
 
   const cancelFriendRequest = useCallback((requestId: string) => {
+    const token = tokenRef.current;
     setFriendRequests((prev) => prev.filter((r) => r.id !== requestId));
+    if (token) {
+      chatApiCall(`/api/chat/friend-requests/${requestId}`, "PATCH", token, { action: "cancel" }).catch(() => {});
+    }
   }, []);
 
   const getOrCreateDirectConversation = useCallback(
@@ -491,325 +620,227 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
           c.memberIds.includes(currentUser.id) &&
           c.memberIds.includes(friendId),
       );
-      if (existing) return existing.id;
-      const newConv: Conversation = {
-        id: genId(),
-        type: "direct",
-        memberIds: [currentUser.id, friendId],
-        createdAt: Date.now(),
-      };
-      setConversations((prev) => [...prev, newConv]);
-      return newConv.id;
+      return existing?.id ?? "";
     },
     [currentUser, conversations],
   );
 
-  const triggerBotReply = useCallback(
-    (conversationId: string, botIds: string[]) => {
-      if (botIds.length === 0) return;
-      const delay = 1200 + Math.random() * 1800;
-      setTimeout(() => {
-        const botId = botIds[Math.floor(Math.random() * botIds.length)];
-        const replyText =
-          BOT_REPLIES[Math.floor(Math.random() * BOT_REPLIES.length)];
-        const botMsg: Message = {
-          id: genId(),
-          conversationId,
-          senderId: botId,
-          type: "text",
-          text: replyText,
-          timestamp: Date.now(),
-        };
-        setMessages((prev) => ({
-          ...prev,
-          [conversationId]: [...(prev[conversationId] ?? []), botMsg],
-        }));
-      }, delay);
+  const ensureDirectConversation = useCallback(
+    async (friendId: string): Promise<string> => {
+      const me = currentUserRef.current;
+      const token = tokenRef.current;
+      if (!me || !token) return "";
+      // Check locally first
+      const existing = conversationsRef.current.find(
+        (c) =>
+          c.type === "direct" &&
+          c.memberIds.includes(me.id) &&
+          c.memberIds.includes(friendId),
+      );
+      if (existing) return existing.id;
+      // Create via API
+      const id = await chatApiCall<string>(
+        "/api/chat/conversations/direct", "POST", token, { friendId },
+      );
+      if (id) {
+        await loadConversations(token);
+        return id;
+      }
+      return "";
     },
-    [],
+    [loadConversations],
   );
 
-  const sendMessage = useCallback(
-    (conversationId: string, text: string) => {
-      if (!currentUser || !text.trim()) return;
-      const msg: Message = {
-        id: genId(),
-        conversationId,
-        senderId: currentUser.id,
-        type: "text",
-        text: text.trim(),
-        timestamp: Date.now(),
-      };
+  const sendMessage = useCallback((conversationId: string, text: string) => {
+    const token = tokenRef.current;
+    const me = currentUserRef.current;
+    if (!token || !me || !text.trim()) return;
+    const tempId = genId();
+    const msg: Message = {
+      id: tempId,
+      conversationId,
+      senderId: me.id,
+      type: "text",
+      text: text.trim(),
+      timestamp: Date.now(),
+      status: "sending",
+    };
+    setMessages((prev) => ({
+      ...prev,
+      [conversationId]: [...(prev[conversationId] ?? []), msg],
+    }));
+    chatApiCall<ApiMessage>(
+      `/api/chat/conversations/${conversationId}/messages`, "POST", token,
+      { type: "text", text: text.trim() },
+    ).then((res) => {
       setMessages((prev) => ({
         ...prev,
-        [conversationId]: [...(prev[conversationId] ?? []), msg],
+        [conversationId]: (prev[conversationId] ?? []).map((m) =>
+          m.id === tempId
+            ? { ...m, id: res?.id ?? tempId, status: "sent" }
+            : m,
+        ),
       }));
-      const conv = conversations.find((c) => c.id === conversationId);
-      if (!conv) return;
-      const botIds = conv.memberIds.filter(
-        (id) =>
-          id !== currentUser.id && SEED_USERS.find((u) => u.id === id)?.isBot,
-      );
-      triggerBotReply(conversationId, botIds);
-    },
-    [currentUser, conversations, triggerBotReply],
-  );
+    }).catch(() => {
+      setMessages((prev) => ({
+        ...prev,
+        [conversationId]: (prev[conversationId] ?? []).map((m) =>
+          m.id === tempId ? { ...m, status: "error" } : m,
+        ),
+      }));
+    });
+  }, []);
 
   const sendMediaMessage = useCallback(
     async (conversationId: string, payload: MediaPayload) => {
-      if (!currentUser) return;
-
+      const token = tokenRef.current;
+      const me = currentUserRef.current;
+      if (!token || !me) return;
       const tempId = genId();
       const base = {
         id: tempId,
         conversationId,
-        senderId: currentUser.id,
+        senderId: me.id,
         timestamp: Date.now(),
         status: "sending" as const,
       };
-
       let msg: Message;
       if (payload.type === "voice") {
-        msg = {
-          ...base,
-          type: "voice",
-          audioUri: payload.audioUri,
-          audioDuration: payload.audioDuration,
-        };
+        msg = { ...base, type: "voice", audioUri: payload.audioUri, audioDuration: payload.audioDuration };
       } else if (payload.type === "image") {
         msg = { ...base, type: "image", imageUri: payload.imageUri };
       } else if (payload.type === "video") {
-        msg = {
-          ...base,
-          type: "video",
-          videoUri: payload.videoUri,
-          fileName: payload.fileName,
-          fileSize: payload.fileSize,
-          fileMimeType: payload.fileMimeType,
-        };
+        msg = { ...base, type: "video", videoUri: payload.videoUri, fileName: payload.fileName, fileSize: payload.fileSize, fileMimeType: payload.fileMimeType };
       } else if (payload.type === "file") {
-        msg = {
-          ...base,
-          type: "file",
-          fileUri: payload.fileUri,
-          fileName: payload.fileName,
-          fileSize: payload.fileSize,
-          fileMimeType: payload.fileMimeType,
-        };
+        msg = { ...base, type: "file", fileUri: payload.fileUri, fileName: payload.fileName, fileSize: payload.fileSize, fileMimeType: payload.fileMimeType };
       } else if (payload.type === "sticker") {
         msg = { ...base, type: "sticker", sticker: payload.sticker };
       } else if (payload.type === "contact") {
         msg = { ...base, type: "contact", contact: payload.contact };
       } else {
-        msg = { ...base, type: "text", text: payload.text };
+        msg = { ...base, type: "text", text: (payload as any).text };
       }
-
-      // Add as sending first
       setMessages((prev) => ({
         ...prev,
         [conversationId]: [...(prev[conversationId] ?? []), msg],
       }));
-
-      // Asynchronously upload in background
       try {
         let finalUri = "";
         const uriToUpload =
-          payload.type === "image"
-            ? payload.imageUri
-            : payload.type === "video"
-              ? payload.videoUri
-              : payload.type === "voice"
-                ? payload.audioUri
-                : payload.type === "file"
-                  ? payload.fileUri
-                  : "";
+          payload.type === "image" ? payload.imageUri :
+          payload.type === "video" ? payload.videoUri :
+          payload.type === "voice" ? payload.audioUri :
+          payload.type === "file" ? payload.fileUri : "";
         const uploadKind =
-          payload.type === "image" ||
-          payload.type === "video" ||
-          payload.type === "voice" ||
-          payload.type === "file"
-            ? payload.type
-            : null;
+          payload.type === "image" || payload.type === "video" ||
+          payload.type === "voice" || payload.type === "file"
+            ? payload.type : null;
         const uploadName =
-          payload.type === "voice"
-            ? "voice.m4a"
-            : payload.type === "video"
-              ? payload.fileName || "video.mp4"
-              : payload.type === "file"
-                ? payload.fileName
-                : "image.jpg";
-
+          payload.type === "voice" ? "voice.m4a" :
+          payload.type === "video" ? (payload.fileName ?? "video.mp4") :
+          payload.type === "file" ? payload.fileName :
+          "image.jpg";
         if (uriToUpload && uploadKind && !uriToUpload.startsWith("http")) {
-          finalUri = await uploadFileToSupabase(
-            uriToUpload,
-            uploadKind,
-            uploadName,
-          );
+          finalUri = await uploadFileToSupabase(uriToUpload, uploadKind, uploadName);
+        } else if (uriToUpload) {
+          finalUri = uriToUpload;
         }
 
-        // Mark as sent and update URI
-        setMessages((prev) => {
-          const list = prev[conversationId] ?? [];
-          return {
-            ...prev,
-            [conversationId]: list.map((m) => {
-              if (m.id === tempId) {
-                const updated = { ...m, status: "sent" as const };
-                if (payload.type === "image" && finalUri) {
-                  updated.imageUri = finalUri;
-                } else if (payload.type === "video" && finalUri) {
-                  updated.videoUri = finalUri;
-                } else if (payload.type === "voice" && finalUri) {
-                  updated.audioUri = finalUri;
-                } else if (payload.type === "file" && finalUri) {
-                  updated.fileUri = finalUri;
-                }
-                return updated;
-              }
-              return m;
-            }),
-          };
-        });
-      } catch (err) {
-        console.warn(
-          "Upload background fail, preserving local URI as fallback",
-          err,
-        );
-        // Fallback: mark sent anyway using the local cache URI so it works offline/sandbox
-        setMessages((prev) => {
-          const list = prev[conversationId] ?? [];
-          return {
-            ...prev,
-            [conversationId]: list.map((m) => {
-              if (m.id === tempId) {
-                return { ...m, status: "sent" as const };
-              }
-              return m;
-            }),
-          };
-        });
-      }
-
-      const conv = conversations.find((c) => c.id === conversationId);
-      if (!conv) return;
-      const botIds = conv.memberIds.filter(
-        (id) =>
-          id !== currentUser.id && SEED_USERS.find((u) => u.id === id)?.isBot,
-      );
-      triggerBotReply(conversationId, botIds);
-    },
-    [currentUser, conversations, triggerBotReply],
-  );
-
-  const createGroup = useCallback(
-    (options: CreateGroupOptions): string => {
-      if (!currentUser) return "";
-      const name = options.name.trim();
-      const memberIds = Array.from(
-        new Set(options.memberIds.filter((id) => id !== currentUser.id)),
-      );
-      const groupMode = options.groupMode ?? "standard";
-
-      if (!name || memberIds.length === 0) return "";
-
-      if (groupMode === "anonymous") {
-        const memberLimit = options.memberLimit ?? 0;
-        const allowedLocations = Array.from(
-          new Set(
-            (options.allowedLocations ?? [])
-              .map((location) => location.trim())
-              .filter(Boolean),
-          ),
-        );
-
-        if (memberIds.length < 5) return "";
-        if (memberLimit < memberIds.length + 1) return "";
-        if (allowedLocations.length === 0) return "";
-
-        const hasRestrictedMember = memberIds.some((userId) => {
-          const invitedUser = resolveUserById(userId, currentUser);
-          return !isLocationAllowed(invitedUser?.location, allowedLocations);
-        });
-
-        if (hasRestrictedMember) return "";
-
-        const newConv: Conversation = {
-          id: genId(),
-          type: "group",
-          name,
-          memberIds: [currentUser.id, ...memberIds],
-          createdAt: Date.now(),
-          createdBy: currentUser.id,
-          groupMode,
-          memberLimit,
-          allowedLocations,
+        const apiBody: Record<string, unknown> = {
+          type: payload.type,
+          mediaUrl: finalUri || undefined,
         };
-        setConversations((prev) => [...prev, newConv]);
-        return newConv.id;
+        if (payload.type === "file" || payload.type === "video") {
+          apiBody.fileName = payload.fileName;
+          apiBody.fileSize = payload.fileSize;
+          apiBody.fileMimeType = payload.fileMimeType;
+        }
+        if (payload.type === "voice") apiBody.audioDuration = payload.audioDuration;
+        if (payload.type === "sticker") apiBody.sticker = payload.sticker;
+
+        const res = await chatApiCall<ApiMessage>(
+          `/api/chat/conversations/${conversationId}/messages`, "POST", token, apiBody,
+        );
+        setMessages((prev) => ({
+          ...prev,
+          [conversationId]: (prev[conversationId] ?? []).map((m) => {
+            if (m.id !== tempId) return m;
+            const updated = { ...m, id: res?.id ?? tempId, status: "sent" as const };
+            if (finalUri) {
+              if (payload.type === "image") updated.imageUri = finalUri;
+              else if (payload.type === "video") updated.videoUri = finalUri;
+              else if (payload.type === "voice") updated.audioUri = finalUri;
+              else if (payload.type === "file") updated.fileUri = finalUri;
+            }
+            return updated;
+          }),
+        }));
+      } catch {
+        setMessages((prev) => ({
+          ...prev,
+          [conversationId]: (prev[conversationId] ?? []).map((m) =>
+            m.id === tempId ? { ...m, status: "error" as const } : m,
+          ),
+        }));
       }
-
-      const newConv: Conversation = {
-        id: genId(),
-        type: "group",
-        name,
-        memberIds: [currentUser.id, ...memberIds],
-        createdAt: Date.now(),
-        createdBy: currentUser.id,
-        groupMode: "standard",
-      };
-      setConversations((prev) => [...prev, newConv]);
-      return newConv.id;
-    },
-    [currentUser],
-  );
-
-  const addGroupMember = useCallback(
-    (conversationId: string, userId: string) => {
-      setConversations((prev) =>
-        prev.map((c) => {
-          if (
-            c.id !== conversationId ||
-            c.type !== "group" ||
-            c.memberIds.includes(userId)
-          ) {
-            return c;
-          }
-
-          if (c.groupMode === "anonymous") {
-            if (c.memberLimit && c.memberIds.length >= c.memberLimit) {
-              return c;
-            }
-
-            const invitedUser = resolveUserById(userId, currentUser);
-            if (
-              !isLocationAllowed(
-                invitedUser?.location,
-                c.allowedLocations ?? [],
-              )
-            ) {
-              return c;
-            }
-          }
-
-          return { ...c, memberIds: [...c.memberIds, userId] };
-        }),
-      );
-    },
-    [currentUser],
-  );
-
-  const removeGroupMember = useCallback(
-    (conversationId: string, userId: string) => {
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === conversationId && c.type === "group"
-            ? { ...c, memberIds: c.memberIds.filter((id) => id !== userId) }
-            : c,
-        ),
-      );
     },
     [],
   );
+
+  const createGroup = useCallback((options: CreateGroupOptions): string => {
+    const me = currentUserRef.current;
+    const token = tokenRef.current;
+    if (!me || !options.name.trim() || !options.memberIds.length) return "";
+    const convId = genUUID();
+    const allMembers = [...new Set([me.id, ...options.memberIds])];
+    const newConv: Conversation = {
+      id: convId,
+      type: "group",
+      name: options.name.trim(),
+      memberIds: allMembers,
+      createdAt: Date.now(),
+      createdBy: me.id,
+      groupMode: options.groupMode ?? "standard",
+      memberLimit: options.memberLimit,
+      allowedLocations: options.allowedLocations,
+    };
+    setConversations((prev) => [...prev, newConv]);
+    if (token) {
+      chatApiCall("/api/chat/conversations/group", "POST", token, {
+        name: newConv.name,
+        memberIds: options.memberIds,
+      }).then(() => loadConversations(token)).catch(() => {});
+    }
+    return convId;
+  }, [loadConversations]);
+
+  const addGroupMember = useCallback((conversationId: string, userId: string) => {
+    const token = tokenRef.current;
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === conversationId && !c.memberIds.includes(userId)
+          ? { ...c, memberIds: [...c.memberIds, userId] }
+          : c,
+      ),
+    );
+    if (token) {
+      chatApiCall(`/api/chat/conversations/${conversationId}/members`, "POST", token, { userId }).catch(() => {});
+    }
+  }, []);
+
+  const removeGroupMember = useCallback((conversationId: string, userId: string) => {
+    const token = tokenRef.current;
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === conversationId
+          ? { ...c, memberIds: c.memberIds.filter((id) => id !== userId) }
+          : c,
+      ),
+    );
+    if (token) {
+      chatApiCall(`/api/chat/conversations/${conversationId}/members/${userId}`, "DELETE", token).catch(() => {});
+    }
+  }, []);
 
   const getConversation = useCallback(
     (id: string) => conversations.find((c) => c.id === id),
@@ -831,25 +862,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const getUser = useCallback(
     (id: string): AppUser | undefined => {
-      if (currentUser?.id === id) return currentUser;
-      return SEED_USERS.find((u) => u.id === id);
+      if (id === currentUser?.id) return currentUser;
+      return userCache[id];
     },
-    [currentUser],
+    [currentUser, userCache],
   );
 
   const getPendingReceivedRequests = useCallback(
-    () =>
-      friendRequests.filter(
-        (r) => r.toId === currentUser?.id && r.status === "pending",
-      ),
+    () => friendRequests.filter((r) => r.toId === currentUser?.id && r.status === "pending"),
     [friendRequests, currentUser],
   );
 
   const getPendingSentRequests = useCallback(
-    () =>
-      friendRequests.filter(
-        (r) => r.fromId === currentUser?.id && r.status === "pending",
-      ),
+    () => friendRequests.filter((r) => r.fromId === currentUser?.id && r.status === "pending"),
     [friendRequests, currentUser],
   );
 
@@ -868,9 +893,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     (toId: string) =>
       friendRequests.some(
         (r) =>
-          r.fromId === currentUser?.id &&
-          r.toId === toId &&
-          r.status === "pending",
+          r.fromId === currentUser?.id && r.toId === toId && r.status === "pending",
       ),
     [friendRequests, currentUser],
   );
@@ -895,19 +918,19 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
 
   const markConversationAsRead = useCallback((conversationId: string) => {
     setLastRead((prev) => ({ ...prev, [conversationId]: Date.now() }));
-  }, []);
+    // Load messages for this conversation if not already loaded
+    const token = tokenRef.current;
+    if (token && !(messages[conversationId]?.length)) {
+      loadConvMessages(conversationId, token);
+    }
+  }, [messages, loadConvMessages]);
 
-  const deleteMessage = useCallback(
-    (conversationId: string, messageId: string) => {
-      setMessages((prev) => ({
-        ...prev,
-        [conversationId]: (prev[conversationId] ?? []).filter(
-          (m) => m.id !== messageId,
-        ),
-      }));
-    },
-    [],
-  );
+  const deleteMessage = useCallback((conversationId: string, messageId: string) => {
+    setMessages((prev) => ({
+      ...prev,
+      [conversationId]: (prev[conversationId] ?? []).filter((m) => m.id !== messageId),
+    }));
+  }, []);
 
   const deleteConversation = useCallback((conversationId: string) => {
     setConversations((prev) => prev.filter((c) => c.id !== conversationId));
@@ -922,6 +945,8 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       return next;
     });
   }, []);
+
+  // ── Stories (local only) ──────────────────────────────────────────────────
 
   const addStory = useCallback(
     (payload: {
@@ -945,38 +970,25 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         sticker: payload.sticker,
         backgroundColor: payload.backgroundColor,
         createdAt: now,
-        expiresAt: now + 12 * 60 * 60 * 1000, // 12 hours
+        expiresAt: now + 12 * 60 * 60 * 1000,
         viewers: [],
       };
       setStories((prev) => [...prev, newStory]);
-
       if (payload.mediaUri && !payload.mediaUri.startsWith("http")) {
         const uploadKind =
-          payload.type === "image" ||
-          payload.type === "video" ||
-          payload.type === "voice"
-            ? payload.type
-            : null;
+          payload.type === "image" || payload.type === "video" || payload.type === "voice"
+            ? payload.type : null;
         if (uploadKind) {
           const fileName =
-            uploadKind === "voice"
-              ? "story-voice.m4a"
-              : uploadKind === "video"
-                ? "story-video.mp4"
-                : "story-image.jpg";
+            uploadKind === "voice" ? "story-voice.m4a" :
+            uploadKind === "video" ? "story-video.mp4" : "story-image.jpg";
           uploadFileToSupabase(payload.mediaUri, uploadKind, fileName)
-            .then((publicUrl) => {
+            .then((url) => {
               setStories((prev) =>
-                prev.map((story) =>
-                  story.id === storyId
-                    ? { ...story, mediaUri: publicUrl }
-                    : story,
-                ),
+                prev.map((s) => s.id === storyId ? { ...s, mediaUri: url } : s),
               );
             })
-            .catch((err) => {
-              console.warn("Story upload failed, preserving local URI", err);
-            });
+            .catch(() => {});
         }
       }
     },
@@ -991,12 +1003,11 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     (storyId: string) => {
       if (!currentUser) return;
       setStories((prev) =>
-        prev.map((s) => {
-          if (s.id === storyId && !s.viewers.includes(currentUser.id)) {
-            return { ...s, viewers: [...s.viewers, currentUser.id] };
-          }
-          return s;
-        }),
+        prev.map((s) =>
+          s.id === storyId && !s.viewers.includes(currentUser.id)
+            ? { ...s, viewers: [...s.viewers, currentUser.id] }
+            : s,
+        ),
       );
     },
     [currentUser],
@@ -1006,18 +1017,12 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     if (!currentUser) return {};
     const now = Date.now();
     const active = stories.filter((s) => s.expiresAt > now);
-
-    // Group by user ID
     const grouped: Record<string, Story[]> = {};
     active.forEach((story) => {
-      // Only show your own stories or stories of your friends
       if (
         story.userId !== currentUser.id &&
         !friends.some((f) => f.id === story.userId)
-      ) {
-        return;
-      }
-
+      ) return;
       if (!grouped[story.userId]) grouped[story.userId] = [];
       grouped[story.userId].push(story);
     });
@@ -1042,6 +1047,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         rejectFriendRequest,
         cancelFriendRequest,
         getOrCreateDirectConversation,
+        ensureDirectConversation,
         sendMessage,
         sendMediaMessage,
         createGroup,

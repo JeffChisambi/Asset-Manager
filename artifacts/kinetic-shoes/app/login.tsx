@@ -17,8 +17,17 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
 import { useChat } from "@/context/ChatContext";
 import { supabase } from "@/lib/supabase";
+import { getApiBase } from "@/lib/api";
 
 const doorstepLogo = require("@/assets/logo and icon/doorsteplogo.png");
+
+const AVATAR_COLORS = [
+  "#13B734", "#FF6B6B", "#4ECDC4", "#FFD93D",
+  "#A29BFE", "#FD79A8", "#00B894", "#E17055",
+];
+function randomColor() {
+  return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+}
 
 export default function LoginScreen() {
   const colors = useColors();
@@ -29,7 +38,6 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-
   const [generalError, setGeneralError] = useState("");
 
   const handleLogin = async () => {
@@ -60,7 +68,7 @@ export default function LoginScreen() {
         error.message.includes("AuthRetryableFetchError")
       ) {
         setGeneralError(
-          "Unable to reach Supabase. Please check your internet connection and verify the Supabase URL in lib/supabase.ts",
+          "Unable to reach Supabase. Please check your internet connection.",
         );
       } else {
         setGeneralError("Invalid login credentials.");
@@ -68,19 +76,52 @@ export default function LoginScreen() {
       return;
     }
 
+    const token = data.session?.access_token ?? "";
+    const userId = data.user?.id ?? "me_" + Date.now();
+
+    // Derive display info from email for new profiles
+    const dn = (data.user?.user_metadata?.full_name as string) || email.split("@")[0];
+    const un =
+      dn.toLowerCase().replace(/[^a-z0-9_]/g, "") +
+      Math.floor(Math.random() * 1000);
+    const avatarColor = randomColor();
+
+    // Sync chat profile with API server (non-blocking; creates if missing)
+    if (token) {
+      const base = getApiBase();
+      if (base) {
+        fetch(`${base}/api/chat/profile/sync`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            username: un,
+            displayName: dn || "User",
+            avatarColor,
+            bio: "",
+          }),
+        }).catch(() => {});
+      }
+    }
+
+    // Set user with token so ChatContext loads fresh data
     if (!currentUser) {
-      const dn = email.split("@")[0];
-      const un =
-        dn.toLowerCase().replace(/[^a-z0-9_]/g, "") +
-        Math.floor(Math.random() * 1000);
-      setCurrentUser({
-        id: data.user?.id || "me_" + Date.now(),
-        username: un,
-        displayName: dn || "User",
-        avatarColor: "#13B734",
-        bio: "Sneaker enthusiast",
-        isBot: false,
-      });
+      setCurrentUser(
+        {
+          id: userId,
+          username: un,
+          displayName: dn || "User",
+          avatarColor,
+          bio: "",
+          isBot: false,
+        },
+        token,
+      );
+    } else if (token) {
+      // Already has user; just update the token
+      await AsyncStorage.setItem("chatAuthToken", token);
     }
 
     await AsyncStorage.setItem("hasLoggedIn", "true");
@@ -180,11 +221,7 @@ export default function LoginScreen() {
             <Text
               style={[
                 styles.errorText,
-                {
-                  color: colors.destructive,
-                  textAlign: "center",
-                  marginTop: 8,
-                },
+                { color: colors.destructive, textAlign: "center", marginTop: 8 },
               ]}
             >
               {generalError}
@@ -192,9 +229,7 @@ export default function LoginScreen() {
           )}
 
           <TouchableOpacity style={styles.forgotPassword}>
-            <Text
-              style={[styles.forgotPasswordText, { color: colors.primary }]}
-            >
+            <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
               Forgot password?
             </Text>
           </TouchableOpacity>
@@ -211,9 +246,7 @@ export default function LoginScreen() {
             {isLoading ? (
               <ActivityIndicator color={colors.background} />
             ) : (
-              <Text
-                style={[styles.loginButtonText, { color: colors.background }]}
-              >
+              <Text style={[styles.loginButtonText, { color: colors.background }]}>
                 Sign in
               </Text>
             )}
@@ -237,44 +270,15 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    flex: 1,
-    justifyContent: "center",
-    paddingHorizontal: 24,
-  },
-  header: {
-    alignItems: "center",
-    marginBottom: 48,
-  },
-  logo: {
-    width: 80,
-    height: 80,
-    marginBottom: 16,
-    borderRadius: 20,
-  },
-  title: {
-    fontSize: 28,
-    fontFamily: "Inter_800ExtraBold",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-    textAlign: "center",
-  },
-  form: {
-    gap: 20,
-  },
-  inputContainer: {
-    gap: 8,
-  },
-  label: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
+  container: { flex: 1 },
+  content: { flex: 1, justifyContent: "center", paddingHorizontal: 24 },
+  header: { alignItems: "center", marginBottom: 48 },
+  logo: { width: 80, height: 80, marginBottom: 16, borderRadius: 20 },
+  title: { fontSize: 28, fontFamily: "Inter_800ExtraBold", marginBottom: 8 },
+  subtitle: { fontSize: 15, fontFamily: "Inter_400Regular", textAlign: "center" },
+  form: { gap: 20 },
+  inputContainer: { gap: 8 },
+  label: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "center",
@@ -283,24 +287,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 52,
   },
-  inputIcon: {
-    marginRight: 10,
-  },
-  input: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter_400Regular",
-  },
-  eyeIcon: {
-    padding: 4,
-  },
-  forgotPassword: {
-    alignSelf: "flex-end",
-  },
-  forgotPasswordText: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  eyeIcon: { padding: 4 },
+  forgotPassword: { alignSelf: "flex-end" },
+  forgotPasswordText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
   loginButton: {
     height: 52,
     borderRadius: 12,
@@ -308,27 +299,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginTop: 8,
   },
-  loginButtonText: {
-    fontSize: 16,
-    fontFamily: "Inter_600SemiBold",
-  },
+  loginButtonText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
     marginTop: 48,
   },
-  footerText: {
-    fontSize: 14,
-    fontFamily: "Inter_400Regular",
-  },
-  signupText: {
-    fontSize: 14,
-    fontFamily: "Inter_600SemiBold",
-  },
-  errorText: {
-    fontSize: 13,
-    fontFamily: "Inter_500Medium",
-    marginTop: 4,
-  },
+  footerText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  signupText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  errorText: { fontSize: 13, fontFamily: "Inter_500Medium", marginTop: 4 },
 });

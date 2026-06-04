@@ -122,7 +122,71 @@ export const deliveryPartnersTable = pgTable("delivery_partners", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
-// Relationships
+// ─── Chat tables ────────────────────────────────────────────────────────────
+
+export const chatProfilesTable = pgTable("chat_profiles", {
+  id: text("id").primaryKey(),
+  username: text("username").notNull(),
+  displayName: text("display_name").notNull(),
+  avatarColor: text("avatar_color").notNull().default("#13B734"),
+  bio: text("bio").notNull().default(""),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const chatFriendRequestsTable = pgTable("chat_friend_requests", {
+  id: serial("id").primaryKey(),
+  fromId: text("from_id")
+    .references(() => chatProfilesTable.id, { onDelete: "cascade" })
+    .notNull(),
+  toId: text("to_id")
+    .references(() => chatProfilesTable.id, { onDelete: "cascade" })
+    .notNull(),
+  status: text("status").notNull().default("pending"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const chatConversationsTable = pgTable("chat_conversations", {
+  id: text("id").primaryKey(),
+  type: text("type").notNull().default("direct"),
+  name: text("name"),
+  createdBy: text("created_by"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const chatMembersTable = pgTable("chat_members", {
+  id: serial("id").primaryKey(),
+  conversationId: text("conversation_id")
+    .references(() => chatConversationsTable.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: text("user_id")
+    .references(() => chatProfilesTable.id, { onDelete: "cascade" })
+    .notNull(),
+  joinedAt: timestamp("joined_at").defaultNow().notNull(),
+});
+
+export const chatMessagesTable = pgTable("chat_messages", {
+  id: text("id").primaryKey(),
+  conversationId: text("conversation_id")
+    .references(() => chatConversationsTable.id, { onDelete: "cascade" })
+    .notNull(),
+  senderId: text("sender_id")
+    .references(() => chatProfilesTable.id)
+    .notNull(),
+  type: text("type").notNull().default("text"),
+  text: text("text"),
+  mediaUrl: text("media_url"),
+  fileName: text("file_name"),
+  fileSize: integer("file_size"),
+  fileMimeType: text("file_mime_type"),
+  audioDuration: integer("audio_duration"),
+  sticker: text("sticker"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// ─── Relationships ───────────────────────────────────────────────────────────
+
 export const merchantsRelations = relations(merchantsTable, ({ many }) => ({
   stores: many(storesTable),
 }));
