@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, integer, doublePrecision, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, timestamp, integer, doublePrecision, uniqueIndex, index } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const merchantsTable = pgTable("merchants", {
@@ -126,13 +126,15 @@ export const deliveryPartnersTable = pgTable("delivery_partners", {
 
 export const chatProfilesTable = pgTable("chat_profiles", {
   id: text("id").primaryKey(),
-  username: text("username").notNull(),
+  username: text("username").notNull().unique(),
   displayName: text("display_name").notNull(),
   avatarColor: text("avatar_color").notNull().default("#13B734"),
   bio: text("bio").notNull().default(""),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("chat_profiles_username_idx").on(table.username),
+]);
 
 export const chatFriendRequestsTable = pgTable("chat_friend_requests", {
   id: serial("id").primaryKey(),
@@ -145,7 +147,11 @@ export const chatFriendRequestsTable = pgTable("chat_friend_requests", {
   status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  uniqueIndex("chat_friend_requests_from_to_idx").on(table.fromId, table.toId),
+  index("chat_friend_requests_to_idx").on(table.toId),
+  index("chat_friend_requests_updated_idx").on(table.updatedAt),
+]);
 
 export const chatConversationsTable = pgTable("chat_conversations", {
   id: text("id").primaryKey(),
@@ -164,7 +170,10 @@ export const chatMembersTable = pgTable("chat_members", {
     .references(() => chatProfilesTable.id, { onDelete: "cascade" })
     .notNull(),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
-});
+}, (table) => [
+  uniqueIndex("chat_members_conv_user_idx").on(table.conversationId, table.userId),
+  index("chat_members_user_idx").on(table.userId),
+]);
 
 export const chatMessagesTable = pgTable("chat_messages", {
   id: text("id").primaryKey(),
@@ -183,7 +192,10 @@ export const chatMessagesTable = pgTable("chat_messages", {
   audioDuration: integer("audio_duration"),
   sticker: text("sticker"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("chat_messages_conv_idx").on(table.conversationId),
+  index("chat_messages_conv_created_idx").on(table.conversationId, table.createdAt),
+]);
 
 // ─── Relationships ───────────────────────────────────────────────────────────
 

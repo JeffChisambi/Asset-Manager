@@ -91,7 +91,7 @@ export class ProfileServiceImpl extends BaseProfileService {
           displayName: seedUser.displayName,
           avatarColor: seedUser.avatarColor,
           coverColor: "#1A2456",
-          bio: seedUser.bio,
+          bio: seedUser.bio ?? "",
           location: "",
           website: "",
           joinDate: "Recently",

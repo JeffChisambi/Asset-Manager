@@ -6,7 +6,17 @@ export function getApiBase(): string {
     process.env.EXPO_PUBLIC_DOMAIN ||
     process.env.EXPO_PUBLIC_REPL_SLUG ||
     "";
+  if (!domain) {
+    console.warn("[api] EXPO_PUBLIC_DOMAIN not set — API calls will fail on native");
+  }
   return domain ? `https://${domain}` : "";
+}
+
+export class ChatAuthError extends Error {
+  constructor() {
+    super("Unauthorized: token expired or invalid");
+    this.name = "ChatAuthError";
+  }
 }
 
 export async function chatApiFetch(
@@ -38,7 +48,9 @@ export async function chatApiCall<T = unknown>(
   body?: unknown,
 ): Promise<T | null> {
   const res = await chatApiFetch(path, method, token, body);
-  if (!res || !res.ok) return null;
+  if (!res) return null;
+  if (res.status === 401) throw new ChatAuthError();
+  if (!res.ok) return null;
   try {
     return (await res.json()) as T;
   } catch {

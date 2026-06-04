@@ -1,2 +1,3 @@
 - [Chat production setup](chat-production.md) — real DB-backed chat; no bots; Supabase JWT auth on API; serve.js proxies /api/*
 - [Expo rebuild process](expo-rebuild.md) — must set EXPO_PUBLIC_DOMAIN before `pnpm --filter @workspace/kinetic-shoes run build`
+- [Chat API production audit](chat-audit.md) — security + correctness fixes applied; key constraints to maintain going forward

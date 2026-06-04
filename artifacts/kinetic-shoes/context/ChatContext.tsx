@@ -9,7 +9,7 @@ import React, {
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "@/lib/supabase";
-import { chatApiCall } from "@/lib/api";
+import { chatApiCall, ChatAuthError } from "@/lib/api";
 import { getApiBase } from "@/lib/api";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -107,6 +107,7 @@ export type ChatContextType = {
   stories: Story[];
   isLoaded: boolean;
   setCurrentUser: (user: AppUser, token?: string) => void;
+  logout: () => Promise<void>;
   searchUsers: (query: string) => Promise<AppUser[]>;
   sendFriendRequest: (toId: string) => void;
   acceptFriendRequest: (requestId: string) => void;
@@ -421,17 +422,28 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         if (token) {
           tokenRef.current = token;
           setAuthTokenState(token);
-          const profile = await chatApiCall<ApiProfile>("/api/chat/profile/me", "GET", token);
-          if (profile) {
-            const user = mapProfile(profile);
-            currentUserRef.current = user;
-            setCurrentUserState(user);
-            addToUserCache([user]);
-            pollTs.current = Date.now() - 60_000;
-            await Promise.all([
-              loadFriendRequests(token, user.id),
-              loadConversations(token),
-            ]);
+          try {
+            const profile = await chatApiCall<ApiProfile>("/api/chat/profile/me", "GET", token);
+            if (profile) {
+              const user = mapProfile(profile);
+              currentUserRef.current = user;
+              setCurrentUserState(user);
+              addToUserCache([user]);
+              pollTs.current = Date.now() - 60_000;
+              await Promise.all([
+                loadFriendRequests(token, user.id),
+                loadConversations(token),
+              ]);
+            }
+          } catch (err) {
+            if (err instanceof ChatAuthError) {
+              // Token is expired/invalid — clear it
+              await AsyncStorage.removeItem("chatAuthToken").catch(() => {});
+              tokenRef.current = null;
+              setAuthTokenState(null);
+            } else {
+              console.warn("ChatContext init profile:", err);
+            }
           }
         }
       } catch (err) {
@@ -453,9 +465,22 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       const me = currentUserRef.current;
       if (!token || !me) return;
 
-      const data = await chatApiCall<PollResult>(
-        `/api/chat/poll?since=${pollTs.current}`, "GET", token,
-      );
+      let data: PollResult | null;
+      try {
+        data = await chatApiCall<PollResult>(
+          `/api/chat/poll?since=${pollTs.current}`, "GET", token,
+        );
+      } catch (err) {
+        if (err instanceof ChatAuthError) {
+          // Token expired — clear auth state; the user will need to re-login
+          await AsyncStorage.removeItem("chatAuthToken").catch(() => {});
+          tokenRef.current = null;
+          setAuthTokenState(null);
+          setCurrentUserState(null);
+          currentUserRef.current = null;
+        }
+        return;
+      }
       if (!data) return;
       pollTs.current = data.timestamp;
 
@@ -526,6 +551,20 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, [friendRequests, currentUser, userCache]);
 
   // ── Public API ────────────────────────────────────────────────────────────────
+
+  const logout = useCallback(async () => {
+    tokenRef.current = null;
+    currentUserRef.current = null;
+    conversationsRef.current = [];
+    setAuthTokenState(null);
+    setCurrentUserState(null);
+    setFriendRequests([]);
+    setConversations([]);
+    setMessages({});
+    setLastRead({});
+    setStories([]);
+    await AsyncStorage.multiRemove(["chatAuthToken", "chatLastRead", "chatStories"]).catch(() => {});
+  }, []);
 
   const setCurrentUser = useCallback((user: AppUser, token?: string) => {
     setCurrentUserState(user);
@@ -1041,6 +1080,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         stories,
         isLoaded,
         setCurrentUser,
+        logout,
         searchUsers,
         sendFriendRequest,
         acceptFriendRequest,

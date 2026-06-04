@@ -77,52 +77,56 @@ export default function LoginScreen() {
     }
 
     const token = data.session?.access_token ?? "";
-    const userId = data.user?.id ?? "me_" + Date.now();
+    const userId = data.user?.id ?? "";
+    if (!userId || !token) {
+      setGeneralError("Login failed. Please try again.");
+      setIsLoading(false);
+      return;
+    }
 
-    // Derive display info from email for new profiles
+    // Derive display info from email for initial profile creation
     const dn = (data.user?.user_metadata?.full_name as string) || email.split("@")[0];
-    const un =
-      dn.toLowerCase().replace(/[^a-z0-9_]/g, "") +
-      Math.floor(Math.random() * 1000);
+    const emailPrefix = email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20) || "user";
+    const candidateUsername = `${emailPrefix}_${Math.floor(Math.random() * 9000 + 1000)}`;
     const avatarColor = randomColor();
 
-    // Sync chat profile with API server (non-blocking; creates if missing)
-    if (token) {
-      const base = getApiBase();
-      if (base) {
-        fetch(`${base}/api/chat/profile/sync`, {
+    // Sync chat profile — awaited so we get the canonical username back
+    let profileData: { username: string; displayName: string; avatarColor: string; bio: string } | null = null;
+    const base = getApiBase();
+    if (base && token) {
+      try {
+        const resp = await fetch(`${base}/api/chat/profile/sync`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            username: un,
+            username: candidateUsername,
             displayName: dn || "User",
             avatarColor,
             bio: "",
           }),
-        }).catch(() => {});
-      }
+        });
+        if (resp.ok) {
+          profileData = await resp.json();
+        }
+      } catch {}
     }
 
-    // Set user with token so ChatContext loads fresh data
-    if (!currentUser) {
-      setCurrentUser(
-        {
-          id: userId,
-          username: un,
-          displayName: dn || "User",
-          avatarColor,
-          bio: "",
-          isBot: false,
-        },
-        token,
-      );
-    } else if (token) {
-      // Already has user; just update the token
-      await AsyncStorage.setItem("chatAuthToken", token);
-    }
+    await AsyncStorage.setItem("chatAuthToken", token).catch(() => {});
+
+    setCurrentUser(
+      {
+        id: userId,
+        username: profileData?.username ?? candidateUsername,
+        displayName: profileData?.displayName ?? dn ?? "User",
+        avatarColor: profileData?.avatarColor ?? avatarColor,
+        bio: profileData?.bio ?? "",
+        isBot: false,
+      },
+      token,
+    );
 
     await AsyncStorage.setItem("hasLoggedIn", "true");
     setIsLoading(false);
