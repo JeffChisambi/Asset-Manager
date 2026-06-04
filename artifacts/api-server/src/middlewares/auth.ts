@@ -8,7 +8,10 @@ export interface AuthenticatedRequest extends Request {
   };
 }
 
-export const JWT_SECRET = process.env.JWT_SECRET || "doorstep-super-secret-key-12345";
+if (!process.env.JWT_SECRET && !process.env.SESSION_SECRET) {
+  throw new Error("JWT_SECRET or SESSION_SECRET environment variable is required but was not provided.");
+}
+export const JWT_SECRET = (process.env.JWT_SECRET || process.env.SESSION_SECRET) as string;
 
 export function requireAuth(
   req: AuthenticatedRequest,

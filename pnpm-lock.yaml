@@ -168,6 +168,9 @@ importers:
       dotenv:
         specifier: ^16.4.5
         version: 16.4.7
+      drizzle-orm:
+        specifier: 'catalog:'
+        version: 0.45.2(@types/pg@8.20.0)(pg@8.20.0)
       express:
         specifier: ^5.2.1
         version: 5.2.1
@@ -177,6 +180,9 @@ importers:
       multer:
         specifier: ^2.1.1
         version: 2.1.1
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
       pino:
         specifier: ^9.14.0
         version: 9.14.0
