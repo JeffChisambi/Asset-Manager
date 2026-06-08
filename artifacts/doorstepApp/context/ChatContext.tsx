@@ -403,6 +403,36 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
     }));
   }, []);
 
+  // Map a raw API story row → Story type used throughout the app
+  function mapApiStory(s: any): Story {
+    let viewers: string[] = [];
+    try { viewers = typeof s.viewers === "string" ? JSON.parse(s.viewers) : (s.viewers ?? []); } catch { viewers = []; }
+    return {
+      id: s.id,
+      userId: s.userId ?? s.user_id,
+      type: s.type as Story["type"],
+      mediaUri: s.mediaUrl ?? s.media_url ?? undefined,
+      text: s.text ?? undefined,
+      sticker: s.sticker ?? undefined,
+      backgroundColor: s.backgroundColor ?? s.background_color ?? undefined,
+      audioDuration: s.audioDuration ?? s.audio_duration ?? undefined,
+      createdAt: new Date(s.createdAt ?? s.created_at).getTime(),
+      expiresAt: new Date(s.expiresAt ?? s.expires_at).getTime(),
+      viewers,
+    };
+  }
+
+  const loadStories = useCallback(async (token: string) => {
+    const data = await chatApiCall<any[]>("/api/chat/stories", "GET", token);
+    if (!data) return;
+    const now = Date.now();
+    const mapped = data.map(mapApiStory).filter((s) => s.expiresAt > now);
+    setStories(mapped);
+    // Pre-load any user profiles we don't yet know about
+    const authorIds = [...new Set(mapped.map((s) => s.userId))];
+    if (authorIds.length) loadUserProfiles(authorIds, token).catch(() => {});
+  }, [loadUserProfiles]);
+
   // ── Initialise ──────────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -1149,36 +1179,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // ── Stories (server-backed) ────────────────────────────────────────────────
-
-  // Map a raw API story row → Story type used throughout the app
-  function mapApiStory(s: any): Story {
-    let viewers: string[] = [];
-    try { viewers = typeof s.viewers === "string" ? JSON.parse(s.viewers) : (s.viewers ?? []); } catch { viewers = []; }
-    return {
-      id: s.id,
-      userId: s.userId ?? s.user_id,
-      type: s.type as Story["type"],
-      mediaUri: s.mediaUrl ?? s.media_url ?? undefined,
-      text: s.text ?? undefined,
-      sticker: s.sticker ?? undefined,
-      backgroundColor: s.backgroundColor ?? s.background_color ?? undefined,
-      audioDuration: s.audioDuration ?? s.audio_duration ?? undefined,
-      createdAt: new Date(s.createdAt ?? s.created_at).getTime(),
-      expiresAt: new Date(s.expiresAt ?? s.expires_at).getTime(),
-      viewers,
-    };
-  }
-
-  const loadStories = useCallback(async (token: string) => {
-    const data = await chatApiCall<any[]>("/api/chat/stories", "GET", token);
-    if (!data) return;
-    const now = Date.now();
-    const mapped = data.map(mapApiStory).filter((s) => s.expiresAt > now);
-    setStories(mapped);
-    // Pre-load any user profiles we don't yet know about
-    const authorIds = [...new Set(mapped.map((s) => s.userId))];
-    if (authorIds.length) loadUserProfiles(authorIds, token).catch(() => {});
-  }, [loadUserProfiles]);
 
   const addStory = useCallback(
     async (payload: {

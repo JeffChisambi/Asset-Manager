@@ -1,3 +1,4 @@
 - [Chat production setup](chat-production.md) — real DB-backed chat; no bots; Supabase JWT auth on API; serve.js proxies /api/*
-- [Expo rebuild process](expo-rebuild.md) — must set EXPO_PUBLIC_DOMAIN before `pnpm --filter @workspace/kinetic-shoes run build`
+- [Expo rebuild process](expo-rebuild.md) — must run `build:web` before serve; EXPO_PUBLIC_DOMAIN auto-detected from REPLIT_DEV_DOMAIN
 - [Chat API production audit](chat-audit.md) — security + correctness fixes applied; key constraints to maintain going forward
+- [ChatContext TDZ and React Compiler](chatcontext-tdz.md) — React Compiler causes TDZ if useCallback hooks used before declaration in same component

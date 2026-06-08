@@ -1,22 +1,34 @@
 ---
 name: Expo rebuild process
-description: How to rebuild the Expo static bundle for the Doorstep app
+description: How to build and serve the Expo web app in the Replit environment.
 ---
 
-## Process
-
-```bash
-EXPO_PUBLIC_DOMAIN=$REPLIT_DEV_DOMAIN pnpm --filter @workspace/kinetic-shoes run build
+## Web build (for browser preview)
 ```
+pnpm --filter @workspace/doorstep-app run build:web
+```
+- Runs `expo export --platform web --output-dir dist`
+- EXPO_PUBLIC_DOMAIN is auto-read from `REPLIT_DEV_DOMAIN` or `REPLIT_INTERNAL_APP_DOMAIN` in `scripts/build.js`
+- Output goes to `artifacts/doorstepApp/dist/`
+- Must be re-run after any app code changes to update the browser preview
 
-Then restart the "Start application" workflow so serve.js picks up the new `static-build/` folder.
+## Serve
+```
+PORT=5000 pnpm --filter @workspace/doorstep-app run serve
+```
+- `server/serve.js` serves `dist/` as SPA (all unmatched routes → `dist/index.html`)
+- Proxies `/api/*` to API server on port 3000
+- Also serves Expo Go manifests from `static-build/{ios,android}/manifest.json` when `expo-platform` header is present
 
-**Why EXPO_PUBLIC_DOMAIN matters**: The build.js script reads this env var and bakes it into the Metro bundle as `process.env.EXPO_PUBLIC_DOMAIN`. On mobile (React Native), `getApiBase()` in `lib/api.ts` uses this to construct API URLs. On web, it falls back to `window.location.origin` so the proxy works without rebuilding.
+## Mobile (Expo Go) build
+```
+pnpm --filter @workspace/doorstep-app run build
+```
+- Runs `scripts/build.js` which starts Metro, downloads iOS + Android bundles
+- Output in `static-build/{timestamp}/` plus `static-build/ios/manifest.json` and `static-build/android/manifest.json`
+- Takes several minutes; run synchronously (not with &)
 
-**Build takes ~5-10 minutes** — bundles iOS + Android + copies assets.
+## Package name
+`@workspace/doorstep-app` at `artifacts/doorstepApp/` (NOT `kinetic-shoes`)
 
-**Background jobs**: Do NOT run build with `&` in bash tool — the subshell exits and kills the process. Run synchronously.
-
-**API Server**: Runs with `dev` command (builds then runs from dist). Must be restarted after any route/schema changes. The `dev` script rebuilds dist on each start.
-
-**DB schema push**: `pnpm --filter @workspace/db run push` — run after any schema changes. Non-destructive (only adds new tables/columns).
+**Why EXPO_PUBLIC_DOMAIN matters**: Baked into the Metro bundle for native API URLs. On web, `getApiBase()` falls back to `window.location.origin` so the proxy works without it.

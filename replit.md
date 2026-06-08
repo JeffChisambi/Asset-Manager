@@ -5,6 +5,7 @@ Local marketplace app — buy, sell, and chat with neighbors using Expo (React N
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 3000, workflow: "API Server")
+- `pnpm --filter @workspace/doorstep-app run build:web` — export Expo web build to `dist/` (run before first serve, or after app code changes)
 - `pnpm --filter @workspace/doorstep-app run serve` — serve Expo web build (port 5000, workflow: "Start application")
 - `pnpm run typecheck` — full typecheck across all packages (must be clean before shipping)
 - `pnpm run build` — typecheck + build all packages
