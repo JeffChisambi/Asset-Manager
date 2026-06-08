@@ -1,5 +1,5 @@
 import { pgTable, serial, text, timestamp, integer, doublePrecision, uniqueIndex, index } from "drizzle-orm/pg-core";
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 
 export const merchantsTable = pgTable("merchants", {
   id: serial("id").primaryKey(),
@@ -30,6 +30,7 @@ export const storesTable = pgTable("stores", {
   phone: text("phone"),
   email: text("email"),
   address: text("address"),
+  chatProfileId: text("chat_profile_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -129,11 +130,14 @@ export const chatProfilesTable = pgTable("chat_profiles", {
   username: text("username").notNull().unique(),
   displayName: text("display_name").notNull(),
   avatarColor: text("avatar_color").notNull().default("#13B734"),
+  avatarUrl: text("avatar_url"),
   bio: text("bio").notNull().default(""),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
   index("chat_profiles_username_idx").on(table.username),
+  index("chat_profiles_username_trgm_idx").using("gin", sql`${table.username} gin_trgm_ops`),
+  index("chat_profiles_displayname_trgm_idx").using("gin", sql`${table.displayName} gin_trgm_ops`),
 ]);
 
 export const chatFriendRequestsTable = pgTable("chat_friend_requests", {
@@ -195,6 +199,29 @@ export const chatMessagesTable = pgTable("chat_messages", {
 }, (table) => [
   index("chat_messages_conv_idx").on(table.conversationId),
   index("chat_messages_conv_created_idx").on(table.conversationId, table.createdAt),
+]);
+
+// ─── Stories table ───────────────────────────────────────────────────────────
+// Stories are visible to friends for 24 hours after creation.
+
+export const chatStoriesTable = pgTable("chat_stories", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .references(() => chatProfilesTable.id, { onDelete: "cascade" })
+    .notNull(),
+  type: text("type").notNull(), // 'image' | 'video' | 'voice' | 'text'
+  mediaUrl: text("media_url"),
+  text: text("text"),
+  sticker: text("sticker"),
+  backgroundColor: text("background_color"),
+  audioDuration: integer("audio_duration"),
+  // JSON array of viewer user-IDs
+  viewers: text("viewers").notNull().default("[]"),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  index("chat_stories_user_idx").on(table.userId),
+  index("chat_stories_expires_idx").on(table.expiresAt),
 ]);
 
 // ─── Relationships ───────────────────────────────────────────────────────────

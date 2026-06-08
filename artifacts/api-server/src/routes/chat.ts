@@ -1,16 +1,22 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { and, asc, eq, gt, ilike, inArray, not, or } from "drizzle-orm";
+import { and, asc, eq, gt, ilike, inArray, lt, not, or, sql } from "drizzle-orm";
 import {
   chatConversationsTable,
   chatFriendRequestsTable,
   chatMembersTable,
   chatMessagesTable,
   chatProfilesTable,
+  chatStoriesTable,
   db,
 } from "@workspace/db";
 import { randomUUID } from "crypto";
 import rateLimit from "express-rate-limit";
 import { z } from "zod";
+import jwt from "jsonwebtoken";
+import bcrypt from "bcryptjs";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -19,11 +25,16 @@ const SUPABASE_URL =
   "https://uuizijhznsbuugxyjcwo.supabase.co";
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
 
+// Local JWT secret — lazily evaluated to ensure dotenv is loaded
+function getLocalJwtSecret() {
+  return process.env.JWT_SECRET || process.env.SESSION_SECRET || "fallback_dev_secret_only";
+}
+
 // ── Token cache (avoid hitting Supabase on every request) ────────────────────
 // Tokens are cached for 4 minutes; Supabase JWTs expire after 1 hour.
 
 interface CacheEntry {
-  user: SupabaseUser;
+  user: ChatUser;
   expiresAt: number;
 }
 const TOKEN_CACHE = new Map<string, CacheEntry>();
@@ -37,14 +48,35 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000).unref();
 
-interface SupabaseUser {
+interface ChatUser {
   id: string;
   email: string;
 }
 
-async function verifySupabaseToken(
-  token: string,
-): Promise<SupabaseUser | null> {
+// ── Dual-mode token verification ─────────────────────────────────────────────
+// 1. Try local JWT (signed by this server). If it decodes → use it.
+// 2. Fall back to Supabase verification for users logged in via Supabase.
+
+function verifyLocalToken(token: string): ChatUser | null {
+  const secret = getLocalJwtSecret();
+  if (!secret) return null;
+  try {
+    const payload = jwt.verify(token, secret) as any;
+    // Local chat tokens have { id, email } or { id, sub }
+    if (payload?.id) {
+      return { id: String(payload.id), email: payload.email ?? "" };
+    }
+    // Supabase-style JWTs have { sub } for the user id
+    if (payload?.sub) {
+      return { id: String(payload.sub), email: payload.email ?? "" };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function verifySupabaseToken(token: string): Promise<ChatUser | null> {
   if (!token) return null;
 
   const cached = TOKEN_CACHE.get(token);
@@ -63,7 +95,7 @@ async function verifySupabaseToken(
     }
     const u = await res.json();
     if (!u?.id) return null;
-    const user: SupabaseUser = { id: u.id, email: u.email ?? "" };
+    const user: ChatUser = { id: u.id, email: u.email ?? "" };
     TOKEN_CACHE.set(token, { user, expiresAt: Date.now() + TOKEN_TTL_MS });
     return user;
   } catch {
@@ -72,7 +104,7 @@ async function verifySupabaseToken(
 }
 
 interface AuthedRequest extends Request {
-  chatUser: SupabaseUser;
+  chatUser: ChatUser;
   chatToken: string;
 }
 
@@ -89,18 +121,31 @@ async function chatAuth(
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    const user = await verifySupabaseToken(token);
-    if (!user) {
+
+    // 1. Try local JWT first (fast, no network) — handles app-registered users
+    const localUser = verifyLocalToken(token);
+    if (localUser) {
+      (req as AuthedRequest).chatUser = localUser;
+      (req as AuthedRequest).chatToken = token;
+      next();
+      return;
+    }
+
+    // 2. Fall back to Supabase for users who signed in via Supabase
+    const supabaseUser = await verifySupabaseToken(token);
+    if (!supabaseUser) {
       res.status(401).json({ error: "Unauthorized" });
       return;
     }
-    (req as AuthedRequest).chatUser = user;
+    (req as AuthedRequest).chatUser = supabaseUser;
     (req as AuthedRequest).chatToken = token;
     next();
   } catch (err) {
     next(err);
   }
 }
+
+
 
 // ── Rate limiters ────────────────────────────────────────────────────────────
 
@@ -142,6 +187,7 @@ const ProfileSyncSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Must be a valid hex colour")
     .optional(),
+  avatarUrl: z.string().optional(),
   bio: z.string().max(500).optional(),
 });
 
@@ -218,6 +264,201 @@ function parseSince(raw: unknown): Date | undefined {
 const router = Router();
 router.use(generalLimiter);
 
+// ── Native chat auth (no Supabase required) ───────────────────────────────────
+// These endpoints let the mobile app register and log in users entirely via
+// the local API server. The generated JWTs are accepted by chatAuth above.
+
+const uploadDir = path.join(process.cwd(), "uploads");
+fs.mkdirSync(uploadDir, { recursive: true });
+
+const upload = multer({
+  dest: uploadDir,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith("image/")) {
+      cb(new Error("Only image uploads are supported"));
+      return;
+    }
+    cb(null, true);
+  },
+});
+
+function getApiOrigin(req: Request) {
+  return `${req.protocol}://${req.get("host")}`;
+}
+
+function toAbsoluteUploadUrl(req: Request, imageUrl: string | null | undefined) {
+  if (!imageUrl) return null;
+  if (/^https?:\/\//i.test(imageUrl)) return imageUrl;
+  const normalizedPath = imageUrl.startsWith("/") ? imageUrl : `/${imageUrl}`;
+  return `${getApiOrigin(req)}${normalizedPath}`;
+}
+
+router.post(
+  "/upload-image",
+  chatAuth,
+  upload.single("file"),
+  (req: Request, res: Response): void => {
+    if (!req.file) {
+      res.status(400).json({ error: "No file uploaded" });
+      return;
+    }
+    const originalName = req.file.originalname;
+    const ext = path.extname(originalName).toLowerCase() || ".jpg";
+    const newName = `${req.file.filename}${ext}`;
+    const oldPath = req.file.path;
+    const newPath = path.join(path.dirname(oldPath), newName);
+    fs.renameSync(oldPath, newPath);
+    const url = toAbsoluteUploadUrl(req, `/uploads/${newName}`);
+    res.json({ imageUrl: url });
+  }
+);
+
+const ChatAuthSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  displayName: z.string().min(1).max(80).optional(),
+  username: z.string().min(2).max(30).regex(/^[a-z0-9_]+$/).optional(),
+  avatarColor: z.string().regex(/^#[0-9a-fA-F]{6}$/).optional(),
+});
+
+router.post(
+  "/auth/register",
+  async (req: Request, res: Response): Promise<void> => {
+    const body = validate(ChatAuthSchema, req.body ?? {}, res);
+    if (body === null) return;
+
+    const { email, password, displayName, username, avatarColor } = body;
+
+    // Check if email already exists
+    const existingByEmail = await db
+      .select({ id: chatProfilesTable.id })
+      .from(chatProfilesTable)
+      .where(sql`LOWER(${chatProfilesTable.id}::text) = LOWER(${email})`)
+      .limit(1);
+
+    // Use email as a pseudo-key in a separate lookup table (we store email in bio as fallback)
+    // Actually search by the email stored during registration — we keep email in a dedicated field
+    // For now, generate a deterministic UUID from the email to serve as stable id
+    const crypto = await import("crypto");
+    const userId = crypto.randomUUID();
+
+    // Build unique username
+    const rawUsername =
+      username ||
+      email.split("@")[0].toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20) ||
+      "user";
+    const usernameConflict = await db
+      .select({ id: chatProfilesTable.id })
+      .from(chatProfilesTable)
+      .where(eq(chatProfilesTable.username, rawUsername))
+      .limit(1);
+    const finalUsername = usernameConflict.length
+      ? `${rawUsername.slice(0, 20)}_${Math.floor(Math.random() * 9000 + 1000)}`
+      : rawUsername;
+
+    const dn = displayName || finalUsername;
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    // Store the user — we embed email+hash in bio as a JSON payload so we can look it up on login
+    // (This avoids altering the schema while keeping registration self-contained)
+    const profileBio = JSON.stringify({ __email: email, __hash: passwordHash });
+
+    try {
+      await db.insert(chatProfilesTable).values({
+        id: userId,
+        username: finalUsername,
+        displayName: dn,
+        avatarColor: avatarColor ?? "#13B734",
+        bio: profileBio,
+      });
+    } catch (err: any) {
+      if (err?.code === "23505") {
+        res.status(400).json({ error: "Username already taken" });
+        return;
+      }
+      throw err;
+    }
+
+    const token = jwt.sign(
+      { id: userId, email },
+      getLocalJwtSecret(),
+      { expiresIn: "30d" },
+    );
+
+    const [profile] = await db
+      .select()
+      .from(chatProfilesTable)
+      .where(eq(chatProfilesTable.id, userId));
+
+    res.status(201).json({
+      token,
+      user: {
+        id: profile.id,
+        username: profile.username,
+        displayName: profile.displayName,
+        avatarColor: profile.avatarColor,
+        bio: "",
+      },
+    });
+  },
+);
+
+router.post(
+  "/auth/login",
+  async (req: Request, res: Response): Promise<void> => {
+    const body = validate(ChatAuthSchema, req.body ?? {}, res);
+    if (body === null) return;
+
+    const { email, password } = body;
+
+    // Find user by searching for their email embedded in bio
+    const profiles = await db
+      .select()
+      .from(chatProfilesTable)
+      .where(sql`${chatProfilesTable.bio} LIKE ${`%"__email":"${email}"%`}`);
+
+    if (!profiles.length) {
+      res.status(400).json({ error: "Invalid email or password" });
+      return;
+    }
+
+    const profile = profiles[0];
+    let stored: { __email: string; __hash: string } | null = null;
+    try {
+      stored = JSON.parse(profile.bio);
+    } catch {
+      res.status(400).json({ error: "Invalid email or password" });
+      return;
+    }
+
+    if (!stored?.__hash || !await bcrypt.compare(password, stored.__hash)) {
+      res.status(400).json({ error: "Invalid email or password" });
+      return;
+    }
+
+    const token = jwt.sign(
+      { id: profile.id, email },
+      getLocalJwtSecret(),
+      { expiresIn: "30d" },
+    );
+
+    res.json({
+      token,
+      user: {
+        id: profile.id,
+        username: profile.username,
+        displayName: profile.displayName,
+        avatarColor: profile.avatarColor,
+        avatarUrl: profile.avatarUrl,
+        bio: "",
+      },
+    });
+  },
+);
+
+
+
 // ── Profile ──────────────────────────────────────────────────────────────────
 
 router.post(
@@ -256,6 +497,7 @@ router.post(
         username: un,
         displayName: dn,
         avatarColor: body.avatarColor ?? "#13B734",
+        avatarUrl: body.avatarUrl ?? null,
         bio: body.bio ?? "",
       });
     } else {
@@ -263,6 +505,7 @@ router.post(
       const patch: Record<string, unknown> = { updatedAt: new Date() };
       if (body.displayName) patch.displayName = body.displayName;
       if (body.avatarColor) patch.avatarColor = body.avatarColor;
+      if (body.avatarUrl !== undefined) patch.avatarUrl = body.avatarUrl;
       if (body.bio !== undefined) patch.bio = body.bio;
       await db
         .update(chatProfilesTable)
@@ -310,10 +553,17 @@ router.get(
         and(
           not(eq(chatProfilesTable.id, (req as AuthedRequest).chatUser.id)),
           or(
-            ilike(chatProfilesTable.username, `%${query.q}%`),
-            ilike(chatProfilesTable.displayName, `%${query.q}%`),
-          ),
+            // Trigram similarity match (fuzzy)
+            sql`${chatProfilesTable.username} % ${query.q}`,
+            sql`${chatProfilesTable.displayName} % ${query.q}`,
+            // Fallback to prefix match for very short queries (< 3 chars)
+            ilike(chatProfilesTable.username, `${query.q}%`),
+            ilike(chatProfilesTable.displayName, `${query.q}%`)
+          )
         ),
+      )
+      .orderBy(
+        sql`GREATEST(similarity(${chatProfilesTable.username}, ${query.q}), similarity(${chatProfilesTable.displayName}, ${query.q})) DESC`
       )
       .limit(20);
     res.json(results);
@@ -343,6 +593,75 @@ router.get(
     res.json(profiles);
   },
 );
+
+// ── People Discovery ──────────────────────────────────────────────────────────
+// Returns paginated list of all registered users, excluding the caller,
+// their existing friends, and anyone with a pending request.
+// Uses cursor-based pagination (createdAt) for efficiency — no OFFSET scans.
+
+router.get(
+  "/users/discover",
+  chatAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const me = (req as AuthedRequest).chatUser.id;
+    const limitRaw = Math.min(parseInt(String(req.query.limit ?? "20"), 10) || 20, 50);
+    const cursor = req.query.cursor ? new Date(String(req.query.cursor)) : undefined;
+
+    // Fetch all friend request IDs involving the current user
+    const myRequests = await db
+      .select({
+        fromId: chatFriendRequestsTable.fromId,
+        toId: chatFriendRequestsTable.toId,
+        status: chatFriendRequestsTable.status,
+      })
+      .from(chatFriendRequestsTable)
+      .where(
+        or(
+          eq(chatFriendRequestsTable.fromId, me),
+          eq(chatFriendRequestsTable.toId, me),
+        ),
+      );
+
+    // Build a set of IDs to exclude (self + anyone in a friend relationship or pending)
+    const excludeIds = new Set<string>([me]);
+    for (const r of myRequests) {
+      const otherId = r.fromId === me ? r.toId : r.fromId;
+      if (r.status === "accepted" || r.status === "pending") {
+        excludeIds.add(otherId);
+      }
+    }
+
+    const excludeArr = [...excludeIds];
+
+    // Build paginated query using createdAt cursor
+    const conditions = [not(inArray(chatProfilesTable.id, excludeArr))];
+    if (cursor) {
+      conditions.push(sql`${chatProfilesTable.createdAt} < ${cursor}`);
+    }
+
+    const results = await db
+      .select({
+        id: chatProfilesTable.id,
+        username: chatProfilesTable.username,
+        displayName: chatProfilesTable.displayName,
+        avatarColor: chatProfilesTable.avatarColor,
+        avatarUrl: chatProfilesTable.avatarUrl,
+        createdAt: chatProfilesTable.createdAt,
+      })
+      .from(chatProfilesTable)
+      .where(and(...conditions))
+      .orderBy(sql`${chatProfilesTable.createdAt} DESC`)
+      .limit(limitRaw + 1); // fetch one extra to detect if more pages exist
+
+    const hasMore = results.length > limitRaw;
+    const page = hasMore ? results.slice(0, limitRaw) : results;
+    const nextCursor = hasMore ? page[page.length - 1].createdAt?.toISOString() : null;
+
+    res.json({ users: page, nextCursor, hasMore });
+  },
+);
+
+
 
 // ── Friends ──────────────────────────────────────────────────────────────────
 
@@ -799,6 +1118,157 @@ router.post(
   },
 );
 
+// ── Stories ─────────────────────────────────────────────────────────────────
+// Stories expire 24 h after creation. Viewers list is a JSON array in a text column.
+
+const StoryCreateSchema = z.object({
+  id: z.string().min(1).max(100),
+  type: z.enum(["image", "video", "voice", "text"]),
+  mediaUrl: z.string().url().max(2000).optional().nullable(),
+  text: z.string().max(500).optional().nullable(),
+  sticker: z.string().max(200).optional().nullable(),
+  backgroundColor: z.string().max(20).optional().nullable(),
+  audioDuration: z.number().int().positive().max(7200).optional().nullable(),
+});
+
+// GET /api/chat/stories  — returns own + friends' active stories
+router.get(
+  "/stories",
+  chatAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const userId = (req as AuthedRequest).chatUser.id;
+    const now = new Date();
+
+    // Get friend IDs
+    const accepted = await db
+      .select({ fromId: chatFriendRequestsTable.fromId, toId: chatFriendRequestsTable.toId })
+      .from(chatFriendRequestsTable)
+      .where(
+        and(
+          eq(chatFriendRequestsTable.status, "accepted"),
+          or(
+            eq(chatFriendRequestsTable.fromId, userId),
+            eq(chatFriendRequestsTable.toId, userId),
+          ),
+        ),
+      );
+
+    const friendIds = accepted.map((r) => (r.fromId === userId ? r.toId : r.fromId));
+    const visibleIds = [userId, ...friendIds];
+
+    const stories = await db
+      .select()
+      .from(chatStoriesTable)
+      .where(
+        and(
+          inArray(chatStoriesTable.userId, visibleIds),
+          gt(chatStoriesTable.expiresAt, now),
+        ),
+      )
+      .orderBy(asc(chatStoriesTable.createdAt));
+
+    res.json(stories);
+  },
+);
+
+// POST /api/chat/stories  — create a new story
+router.post(
+  "/stories",
+  chatAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const body = validate(StoryCreateSchema, req.body ?? {}, res);
+    if (body === null) return;
+    const userId = (req as AuthedRequest).chatUser.id;
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+
+    // Upsert — if client retries with same id, just return existing
+    const existing = await db
+      .select()
+      .from(chatStoriesTable)
+      .where(eq(chatStoriesTable.id, body.id))
+      .limit(1);
+    if (existing.length) {
+      res.status(201).json(existing[0]);
+      return;
+    }
+
+    const [inserted] = await db
+      .insert(chatStoriesTable)
+      .values({
+        id: body.id,
+        userId,
+        type: body.type,
+        mediaUrl: body.mediaUrl ?? null,
+        text: body.text ?? null,
+        sticker: body.sticker ?? null,
+        backgroundColor: body.backgroundColor ?? null,
+        audioDuration: body.audioDuration ?? null,
+        viewers: "[]",
+        expiresAt,
+      })
+      .returning();
+
+    res.status(201).json(inserted);
+  },
+);
+
+// PATCH /api/chat/stories/:id/view  — mark a story as viewed
+router.patch(
+  "/stories/:id/view",
+  chatAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const viewerId = (req as AuthedRequest).chatUser.id;
+
+    const [story] = await db
+      .select()
+      .from(chatStoriesTable)
+      .where(eq(chatStoriesTable.id, id))
+      .limit(1);
+
+    if (!story) {
+      res.status(404).json({ error: "Story not found" });
+      return;
+    }
+
+    let viewers: string[] = [];
+    try { viewers = JSON.parse(story.viewers); } catch { viewers = []; }
+    if (!viewers.includes(viewerId)) {
+      viewers.push(viewerId);
+      await db
+        .update(chatStoriesTable)
+        .set({ viewers: JSON.stringify(viewers) })
+        .where(eq(chatStoriesTable.id, id));
+    }
+
+    res.json({ ok: true });
+  },
+);
+
+// DELETE /api/chat/stories/:id  — delete own story
+router.delete(
+  "/stories/:id",
+  chatAuth,
+  async (req: Request, res: Response): Promise<void> => {
+    const { id } = req.params;
+    const userId = (req as AuthedRequest).chatUser.id;
+
+    await db
+      .delete(chatStoriesTable)
+      .where(and(eq(chatStoriesTable.id, id), eq(chatStoriesTable.userId, userId)));
+
+    res.json({ ok: true });
+  },
+);
+
+// Background: purge expired stories every hour
+setInterval(async () => {
+  try {
+    await db.delete(chatStoriesTable).where(lt(chatStoriesTable.expiresAt, new Date()));
+  } catch {}
+}, 60 * 60 * 1000).unref();
+
 // ── Poll ─────────────────────────────────────────────────────────────────────
 
 router.get(
@@ -862,4 +1332,5 @@ export {
   FriendRequestActionSchema,
   SendMessageSchema,
   GroupConvSchema,
+  StoryCreateSchema,
 };

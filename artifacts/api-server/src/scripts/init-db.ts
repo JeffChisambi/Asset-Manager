@@ -32,6 +32,10 @@ CREATE TABLE IF NOT EXISTS stores (
 );
 ALTER TABLE stores
   ADD COLUMN IF NOT EXISTS merchant_type TEXT DEFAULT 'basic_shop' NOT NULL;
+-- Link a store to a chat profile UUID (set when user links their store from the mobile profile screen)
+ALTER TABLE stores
+  ADD COLUMN IF NOT EXISTS chat_profile_id TEXT;
+CREATE INDEX IF NOT EXISTS stores_chat_profile_idx ON stores (chat_profile_id);
 CREATE TABLE IF NOT EXISTS products (
   id SERIAL PRIMARY KEY,
   merchant_id INTEGER NOT NULL REFERENCES merchants(id) ON DELETE CASCADE,
@@ -63,6 +67,16 @@ CREATE TABLE IF NOT EXISTS upload_logs (
   errors TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
 );
+
+-- Search Extensions & Indexes
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX IF NOT EXISTS stores_name_trgm_idx ON stores USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS stores_desc_trgm_idx ON stores USING gin (description gin_trgm_ops);
+
+CREATE INDEX IF NOT EXISTS products_name_trgm_idx ON products USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS products_category_trgm_idx ON products USING gin (category gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS products_brand_trgm_idx ON products USING gin (brand gin_trgm_ops);
 `;
 
 (async () => {

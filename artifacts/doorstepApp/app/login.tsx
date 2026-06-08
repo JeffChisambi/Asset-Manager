@@ -1,0 +1,287 @@
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { Ionicons } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useColors } from "@/hooks/useColors";
+import { useChat } from "@/context/ChatContext";
+import { fetchWithTimeout, getApiBase } from "@/lib/api";
+
+const doorstepLogo = require("@/assets/logo and icon/doorsteplogo.png");
+
+export default function LoginScreen() {
+  const colors = useColors();
+  const router = useRouter();
+  const { setCurrentUser } = useChat();
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [generalError, setGeneralError] = useState("");
+
+  const handleLogin = async () => {
+    setGeneralError("");
+
+    if (!email || !password) {
+      setGeneralError("Please enter your email and password.");
+      return;
+    }
+
+    if (Platform.OS !== "web") {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+
+    setIsLoading(true);
+
+    try {
+      const base = getApiBase();
+      if (!base) throw new Error("API server not configured");
+
+      const resp = await fetchWithTimeout(`${base}/api/chat/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+        }),
+      });
+
+      const text = await resp.text();
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch (e) {
+        // Fallback if the server or proxy returned HTML (e.g. 200 fallback or 502/504)
+        result = { error: `Server returned an invalid response (${resp.status}). Make sure the API server is running.` };
+      }
+
+      if (!resp.ok || !result.user || !result.token) {
+        setGeneralError(result?.error ?? "Invalid login credentials or server error.");
+        return;
+      }
+
+      const { token, user } = result;
+
+      await AsyncStorage.setItem("chatAuthToken", token).catch(() => {});
+      await AsyncStorage.setItem("hasLoggedIn", "true").catch(() => {});
+
+      setCurrentUser(
+        {
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName,
+          avatarColor: user.avatarColor,
+          bio: user.bio ?? "",
+          isBot: false,
+        },
+        token,
+      );
+
+      router.replace("/(tabs)");
+    } catch (err: any) {
+      if (err?.name === "AbortError") {
+        setGeneralError("Login timed out. Make sure the API server is running.");
+      } else if (err?.message?.includes("Network") || err?.message?.includes("fetch") || err?.message?.includes("API server")) {
+        setGeneralError("Cannot connect to server. Make sure the API server is running.");
+      } else {
+        setGeneralError(err?.message ?? "An unexpected error occurred.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+
+  return (
+    <KeyboardAvoidingView
+      style={[styles.container, { backgroundColor: colors.background }]}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+    >
+      <View style={styles.content}>
+        {/* Logo Section */}
+        <View style={styles.header}>
+          <Image
+            source={doorstepLogo}
+            style={styles.logo}
+            resizeMode="contain"
+          />
+          <Text style={[styles.title, { color: colors.foreground }]}>
+            Doorstep
+          </Text>
+          <Text style={[styles.subtitle, { color: colors.mutedForeground }]}>
+            Welcome back. Please enter your details.
+          </Text>
+        </View>
+
+        {/* Form Section */}
+        <View style={styles.form}>
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: colors.foreground }]}>
+              Email
+            </Text>
+            <View
+              style={[
+                styles.inputWrapper,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons
+                name="mail-outline"
+                size={20}
+                color={colors.mutedForeground}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                placeholder="Enter your email"
+                placeholderTextColor={colors.mutedForeground}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+            </View>
+          </View>
+
+          <View style={styles.inputContainer}>
+            <Text style={[styles.label, { color: colors.foreground }]}>
+              Password
+            </Text>
+            <View
+              style={[
+                styles.inputWrapper,
+                { backgroundColor: colors.card, borderColor: colors.border },
+              ]}
+            >
+              <Ionicons
+                name="lock-closed-outline"
+                size={20}
+                color={colors.mutedForeground}
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={[styles.input, { color: colors.foreground }]}
+                placeholder="Enter your password"
+                placeholderTextColor={colors.mutedForeground}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!showPassword}
+              />
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeIcon}
+              >
+                <Ionicons
+                  name={showPassword ? "eye-off-outline" : "eye-outline"}
+                  size={20}
+                  color={colors.mutedForeground}
+                />
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {!!generalError && (
+            <Text
+              style={[
+                styles.errorText,
+                { color: colors.destructive, textAlign: "center", marginTop: 8 },
+              ]}
+            >
+              {generalError}
+            </Text>
+          )}
+
+          <TouchableOpacity style={styles.forgotPassword}>
+            <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>
+              Forgot password?
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.loginButton,
+              { backgroundColor: colors.primary },
+              (!email || !password || isLoading) && { opacity: 0.7 },
+            ]}
+            onPress={handleLogin}
+            disabled={!email || !password || isLoading}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={colors.primaryForeground} />
+            ) : (
+              <Text style={[styles.loginButtonText, { color: colors.primaryForeground }]}>
+                Sign in
+              </Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer}>
+          <Text style={[styles.footerText, { color: colors.mutedForeground }]}>
+            Don't have an account?{" "}
+          </Text>
+          <TouchableOpacity onPress={() => router.push("/signup")}>
+            <Text style={[styles.signupText, { color: colors.primary }]}>
+              Sign up
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  content: { flex: 1, justifyContent: "center", paddingHorizontal: 24 },
+  header: { alignItems: "center", marginBottom: 48 },
+  logo: { width: 80, height: 80, marginBottom: 16, borderRadius: 20 },
+  title: { fontSize: 28, fontFamily: "Inter_800ExtraBold", marginBottom: 8 },
+  subtitle: { fontSize: 15, fontFamily: "Inter_400Regular", textAlign: "center" },
+  form: { gap: 20 },
+  inputContainer: { gap: 8 },
+  label: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  inputWrapper: {
+    flexDirection: "row",
+    alignItems: "center",
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 52,
+  },
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, fontSize: 15, fontFamily: "Inter_400Regular" },
+  eyeIcon: { padding: 4 },
+  forgotPassword: { alignSelf: "flex-end" },
+  forgotPasswordText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  loginButton: {
+    height: 52,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 8,
+  },
+  loginButtonText: { fontSize: 16, fontFamily: "Inter_600SemiBold" },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: 48,
+  },
+  footerText: { fontSize: 14, fontFamily: "Inter_400Regular" },
+  signupText: { fontSize: 14, fontFamily: "Inter_600SemiBold" },
+  errorText: { fontSize: 13, fontFamily: "Inter_500Medium", marginTop: 4 },
+});

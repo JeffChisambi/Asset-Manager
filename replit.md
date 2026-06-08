@@ -5,7 +5,7 @@ Local marketplace app — buy, sell, and chat with neighbors using Expo (React N
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 3000, workflow: "API Server")
-- `pnpm --filter @workspace/kinetic-shoes run serve` — serve Expo web build (port 5000, workflow: "Start application")
+- `pnpm --filter @workspace/doorstep-app run serve` — serve Expo web build (port 5000, workflow: "Start application")
 - `pnpm run typecheck` — full typecheck across all packages (must be clean before shipping)
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -37,10 +37,10 @@ Local marketplace app — buy, sell, and chat with neighbors using Expo (React N
 - `artifacts/api-server/src/routes/chat.ts` — all chat API endpoints (auth, Zod validation, rate limiting)
 - `artifacts/api-server/src/app.ts` — Express app setup (CORS, body limits, global error handler)
 - `artifacts/api-server/src/tests/chat.test.ts` — 37 unit tests for validation schemas + parseSince
-- `artifacts/kinetic-shoes/lib/api.ts` — `chatApiCall` helper + `ChatAuthError` class
-- `artifacts/kinetic-shoes/context/ChatContext.tsx` — chat state, polling, logout on 401
-- `artifacts/kinetic-shoes/app/login.tsx` — login + profile sync flow
-- `artifacts/kinetic-shoes/services/profile/` — profile service + seed users
+- `artifacts/doorstepApp/lib/api.ts` — `chatApiCall` helper + `ChatAuthError` class
+- `artifacts/doorstepApp/context/ChatContext.tsx` — chat state, polling, logout on 401
+- `artifacts/doorstepApp/app/login.tsx` — login + profile sync flow
+- `artifacts/doorstepApp/services/profile/` — profile service + seed users
 
 ## Architecture decisions
 
@@ -61,7 +61,7 @@ Local marketplace app — buy, sell, and chat with neighbors using Expo (React N
 ## Gotchas
 
 - **Always `pnpm --filter @workspace/db run push` after changing `lib/db/src/schema/index.ts`** — Drizzle does not auto-migrate.
-- **Rebuild Expo before restarting "Start application"**: `EXPO_PUBLIC_DOMAIN=<dev-domain> pnpm --filter @workspace/kinetic-shoes run build`
+- **Rebuild Expo before restarting "Start application"**: `EXPO_PUBLIC_DOMAIN=<dev-domain> pnpm --filter @workspace/doorstep-app run build`
 - **`pnpm run typecheck` must pass before any deploy** — the workspace typecheck catches cross-package type errors that individual package checks miss.
 - **`api-server` tsconfig `types: ["node","pg"]`** — needed because `"types"` is restricted; adding a new `@types/*` package requires updating the array.
 - **Tests use `node --test --experimental-strip-types`** — vitest/jest are not available. Tests live in `artifacts/api-server/src/tests/`.
