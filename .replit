@@ -64,22 +64,6 @@ externalPort = 3000
 localPort = 5000
 externalPort = 80
 
-[[ports]]
-localPort = 8080
-externalPort = 8080
-
-[[ports]]
-localPort = 8081
-externalPort = 80
-
-[[ports]]
-localPort = 19642
-externalPort = 3000
-
-[[ports]]
-localPort = 21253
-externalPort = 3001
-
 [userenv]
 
 [userenv.shared]
@@ -87,3 +71,4 @@ API_PORT = "3000"
 NODE_ENV = "production"
 EXPO_PUBLIC_SUPABASE_URL = "https://uuizijhznsbuugxyjcwo.supabase.co"
 EXPO_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_B0LtJ5eexZ_qj9QssVMf5w_XA3E6BKA"
+PORT = "3000"
