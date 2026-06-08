@@ -86,10 +86,10 @@ function StoreProductCard({ product }: { product: StoreProduct }) {
           </View>
           <View style={styles.priceRow}>
             <Text style={[styles.price, { color: colors.foreground }]}>
-              ${product.price.toFixed(0)}
+              MWK {product.price.toFixed(0)}
             </Text>
             {product.originalPrice && (
-              <Text style={styles.originalPrice}>${product.originalPrice.toFixed(0)}</Text>
+              <Text style={styles.originalPrice}>MWK {product.originalPrice.toFixed(0)}</Text>
             )}
           </View>
         </View>
@@ -231,7 +231,7 @@ export default function SuperStorePage() {
           </View>
           <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: colors.foreground }]}>${store.minOrder}</Text>
+            <Text style={[styles.statValue, { color: colors.foreground }]}>MWK {store.minOrder}</Text>
             <Text style={[styles.statLabel, { color: colors.mutedForeground }]}>Min Order</Text>
           </View>
         </View>

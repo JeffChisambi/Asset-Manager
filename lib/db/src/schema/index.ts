@@ -26,6 +26,8 @@ export const storesTable = pgTable("stores", {
   merchantType: text("merchant_type").default("basic_shop").notNull(),
   name: text("name").notNull(),
   logoUrl: text("logo_url"),
+  coverImageUrl: text("cover_image_url"),
+  themeColor: text("theme_color"),
   description: text("description"),
   phone: text("phone"),
   email: text("email"),

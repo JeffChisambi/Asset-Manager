@@ -325,7 +325,7 @@ export default function ImportWizard() {
                           ) : '—'}
                         </td>
                         <td className="px-6 py-3 font-semibold text-[#111111] text-right">
-                          {row.price !== undefined ? `$${Number(row.price).toFixed(2)}` : '—'}
+                          {row.price !== undefined ? `MWK ${Number(row.price).toFixed(2)}` : '—'}
                         </td>
                         <td className="px-6 py-3 font-semibold text-[#111111] text-right">
                           {row.stock !== undefined ? row.stock : '—'}

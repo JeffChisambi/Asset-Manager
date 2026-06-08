@@ -142,7 +142,7 @@ export function ProductCard({
           {/* Price + available items */}
           <View style={styles.bottomRow}>
             <Text style={[styles.price, { color: colors.primary }]}>
-              ${price.toFixed(2)}
+              MWK {price.toFixed(2)}
             </Text>
             {availableItems !== undefined && (
               <View style={[styles.stockPill, { backgroundColor: colors.muted }]}>

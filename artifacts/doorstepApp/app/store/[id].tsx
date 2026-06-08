@@ -26,6 +26,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useColors } from "@/hooks/useColors";
 import { StoreService } from "@/services/store/store.service";
 import { Store, StoreProduct } from "@/types/store";
+import { resolveImageUrl } from "@/utils/url";
 
 const { width } = Dimensions.get("window");
 const CARD_W = (width - 48) / 2;
@@ -64,7 +65,7 @@ function StoreProductCard({ product, store }: { product: StoreProduct, store: St
       >
         <View style={styles.productImageWrapper}>
           {product.image_url ? (
-            <Image source={{ uri: product.image_url }} style={styles.productImage} resizeMode="cover" />
+            <Image source={{ uri: resolveImageUrl(product.image_url) }} style={styles.productImage} resizeMode="cover" />
           ) : (
             <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.muted }}>
               <Text style={{ fontSize: 40 }}>{store.emoji || "🛍️"}</Text>
@@ -94,7 +95,7 @@ function StoreProductCard({ product, store }: { product: StoreProduct, store: St
           </View>
           <View style={styles.priceRow}>
             <Text style={[styles.price, { color: colors.foreground }]}>
-              ${Number(product.price).toFixed(2)}
+              MWK {Number(product.price).toFixed(2)}
             </Text>
           </View>
         </View>
@@ -182,7 +183,7 @@ export default function StoreProfilePage() {
           {store.cover_image_url ? (
             <>
               <Image
-                source={{ uri: store.cover_image_url }}
+                source={{ uri: resolveImageUrl(store.cover_image_url) }}
                 style={styles.coverImage}
                 resizeMode="cover"
                 fadeDuration={300}
@@ -212,7 +213,15 @@ export default function StoreProfilePage() {
 
           <View style={styles.heroContent}>
             <View style={styles.emojiCircle}>
-              <Text style={styles.storeEmoji}>{store.emoji || "🏪"}</Text>
+              {store.logo_url ? (
+                <Image
+                  source={{ uri: resolveImageUrl(store.logo_url) }}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="cover"
+                />
+              ) : (
+                <Text style={styles.storeEmoji}>{store.emoji || "🏪"}</Text>
+              )}
             </View>
             <View style={styles.heroText}>
               <View style={styles.storeTitleRow}>
@@ -414,8 +423,10 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.3)",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+    zIndex: 10,
+    overflow: "hidden",
   },
   storeEmoji: { fontSize: 36 },
   heroText: { flex: 1 },

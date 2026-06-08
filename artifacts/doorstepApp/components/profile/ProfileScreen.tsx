@@ -30,6 +30,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { resolveImageUrl } from "@/utils/url";
 import { ProfileService } from "@/services/profile/profile.service";
 import { StoreService } from "@/services/store/store.service";
 import { ProfileHeader } from "./ProfileHeader";
@@ -1335,7 +1336,7 @@ function ShopVendorSidebar({
                       >
                         {p.image_url ? (
                           <Image
-                            source={{ uri: p.image_url }}
+                            source={{ uri: resolveImageUrl(p.image_url) }}
                             style={{
                               width: 36,
                               height: 36,
@@ -1370,7 +1371,7 @@ function ShopVendorSidebar({
                                 fontSize: 11,
                               }}
                             >
-                              ${p.price.toFixed(2)}
+                              MWK {p.price.toFixed(2)}
                             </Text>
                             <View
                               style={{
@@ -1695,7 +1696,7 @@ function ShopVendorSidebar({
                             >
                               {p.image_url ? (
                                 <Image
-                                  source={{ uri: p.image_url }}
+                                  source={{ uri: resolveImageUrl(p.image_url) }}
                                   style={{
                                     width: "100%",
                                     height: "100%",
@@ -1725,7 +1726,7 @@ function ShopVendorSidebar({
                                   fontFamily: "Inter_800ExtraBold",
                                 }}
                               >
-                                ${Number(p.price).toFixed(0)}
+                                MWK {Number(p.price).toFixed(0)}
                               </Text>
                             </View>
                           </View>
@@ -3806,7 +3807,7 @@ export function ProfileScreen({
                 >
                   {store.cover_image_url ? (
                     <Image
-                      source={{ uri: store.cover_image_url }}
+                      source={{ uri: resolveImageUrl(store.cover_image_url) }}
                       style={StyleSheet.absoluteFill}
                       resizeMode="cover"
                     />
@@ -4033,7 +4034,7 @@ export function ProfileScreen({
                       >
                         {p.image_url ? (
                           <Image
-                            source={{ uri: p.image_url }}
+                            source={{ uri: resolveImageUrl(p.image_url) }}
                             style={{
                               width: "100%",
                               height: "100%",
@@ -4108,7 +4109,7 @@ export function ProfileScreen({
                             marginTop: 2,
                           }}
                         >
-                          ${Number(p.price).toFixed(2)}
+                          MWK {Number(p.price).toFixed(2)}
                         </Text>
                       </View>
                     </View>
@@ -4249,7 +4250,7 @@ export function ProfileScreen({
                       fontFamily: "Inter_800ExtraBold",
                     }}
                   >
-                    ${item.price.toFixed(2)}
+                    MWK {item.price.toFixed(2)}
                   </Text>
                   <Text
                     style={{

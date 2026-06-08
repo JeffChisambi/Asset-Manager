@@ -35,16 +35,7 @@ const SHOP_TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   Vendor: { bg: "#F7971E", text: "#FFFFFF" },
 };
 
-const getApiBaseUrl = () => {
-  const configuredUrl = process.env.EXPO_PUBLIC_API_URL?.replace(/\/$/, "");
-  if (configuredUrl)
-    return configuredUrl.endsWith("/api")
-      ? configuredUrl
-      : `${configuredUrl}/api`;
-  return Platform.OS === "android"
-    ? "http://10.0.2.2:5001/api"
-    : "http://localhost:5001/api";
-};
+import { getApiBaseUrl, resolveImageUrl } from "@/utils/url";
 
 export default function ProductDetailPage() {
   const colors = useColors();
@@ -122,7 +113,7 @@ export default function ProductDetailPage() {
         originalPrice: dbProduct.discountPrice
           ? Number(dbProduct.discountPrice)
           : undefined,
-        image: dbProduct.image_url ? { uri: dbProduct.image_url } : undefined,
+        image: dbProduct.image_url ? { uri: resolveImageUrl(dbProduct.image_url) } : undefined,
         brand: dbProduct.brand || dbStore?.name || "Doorstep",
         rating: dbProduct.rating || 5.0,
         reviews: 8,
@@ -342,11 +333,11 @@ export default function ProductDetailPage() {
           {/* Price */}
           <View style={styles.priceRow}>
             <Text style={[styles.price, { color: colors.foreground }]}>
-              ${product.price.toFixed(2)}
+              MWK {product.price.toFixed(2)}
             </Text>
             {product.originalPrice && (
               <Text style={styles.originalPrice}>
-                ${product.originalPrice.toFixed(2)}
+                MWK {product.originalPrice.toFixed(2)}
               </Text>
             )}
             {product.originalPrice && (
@@ -527,7 +518,7 @@ export default function ProductDetailPage() {
             Total
           </Text>
           <Text style={[styles.totalValue, { color: colors.foreground }]}>
-            ${(product.price * quantity).toFixed(2)}
+            MWK {(product.price * quantity).toFixed(2)}
           </Text>
         </View>
         <Animated.View style={cartBtnStyle}>

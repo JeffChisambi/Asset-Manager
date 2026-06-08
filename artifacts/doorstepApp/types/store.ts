@@ -27,6 +27,7 @@ export interface Store {
   cover_gradient_start: string;
   cover_gradient_end: string;
   cover_image_url?: string;
+  logo_url?: string;
   merchant_type: MerchantType;
   rating?: number;
   is_active?: boolean; // false = deactivated (hidden from marketplace)

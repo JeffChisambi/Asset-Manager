@@ -401,7 +401,7 @@ export const ProfilePostCard = memo(
             <Text style={[styles.productTagText, { color: colors.primary }]}>
               {post.productTag.brand} · {post.productTag.name} ·{" "}
               <Text style={styles.productTagPrice}>
-                ${post.productTag.price.toFixed(2)}
+                MWK {post.productTag.price.toFixed(2)}
               </Text>
             </Text>
           </View>

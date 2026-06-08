@@ -41,7 +41,7 @@ export default function DashboardPage() {
         let lastImportStatus = null;
         let lastImportFilename = null;
         try {
-          const logsRes = await api.get('/import/logs');
+          const logsRes = await api.get('/import/history');
           if (Array.isArray(logsRes.data) && logsRes.data.length > 0) {
             lastImportStatus = logsRes.data[0].status;
             lastImportFilename = logsRes.data[0].filename;

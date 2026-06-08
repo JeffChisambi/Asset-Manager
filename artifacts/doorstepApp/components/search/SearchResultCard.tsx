@@ -140,7 +140,7 @@ export function SearchResultCard({ result, query, onPress }: Props) {
       {/* Right column */}
       <View style={ss.right}>
         {showPrice && result.price !== undefined && (
-          <Text style={[ss.price, { color: colors.primary }]}>${result.price}</Text>
+          <Text style={[ss.price, { color: colors.primary }]}>MWK {result.price}</Text>
         )}
         {result.badge && (
           <View style={[ss.resultBadge, { backgroundColor: accentColor + "15" }]}>

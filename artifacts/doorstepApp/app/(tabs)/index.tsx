@@ -18,6 +18,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ProductCard } from "@/components/ProductCard";
+import { resolveImageUrl } from "@/utils/url";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useColors } from "@/hooks/useColors";
 import { useTheme } from "@/context/ThemeContext";
@@ -367,7 +368,7 @@ function StoreSummaryCard({ store }: { store: Store }) {
       <View style={[styles.storeCover, { backgroundColor: accent }]}>
         {store.cover_image_url ? (
           <Image
-            source={{ uri: store.cover_image_url }}
+            source={{ uri: resolveImageUrl(store.cover_image_url) }}
             style={styles.storeCoverImg}
             resizeMode="cover"
             fadeDuration={300}
@@ -475,7 +476,7 @@ export default function HomeScreen() {
       name: p.name,
       price: p.price,
       brand: p.brand || "",
-      imageUrl: p.image_url,
+      imageUrl: resolveImageUrl(p.image_url),
       category: p.category,
       shopType: getStoreMeta(store.merchant_type).label,
       shopName: store.name,
@@ -827,7 +828,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    alignSelf: "center",
+    width: "100%",
+    height: "100%",
   },
   storeCoverOverlay: {
     ...StyleSheet.absoluteFillObject,

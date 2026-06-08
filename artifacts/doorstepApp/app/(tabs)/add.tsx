@@ -487,7 +487,7 @@ export default function CartScreen() {
                     <Text
                       style={[s.historyTotal, { color: colors.foreground }]}
                     >
-                      ${order.total.toFixed(2)}
+                      MWK {order.total.toFixed(2)}
                     </Text>
                   </View>
 
@@ -547,7 +547,7 @@ export default function CartScreen() {
                               style={s.historyThumbImg}
                             />
                           ) : (
-                            <Text style={{ fontSize: 18 }}>👟</Text>
+                            <Ionicons name="cube-outline" size={18} color={colors.mutedForeground} />
                           )}
                         </View>
                       ))}
@@ -791,7 +791,7 @@ export default function CartScreen() {
                       { backgroundColor: colors.muted },
                     ]}
                   >
-                    <Text style={{ fontSize: 28 }}>👟</Text>
+                    <Ionicons name="cube-outline" size={28} color={colors.mutedForeground} />
                   </View>
                 )}
                 {item.selectedSize > 0 && (
@@ -836,7 +836,7 @@ export default function CartScreen() {
                 </View>
                 <View style={s.cartBottom}>
                   <Text style={[s.cartPrice, { color: colors.foreground }]}>
-                    ${(item.price * item.quantity).toFixed(2)}
+                    MWK {(item.price * item.quantity).toFixed(2)}
                   </Text>
                   <View style={[s.qtyRow, { backgroundColor: colors.muted }]}>
                     <Pressable
@@ -931,7 +931,7 @@ export default function CartScreen() {
                 Subtotal
               </Text>
               <Text style={[s.stickyVal, { color: colors.foreground }]}>
-                ${subtotal.toFixed(2)}
+                MWK {subtotal.toFixed(2)}
               </Text>
             </View>
             {deliveryType === "Delivery" && (
@@ -944,7 +944,7 @@ export default function CartScreen() {
                   color={colors.primary}
                 />
                 <Text style={[s.feeTxt, { color: colors.primary }]}>
-                  +${DELIVERY_FEE.toFixed(2)} delivery
+                  +MWK {DELIVERY_FEE.toFixed(2)} delivery
                 </Text>
               </View>
             )}
@@ -1183,7 +1183,7 @@ export default function CartScreen() {
                   <Text style={[s.infoTxt, { color: colors.primary }]}>
                     Delivery fee:{" "}
                     <Text style={{ fontFamily: "Inter_700Bold" }}>
-                      ${DELIVERY_FEE.toFixed(2)}
+                      MWK {DELIVERY_FEE.toFixed(2)}
                     </Text>{" "}
                     · Est. 15–25 min
                   </Text>
@@ -1310,7 +1310,7 @@ export default function CartScreen() {
                 { color: paymentId ? "#fff" : colors.mutedForeground },
               ]}
             >
-              Confirm & Pay ${total.toFixed(2)}
+              Confirm & Pay MWK {total.toFixed(2)}
             </Text>
           </Pressable>
         </View>
@@ -1402,7 +1402,7 @@ export default function CartScreen() {
                   },
                 ]}
               >
-                ${total.toFixed(2)}
+                MWK {total.toFixed(2)}
               </Text>
             </View>
           </View>
@@ -1616,7 +1616,7 @@ export default function CartScreen() {
                 ) : item.imageSource ? (
                   <Image source={item.imageSource} style={s.trackImg} />
                 ) : (
-                  <Text style={{ fontSize: 20 }}>👟</Text>
+                  <Ionicons name="cube-outline" size={20} color={colors.mutedForeground} />
                 )}
               </View>
               <Text

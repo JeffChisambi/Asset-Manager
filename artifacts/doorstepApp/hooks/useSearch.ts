@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { SearchEntity, EntityType } from "@/data/searchData";
+import { resolveImageUrl } from "@/utils/url";
 import { expandQuery } from "@/data/synonyms";
 import { StoreService } from "@/services/store/store.service";
 
@@ -215,7 +216,7 @@ export function useSearch(): UseSearchReturn {
             reviewCount: 0,
             isVerified: true,
             isFeatured: false,
-            imageUrl: store.cover_image_url || undefined,
+            imageUrl: resolveImageUrl(store.cover_image_url) || undefined,
             accentColor: store.accent_color,
             badge: store.merchant_type === "basic_shop" ? "Basic Store" : "Vendor",
             route: `/store/${store.id}`
@@ -238,7 +239,7 @@ export function useSearch(): UseSearchReturn {
             isVerified: true,
             isFeatured: false,
             price: p.price,
-            imageUrl: p.image_url || undefined,
+            imageUrl: resolveImageUrl(p.image_url) || undefined,
             badge: p.shopType || "Basic Store",
             route: `/product/${p.id}`
           };

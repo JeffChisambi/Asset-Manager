@@ -5,8 +5,9 @@ import React, { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/api';
 import { 
   Search, Plus, Edit2, Trash2, ArrowUpDown, ChevronLeft, ChevronRight, 
-  X, Check, AlertCircle, Sparkles, Filter, Loader2, PackageOpen
+  X, Check, AlertCircle, Sparkles, Filter, Loader2, PackageOpen, FolderOpen
 } from 'lucide-react';
+import BulkImageUploadModal from '@/components/BulkImageUploadModal';
 
 interface Product {
   id: number;
@@ -45,6 +46,7 @@ export default function ProductTable() {
   const [modalSubmitting, setModalSubmitting] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>('');
+  const [showBulkModal, setShowBulkModal] = useState(false);
 
   // Unique categories list for filtering
   const [categories, setCategories] = useState<string[]>([]);
@@ -245,6 +247,14 @@ export default function ProductTable() {
           )}
 
           <button
+            onClick={() => setShowBulkModal(true)}
+            className="flex items-center gap-2 px-4 py-2.5 bg-white text-[#111111] border border-[#EEEEEE] rounded-xl hover:bg-[#F5F7FA] text-sm font-semibold transition-all shadow-sm"
+          >
+            <FolderOpen className="h-4 w-4 text-[#13B734]" />
+            Bulk Image Upload
+          </button>
+
+          <button
             onClick={() => {
               setModalMode('create');
               setCurrentProduct({ name: '', sku: '', price: 0, stock: 0, category: '', brand: '', description: '' });
@@ -372,7 +382,7 @@ export default function ProductTable() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm font-semibold text-[#111111] text-right">
-                        ${Number(p.price).toFixed(2)}
+                        MWK {Number(p.price).toFixed(2)}
                       </td>
                       <td className="px-6 py-4 text-sm text-right">
                         {isOutOfStock ? (
@@ -561,7 +571,7 @@ export default function ProductTable() {
                   {/* Price */}
                   <div>
                     <label className="block text-[10px] font-bold text-[#111111] uppercase tracking-wider mb-1.5">
-                      Price ($ USD) <span className="text-[#13B734]">*</span>
+                      Price (MWK) <span className="text-[#13B734]">*</span>
                     </label>
                     <input
                       type="number"
@@ -646,6 +656,17 @@ export default function ProductTable() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Bulk Image Upload Modal */}
+      {showBulkModal && (
+        <BulkImageUploadModal 
+          onClose={() => setShowBulkModal(false)}
+          onComplete={() => {
+            setShowBulkModal(false);
+            fetchProducts();
+          }}
+        />
       )}
     </div>
   );

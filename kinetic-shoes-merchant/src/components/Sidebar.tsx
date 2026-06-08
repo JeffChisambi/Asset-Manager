@@ -5,13 +5,14 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
-import { LayoutDashboard, ShoppingBag, Upload, History, LogOut } from 'lucide-react';
+import { LayoutDashboard, ShoppingBag, Upload, History, LogOut, Settings } from 'lucide-react';
 
 const navItems = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/products', label: 'Products', icon: ShoppingBag },
   { href: '/dashboard/import', label: 'Import Wizard', icon: Upload },
   { href: '/dashboard/history', label: 'Import History', icon: History },
+  { href: '/dashboard/settings', label: 'Store Settings', icon: Settings },
 ];
 
 export default function Sidebar() {
