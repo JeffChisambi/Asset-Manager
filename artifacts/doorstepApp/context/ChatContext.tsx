@@ -65,13 +65,13 @@ export type Message = {
   sticker?: string;
   contact?: ContactPayload;
   timestamp: number;
-  status?: "sending" | "sent" | "error";
+  status?: "sending" | "sent" | "failed";
 };
 
 export type Story = {
   id: string;
   userId: string;
-  type: "image" | "video" | "voice" | "text";
+  type: "image" | "video" | "voice" | "text" | "sticker";
   mediaUri?: string;
   text?: string;
   sticker?: string;
@@ -401,11 +401,6 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       [convId]: data.map(mapMessage),
     }));
-  }, []);
-
-  const loadStories = useCallback(async (token: string) => {
-    // Placeholder for actual story loading when backend API is ready
-    return [];
   }, []);
 
   // ── Initialise ──────────────────────────────────────────────────────────────
@@ -892,7 +887,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
       setMessages((prev) => ({
         ...prev,
         [conversationId]: (prev[conversationId] ?? []).map((m) =>
-          m.id === tempId ? { ...m, status: "error" } : m,
+          m.id === tempId ? { ...m, status: "failed" } : m,
         ),
       }));
     });
@@ -986,7 +981,7 @@ export function ChatProvider({ children }: { children: React.ReactNode }) {
         setMessages((prev) => ({
           ...prev,
           [conversationId]: (prev[conversationId] ?? []).map((m) =>
-            m.id === tempId ? { ...m, status: "error" as const } : m,
+            m.id === tempId ? { ...m, status: "failed" as const } : m,
           ),
         }));
       }
