@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Store, StoreProduct } from "@/types/store";
+import { Store, StoreProduct, StoreReview, StoreInteractionStatus, StoreStats } from "@/types/store";
 import { IStoreRepository, SupabaseStoreRepository } from "./store.repository";
 
 export abstract class BaseStoreService {
@@ -20,8 +20,15 @@ export abstract class BaseStoreService {
   abstract removeStoreProduct(productId: string): Promise<void>;
   
   abstract searchStores(query?: string, merchantType?: string): Promise<Store[]>;
-  abstract globalSearch(query: string): Promise<{ stores: Store[], products: StoreProduct[] }>;
+  abstract globalSearch(query: string, page?: number, limit?: number): Promise<{ stores: Store[], products: StoreProduct[] }>;
   abstract linkStoreToProfile(storeId: string, chatProfileId: string, merchantId: string): Promise<Store | null>;
+
+  abstract getStoreReviews(storeId: string): Promise<StoreReview[]>;
+  abstract getInteractionStatus(storeId: string): Promise<StoreInteractionStatus | null>;
+  abstract submitStoreReview(storeId: string, rating: number, text: string): Promise<{ review: StoreReview; stats: StoreStats } | null>;
+  abstract deleteStoreReview(storeId: string, reviewId: string): Promise<StoreStats | null>;
+  abstract followStore(storeId: string): Promise<StoreStats | null>;
+  abstract unfollowStore(storeId: string): Promise<StoreStats | null>;
 }
 
 // ─── Local persistence helpers ────────────────────────────────────────────────
@@ -229,9 +236,9 @@ export class StoreServiceImpl extends BaseStoreService {
     }
   }
 
-  async globalSearch(query: string): Promise<{ stores: Store[], products: StoreProduct[] }> {
+  async globalSearch(query: string, page: number = 1, limit: number = 20): Promise<{ stores: Store[], products: StoreProduct[] }> {
     try {
-      return await this.repository.globalSearch(query);
+      return await this.repository.globalSearch(query, page, limit);
     } catch (e) {
       console.error("StoreService.globalSearch failed:", e);
       return { stores: [], products: [] };
@@ -245,6 +252,30 @@ export class StoreServiceImpl extends BaseStoreService {
       console.error("StoreService.linkStoreToProfile failed:", e);
       return null;
     }
+  }
+
+  async getStoreReviews(storeId: string): Promise<StoreReview[]> {
+    return this.repository.getStoreReviews(storeId);
+  }
+
+  async getInteractionStatus(storeId: string): Promise<StoreInteractionStatus | null> {
+    return this.repository.getInteractionStatus(storeId);
+  }
+
+  async submitStoreReview(storeId: string, rating: number, text: string): Promise<{ review: StoreReview; stats: StoreStats } | null> {
+    return this.repository.submitStoreReview(storeId, rating, text);
+  }
+
+  async deleteStoreReview(storeId: string, reviewId: string): Promise<StoreStats | null> {
+    return this.repository.deleteStoreReview(storeId, reviewId);
+  }
+
+  async followStore(storeId: string): Promise<StoreStats | null> {
+    return this.repository.followStore(storeId);
+  }
+
+  async unfollowStore(storeId: string): Promise<StoreStats | null> {
+    return this.repository.unfollowStore(storeId);
   }
 }
 

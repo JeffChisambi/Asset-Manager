@@ -35,7 +35,10 @@ export const storesTable = pgTable("stores", {
   chatProfileId: text("chat_profile_id"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (table) => [
+  index("stores_name_trgm_idx").using("gin", sql`${table.name} gin_trgm_ops`),
+  index("stores_desc_trgm_idx").using("gin", sql`${table.description} gin_trgm_ops`),
+]);
 
 export const productsTable = pgTable("products", {
   id: serial("id").primaryKey(),
@@ -59,7 +62,11 @@ export const productsTable = pgTable("products", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => [
-  uniqueIndex("sku_store_idx").on(table.storeId, table.sku)
+  uniqueIndex("sku_store_idx").on(table.storeId, table.sku),
+  index("products_name_trgm_idx").using("gin", sql`${table.name} gin_trgm_ops`),
+  index("products_desc_trgm_idx").using("gin", sql`${table.description} gin_trgm_ops`),
+  index("products_cat_trgm_idx").using("gin", sql`${table.category} gin_trgm_ops`),
+  index("products_tags_trgm_idx").using("gin", sql`${table.tags} gin_trgm_ops`),
 ]);
 
 export const uploadLogsTable = pgTable("upload_logs", {
@@ -140,6 +147,35 @@ export const chatProfilesTable = pgTable("chat_profiles", {
   index("chat_profiles_username_idx").on(table.username),
   index("chat_profiles_username_trgm_idx").using("gin", sql`${table.username} gin_trgm_ops`),
   index("chat_profiles_displayname_trgm_idx").using("gin", sql`${table.displayName} gin_trgm_ops`),
+]);
+
+export const storeReviewsTable = pgTable("store_reviews", {
+  id: serial("id").primaryKey(),
+  storeId: integer("store_id")
+    .references(() => storesTable.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: text("user_id")
+    .references(() => chatProfilesTable.id, { onDelete: "cascade" })
+    .notNull(),
+  rating: integer("rating").notNull(),
+  text: text("text"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("store_reviews_store_user_idx").on(table.storeId, table.userId),
+]);
+
+export const storeFollowersTable = pgTable("store_followers", {
+  id: serial("id").primaryKey(),
+  storeId: integer("store_id")
+    .references(() => storesTable.id, { onDelete: "cascade" })
+    .notNull(),
+  userId: text("user_id")
+    .references(() => chatProfilesTable.id, { onDelete: "cascade" })
+    .notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => [
+  uniqueIndex("store_followers_store_user_idx").on(table.storeId, table.userId),
 ]);
 
 export const chatFriendRequestsTable = pgTable("chat_friend_requests", {
@@ -246,6 +282,8 @@ export const storesRelations = relations(storesTable, ({ one, many }) => ({
   }),
   products: many(productsTable),
   uploadLogs: many(uploadLogsTable),
+  reviews: many(storeReviewsTable),
+  followers: many(storeFollowersTable),
 }));
 
 export const productsRelations = relations(productsTable, ({ one }) => ({
@@ -259,5 +297,32 @@ export const uploadLogsRelations = relations(uploadLogsTable, ({ one }) => ({
   store: one(storesTable, {
     fields: [uploadLogsTable.storeId],
     references: [storesTable.id],
+  }),
+}));
+
+export const chatProfilesRelations = relations(chatProfilesTable, ({ many }) => ({
+  storeReviews: many(storeReviewsTable),
+  storeFollows: many(storeFollowersTable),
+}));
+
+export const storeReviewsRelations = relations(storeReviewsTable, ({ one }) => ({
+  store: one(storesTable, {
+    fields: [storeReviewsTable.storeId],
+    references: [storesTable.id],
+  }),
+  user: one(chatProfilesTable, {
+    fields: [storeReviewsTable.userId],
+    references: [chatProfilesTable.id],
+  }),
+}));
+
+export const storeFollowersRelations = relations(storeFollowersTable, ({ one }) => ({
+  store: one(storesTable, {
+    fields: [storeFollowersTable.storeId],
+    references: [storesTable.id],
+  }),
+  user: one(chatProfilesTable, {
+    fields: [storeFollowersTable.userId],
+    references: [chatProfilesTable.id],
   }),
 }));

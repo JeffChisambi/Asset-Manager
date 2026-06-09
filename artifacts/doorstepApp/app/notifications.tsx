@@ -144,8 +144,9 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   screenTitle: {
-    fontSize: 18,
-    fontFamily: "Inter_600SemiBold",
+    fontSize: 28,
+    fontFamily: "Inter_700Bold",
+    letterSpacing: -0.5,
   },
   listContent: {
     padding: 16,

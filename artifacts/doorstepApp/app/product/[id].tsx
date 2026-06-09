@@ -531,7 +531,7 @@ export default function ProductDetailPage() {
                     ? colors.muted
                     : cartAdded
                       ? "#22C55E"
-                      : colors.foreground,
+                      : "#13B734",
                 opacity: requiresSize && !selectedSize ? 0.6 : 1,
               },
             ]}
@@ -540,12 +540,12 @@ export default function ProductDetailPage() {
             <Ionicons
               name={cartAdded ? "checkmark" : "bag-add-outline"}
               size={20}
-              color={cartAdded ? "#FFFFFF" : colors.background}
+              color="#FFFFFF"
             />
             <Text
               style={[
                 styles.addToCartText,
-                { color: cartAdded ? "#FFFFFF" : colors.background },
+                { color: "#FFFFFF" },
               ]}
             >
               {requiresSize && !selectedSize

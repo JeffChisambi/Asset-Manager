@@ -26,6 +26,7 @@ import { BlurView } from "expo-blur";
 import { useColors } from "@/hooks/useColors";
 import { StoreService } from "@/services/store/store.service";
 import { useCart } from "@/context/CartContext";
+import { resolveImageUrl } from "@/utils/url";
 
 type ShopCategory = "super" | "basic" | "vendor";
 
@@ -173,8 +174,8 @@ export default function MarketplaceScreen() {
             id: s.id,
             name: s.name,
             category: (s.merchant_type === "basic_shop" ? "basic" : s.merchant_type === "vendor" ? "vendor" : "super") as ShopCategory,
-            image: s.cover_image_url || `https://images.unsplash.com/photo-1555529771-835f59bfc50c?auto=format&fit=crop&q=80&w=800`,
-            rating: 5.0,
+            image: resolveImageUrl(s.cover_image_url) || `https://images.unsplash.com/photo-1555529771-835f59bfc50c?auto=format&fit=crop&q=80&w=800`,
+            rating: s.rating || 5.0,
             itemCount: s.products?.length || 0,
             description: s.tagline || "A new shop on the platform",
             isRealStore: true,

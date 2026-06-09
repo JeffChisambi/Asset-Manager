@@ -1,7 +1,7 @@
 // artifacts/api-server/src/routes/public.ts
 import { Router } from "express";
-import { eq, ilike, or, inArray } from "drizzle-orm";
-import { db, storesTable, productsTable, merchantsTable } from "@workspace/db";
+import { eq, ilike, or, inArray, sql } from "drizzle-orm";
+import { db, storesTable, productsTable, merchantsTable, storeReviewsTable, storeFollowersTable, chatProfilesTable } from "@workspace/db";
 
 const router = Router();
 
@@ -16,8 +16,50 @@ function toAbsoluteUrl(req: any, url: string | null | undefined) {
   return `${getApiOrigin(req)}${normalizedPath}`;
 }
 
+// Helper to fetch stats for multiple stores
+async function getStoresStats(storeIds: number[]) {
+  const statsMap = new Map();
+  if (!storeIds.length) return statsMap;
+  
+  for (const id of storeIds) {
+    statsMap.set(id, { rating: 0.0, reviews: 0, followers: 0 });
+  }
+
+  try {
+    const reviews = await db
+      .select({
+        storeId: storeReviewsTable.storeId,
+        avgRating: sql`avg(${storeReviewsTable.rating})`.mapWith(Number),
+        reviewCount: sql`count(*)`.mapWith(Number)
+      })
+      .from(storeReviewsTable)
+      .where(inArray(storeReviewsTable.storeId, storeIds))
+      .groupBy(storeReviewsTable.storeId);
+      
+    const followers = await db
+      .select({
+        storeId: storeFollowersTable.storeId,
+        count: sql`count(*)`.mapWith(Number)
+      })
+      .from(storeFollowersTable)
+      .where(inArray(storeFollowersTable.storeId, storeIds))
+      .groupBy(storeFollowersTable.storeId);
+
+    for (const r of reviews) {
+      statsMap.get(r.storeId).rating = r.avgRating ? Number(r.avgRating.toFixed(1)) : 0.0;
+      statsMap.get(r.storeId).reviews = r.reviewCount || 0;
+    }
+    for (const f of followers) {
+      statsMap.get(f.storeId).followers = f.count || 0;
+    }
+  } catch (err) {
+    console.warn("Failed to fetch store stats:", err);
+  }
+  return statsMap;
+}
+
 // Helper to format products for the mobile app
-function formatProduct(req: any, p: any, storeName: string, storeType: string) {
+function formatProduct(req: any, p: any, storeName: string, storeType: string, stats: any) {
   const tagsList = p.tags ? p.tags.split(",").map((t: string) => t.trim()) : [];
   if (p.category) tagsList.push(p.category);
   const shopType =
@@ -34,8 +76,8 @@ function formatProduct(req: any, p: any, storeName: string, storeType: string) {
     originalPrice: p.discountPrice ? Number(p.discountPrice) : undefined,
     image_url: toAbsoluteUrl(req, p.imageUrl),
     category: p.category || "General",
-    rating: 5.0,
-    reviews: 12,
+    rating: stats?.rating || 0.0,
+    reviews: stats?.reviews || 0,
     availableItems: p.stock,
     description: p.description || `A premium quality item from ${storeName}.`,
     shopType,
@@ -46,7 +88,7 @@ function formatProduct(req: any, p: any, storeName: string, storeType: string) {
 }
 
 // Helper to format stores for the mobile app
-function formatStore(req: any, s: any, products: any[]) {
+function formatStore(req: any, s: any, products: any[], stats: any) {
   const storeType = s.merchantType || s.merchant_type || (s.logoUrl && s.logoUrl.includes("vendor") ? "vendor" : "basic_shop");
   const shopTypeLabel = storeType === "basic_shop" ? "Basic Store" : storeType === "vendor" ? "Vendor" : "Super Store";
 
@@ -64,9 +106,12 @@ function formatStore(req: any, s: any, products: any[]) {
     logo_url: toAbsoluteUrl(req, s.logoUrl),
     merchant_type: storeType,
     is_active: true,
+    rating: stats?.rating || 0.0,
+    reviews: stats?.reviews || 0,
+    followers: stats?.followers || 0,
     created_at: s.createdAt,
     updated_at: s.updatedAt,
-    products: products.map(p => formatProduct(req, p, s.name, storeType)),
+    products: products.map(p => formatProduct(req, p, s.name, storeType, stats)),
   };
 }
 
@@ -77,6 +122,9 @@ router.get("/stores", async (req, res) => {
   try {
     const allStores = await db.select().from(storesTable);
     const resultStores = [];
+    
+    const storeIds = allStores.map(s => s.id);
+    const statsMap = await getStoresStats(storeIds);
 
     for (const store of allStores) {
       // Fetch products for this store
@@ -85,7 +133,8 @@ router.get("/stores", async (req, res) => {
         .from(productsTable)
         .where(eq(productsTable.storeId, store.id));
 
-      const formatted = formatStore(req, store, products);
+      const stats = statsMap.get(store.id);
+      const formatted = formatStore(req, store, products, stats);
 
       // Filter by merchantType if specified
       if (merchantType && formatted.merchant_type !== merchantType) {
@@ -135,6 +184,9 @@ router.get("/products/:id", async (req, res) => {
     }
 
     const storeType = store.merchantType || (store.logoUrl && store.logoUrl.includes("vendor") ? "vendor" : "basic_shop");
+    const statsMap = await getStoresStats([store.id]);
+    const stats = statsMap.get(store.id) || { rating: 0.0, reviews: 0, followers: 0 };
+
     res.json({
       product: {
         id: String(product.id),
@@ -144,7 +196,8 @@ router.get("/products/:id", async (req, res) => {
         image_url: toAbsoluteUrl(req, product.imageUrl),
         brand: product.brand || store.name || "Doorstep",
         category: product.category || "General",
-        rating: 5.0,
+        rating: stats.rating,
+        reviews: stats.reviews,
         availableItems: product.stock,
         description: product.description || `A premium quality item from ${store.name}.`,
         shopId: String(store.id),
@@ -160,6 +213,9 @@ router.get("/products/:id", async (req, res) => {
         tagline: store.description || null,
         description: store.description || null,
         merchant_type: storeType,
+        rating: stats.rating,
+        reviews: stats.reviews,
+        followers: stats.followers,
       }
     });
   } catch (err: any) {
@@ -170,47 +226,73 @@ router.get("/products/:id", async (req, res) => {
 // GET /public/search - Global fuzzy search for stores and products
 router.get("/search", async (req, res) => {
   const query = req.query.q as string;
+  const page = parseInt(req.query.page as string) || 1;
+  const limit = parseInt(req.query.limit as string) || 20;
+  const offset = (page - 1) * limit;
+
   if (!query) {
-    res.json({ stores: [], products: [] });
+    res.json({ stores: [], products: [], page, limit });
     return;
   }
 
   try {
     const q = `%${query}%`;
+    const similarityScoreStore = sql`greatest(similarity(${storesTable.name}, ${query}), similarity(COALESCE(${storesTable.description}, ''), ${query}))`;
+    const similarityScoreProduct = sql`greatest(similarity(${productsTable.name}, ${query}), similarity(COALESCE(${productsTable.category}, ''), ${query}))`;
+
     const foundStores = await db
       .select()
       .from(storesTable)
       .where(or(ilike(storesTable.name, q), ilike(storesTable.description, q)))
-      .limit(20);
-
-    const formattedStores = foundStores.map(s => {
-      return formatStore(req, s, []);
-    });
+      .orderBy(sql`${similarityScoreStore} DESC`)
+      .limit(limit)
+      .offset(offset);
 
     const foundProducts = await db
       .select()
       .from(productsTable)
-      .where(or(ilike(productsTable.name, q), ilike(productsTable.category, q), ilike(productsTable.brand, q)))
-      .limit(50);
+      .where(or(
+        ilike(productsTable.name, q),
+        ilike(productsTable.description, q),
+        ilike(productsTable.category, q)
+      ))
+      .orderBy(sql`${similarityScoreProduct} DESC`)
+      .limit(limit)
+      .offset(offset);
 
-    const storeIds = [...new Set(foundProducts.map(p => p.storeId))];
-    const relatedStores = storeIds.length > 0
-      ? await db.select().from(storesTable).where(inArray(storesTable.id, storeIds))
-      : [];
+    const productStoreIds = foundProducts.map(p => p.storeId);
+    const allStoreIdsToFetch = [...new Set([...foundStores.map(s => s.id), ...productStoreIds])];
+
+    let relatedStores: any[] = [];
+    if (allStoreIdsToFetch.length > 0) {
+      relatedStores = await db
+        .select()
+        .from(storesTable)
+        .where(inArray(storesTable.id, allStoreIdsToFetch));
+    }
+
     const storeMap = new Map(relatedStores.map(s => [s.id, s]));
+    const statsMap = await getStoresStats(allStoreIdsToFetch);
+
+    const formattedStores = foundStores.map(s => {
+      return formatStore(req, s, [], statsMap.get(s.id));
+    });
 
     const formattedProducts = foundProducts.map(p => {
       const s = storeMap.get(p.storeId);
       const storeName = s?.name || "Doorstep";
       const storeType = s?.merchantType || "basic_shop";
-      return formatProduct(req, p, storeName, storeType);
+      return formatProduct(req, p, storeName, storeType, statsMap.get(p.storeId));
     });
 
     res.json({
       stores: formattedStores,
       products: formattedProducts,
+      page,
+      limit
     });
   } catch (err: any) {
+    console.error("Search error:", err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -227,13 +309,15 @@ router.get("/stores/by-profile/:chatProfileId", async (req, res) => {
       .from(storesTable)
       .where(eq(storesTable.chatProfileId, chatProfileId));
 
+    const statsMap = await getStoresStats(foundStores.map(s => s.id));
+
     const result = [];
     for (const store of foundStores) {
       const products = await db
         .select()
         .from(productsTable)
         .where(eq(productsTable.storeId, store.id));
-      result.push(formatStore(req, store, products));
+      result.push(formatStore(req, store, products, statsMap.get(store.id)));
     }
     res.json(result);
   } catch (err: any) {
@@ -284,7 +368,8 @@ router.post("/stores/link-profile", async (req, res) => {
       .from(productsTable)
       .where(eq(productsTable.storeId, numericStoreId));
 
-    res.json(formatStore(req, updated, products));
+    const statsMap = await getStoresStats([updated.id]);
+    res.json(formatStore(req, updated, products, statsMap.get(updated.id)));
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
@@ -351,7 +436,8 @@ router.post("/stores/create-from-profile", async (req, res) => {
         .select()
         .from(productsTable)
         .where(eq(productsTable.storeId, existingStore.id));
-      res.json(formatStore(req, existingStore, existingProducts));
+      const statsMap = await getStoresStats([existingStore.id]);
+      res.json(formatStore(req, existingStore, existingProducts, statsMap.get(existingStore.id)));
       return;
     }
 
@@ -394,7 +480,8 @@ router.post("/stores/create-from-profile", async (req, res) => {
       }
     }
 
-    res.status(201).json(formatStore(req, newStore, insertedProducts));
+    const statsMap = await getStoresStats([newStore.id]);
+    res.status(201).json(formatStore(req, newStore, insertedProducts, statsMap.get(newStore.id)));
   } catch (err: any) {
     console.error("create-from-profile error:", err);
     res.status(500).json({ error: err.message });
@@ -471,9 +558,43 @@ router.put("/stores/update-from-profile/:chatProfileId", async (req, res) => {
       }
     }
 
-    res.json(formatStore(req, updatedStore, insertedProducts));
+    const statsMap = await getStoresStats([updatedStore.id]);
+    res.json(formatStore(req, updatedStore, insertedProducts, statsMap.get(updatedStore.id)));
   } catch (err: any) {
     console.error("update-from-profile error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /public/stores/:storeId/reviews
+router.get("/stores/:storeId/reviews", async (req, res) => {
+  const storeId = parseInt(req.params.storeId, 10);
+  if (isNaN(storeId)) {
+    res.status(400).json({ error: "Invalid store ID" });
+    return;
+  }
+  try {
+    const reviews = await db
+      .select({
+        id: storeReviewsTable.id,
+        rating: storeReviewsTable.rating,
+        text: storeReviewsTable.text,
+        createdAt: storeReviewsTable.createdAt,
+        updatedAt: storeReviewsTable.updatedAt,
+        user: {
+          id: chatProfilesTable.id,
+          username: chatProfilesTable.username,
+          displayName: chatProfilesTable.displayName,
+          avatarUrl: chatProfilesTable.avatarUrl,
+        }
+      })
+      .from(storeReviewsTable)
+      .innerJoin(chatProfilesTable, eq(storeReviewsTable.userId, chatProfilesTable.id))
+      .where(eq(storeReviewsTable.storeId, storeId))
+      .orderBy(sql`${storeReviewsTable.createdAt} DESC`);
+      
+    res.json(reviews);
+  } catch (err: any) {
     res.status(500).json({ error: err.message });
   }
 });

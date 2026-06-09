@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback } from "react";
 import {
   View, Text, StyleSheet, TextInput, Pressable,
-  ScrollView, FlatList, Platform, Keyboard,
+  ScrollView, FlatList, Platform, Keyboard, ActivityIndicator
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
@@ -128,7 +128,7 @@ export default function SearchScreen() {
   const insets  = useSafeAreaInsets();
   const topPad  = Platform.OS === "web" ? 20 : insets.top;
 
-  const { query, setQuery, results, loading, intent, activeFilter, setActiveFilter, counts } = useSearch();
+  const { query, setQuery, results, loading, loadingMore, loadMore, intent, activeFilter, setActiveFilter, counts } = useSearch();
   const { recentSearches, addRecentSearch, removeRecentSearch, clearRecentSearches } = useSearchContext();
 
   const [isFocused, setIsFocused] = useState(false);
@@ -186,27 +186,23 @@ export default function SearchScreen() {
 
       {/* ── Header ── */}
       <View style={[ss.header, { paddingTop: topPad + 8 }]}>
-        {/* Title row — only shown when not focused and no query */}
-        {!isFocused && !isSearching && (
-          <Animated.View entering={FadeIn.duration(200)} exiting={FadeOut.duration(150)} style={ss.titleRow}>
-            <View>
-              <Text style={[ss.screenTitle, { color: colors.foreground }]}>Discover</Text>
-              <Text style={[ss.screenSub, { color: colors.mutedForeground }]}>
-                Search products, stores &amp; services
-              </Text>
-            </View>
+
+        {/* Fixed-height titleRow container — always visible */}
+        <View style={ss.titleRowContainer}>
+          <View style={[ss.titleRow, { alignItems: "center" }]}>
+            <Pressable onPress={() => router.back()} hitSlop={10} style={{ padding: 4 }}>
+              <Ionicons name="arrow-back" size={24} color={colors.foreground} />
+            </Pressable>
+            <Text style={[ss.screenTitle, { color: colors.foreground, flex: 1, marginLeft: 12 }]}>Discover</Text>
             <View style={[ss.locationPill, { backgroundColor: colors.muted, borderColor: colors.border }]}>
               <Ionicons name="location" size={13} color={colors.primary} />
               <Text style={[ss.locationTxt, { color: colors.foreground }]}>Lilongwe</Text>
             </View>
-          </Animated.View>
-        )}
+          </View>
+        </View>
 
-        {/* Search bar row */}
+        {/* Search bar row — position is always fixed below the title container */}
         <View style={ss.searchRow}>
-          <Pressable onPress={() => router.back()} hitSlop={10} style={{ marginRight: 4 }}>
-            <Ionicons name="arrow-back" size={24} color={colors.foreground} />
-          </Pressable>
           <View style={[
             ss.searchBar,
             {
@@ -249,6 +245,8 @@ export default function SearchScreen() {
         </View>
       </View>
 
+
+
       {/* ── Active Search ── */}
       {isSearching ? (
         <View style={{ flex: 1 }}>
@@ -271,6 +269,11 @@ export default function SearchScreen() {
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingTop: 8, paddingBottom: 120, paddingHorizontal: 16 }}
+              onEndReached={loadMore}
+              onEndReachedThreshold={0.5}
+              ListFooterComponent={
+                loadingMore ? <ActivityIndicator size="small" color={colors.primary} style={{ margin: 20 }} /> : null
+              }
               ListHeaderComponent={
                 <View style={[ss.resultCountRow, { borderColor: colors.border }]}>
                   <Text style={[ss.resultCountNum, { color: colors.foreground }]}>{counts.all}</Text>
@@ -393,9 +396,10 @@ export default function SearchScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const ss = StyleSheet.create({
   screen:      { flex: 1 },
-  header:      { paddingHorizontal: 20, paddingBottom: 12 },
-  titleRow:    { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 14 },
-  screenTitle: { fontSize: 28, fontFamily: "Inter_800ExtraBold", lineHeight: 32 },
+  header:           { paddingHorizontal: 20, paddingBottom: 12 },
+  titleRowContainer:{ height: 50, justifyContent: "center", marginBottom: 10 },
+  titleRow:         { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  screenTitle: { fontSize: 28, fontFamily: "Inter_700Bold", letterSpacing: -0.5, lineHeight: 32 },
   screenSub:   { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 3 },
   locationPill:{ flexDirection: "row", alignItems: "center", gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
   locationTxt: { fontSize: 12, fontFamily: "Inter_600SemiBold" },

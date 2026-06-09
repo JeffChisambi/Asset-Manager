@@ -126,8 +126,8 @@ const sh = StyleSheet.create({
     justifyContent: "center",
   },
   titles: { flex: 1 },
-  title: { fontSize: 18, fontFamily: "Inter_800ExtraBold", lineHeight: 22 },
-  sub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 1 },
+  title: { fontSize: 28, fontFamily: "Inter_700Bold", letterSpacing: -0.5, lineHeight: 32 },
+  sub: { fontSize: 13, fontFamily: "Inter_400Regular", marginTop: 4 },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgeTxt: { fontSize: 12, fontFamily: "Inter_700Bold" },
 });

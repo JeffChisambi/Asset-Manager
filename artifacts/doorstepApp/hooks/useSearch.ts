@@ -1,109 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { SearchEntity, EntityType } from "@/data/searchData";
 import { resolveImageUrl } from "@/utils/url";
-import { expandQuery } from "@/data/synonyms";
 import { StoreService } from "@/services/store/store.service";
-
-// ─── Levenshtein Distance ─────────────────────────────────────────────────────
-
-function editDistance(a: string, b: string): number {
-  if (a === b) return 0;
-  if (a.length === 0) return b.length;
-  if (b.length === 0) return a.length;
-
-  const maxLen = Math.max(a.length, b.length);
-  if (maxLen > 20) {
-    // Skip expensive edit distance for very long strings
-    return maxLen;
-  }
-
-  const prev = Array.from({ length: b.length + 1 }, (_, i) => i);
-  const curr = new Array<number>(b.length + 1);
-
-  for (let i = 1; i <= a.length; i++) {
-    curr[0] = i;
-    for (let j = 1; j <= b.length; j++) {
-      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      curr[j] = Math.min(prev[j] + 1, curr[j - 1] + 1, prev[j - 1] + cost);
-    }
-    for (let j = 0; j <= b.length; j++) prev[j] = curr[j];
-  }
-
-  return prev[b.length];
-}
-
-// ─── Scoring ──────────────────────────────────────────────────────────────────
-
-function scoreEntity(entity: SearchEntity, searchTerms: string[]): number {
-  if (searchTerms.length === 0) return entity.popularityScore;
-
-  let score = 0;
-  const titleLower = entity.title.toLowerCase();
-  const subtitleLower = entity.subtitle.toLowerCase();
-  const allTags = entity.tags.map((t) => t.toLowerCase());
-  const allKeywords = entity.keywords.map((k) => k.toLowerCase());
-
-  for (const term of searchTerms) {
-    const termLen = term.length;
-    if (termLen < 2) continue;
-
-    // Exact title match — highest weight
-    if (titleLower === term) {
-      score += 120;
-      continue;
-    }
-
-    // Title starts with term
-    if (titleLower.startsWith(term)) {
-      score += 90;
-    } else if (titleLower.includes(term)) {
-      score += 60;
-    } else {
-      // Fuzzy match on title words
-      const titleWords = titleLower.split(/\s+/);
-      for (const word of titleWords) {
-        const dist = editDistance(word, term);
-        const wordLen = Math.max(word.length, termLen);
-        if (dist === 0) score += 55;
-        else if (dist === 1 && wordLen >= 4) score += 35;
-        else if (dist === 2 && wordLen >= 6) score += 20;
-      }
-    }
-
-    // Subtitle match
-    if (subtitleLower.includes(term)) score += 25;
-
-    // Tag matches
-    for (const tag of allTags) {
-      if (tag === term) {
-        score += 45;
-      } else if (tag.includes(term) || term.includes(tag)) {
-        score += 28;
-      } else if (editDistance(tag, term) <= 1 && Math.max(tag.length, termLen) >= 4) {
-        score += 18;
-      }
-    }
-
-    // Keyword matches
-    for (const kw of allKeywords) {
-      if (kw === term) {
-        score += 30;
-      } else if (kw.includes(term) || term.includes(kw)) {
-        score += 18;
-      }
-    }
-  }
-
-  if (score === 0) return 0;
-
-  // Boost signals
-  score += entity.popularityScore * 0.15;
-  if (entity.isVerified) score += 12;
-  if (entity.isFeatured) score += 8;
-  score += entity.rating * 4;
-
-  return score;
-}
 
 // ─── Intent Detection ─────────────────────────────────────────────────────────
 
@@ -112,7 +10,6 @@ const PRICE_SIGNALS = ["cheap", "affordable", "budget", "low price", "cheapest",
 const PROFESSIONAL_SIGNALS = [
   "designer", "developer", "plumber", "electrician", "technician",
   "photographer", "tailor", "driver", "cleaner", "mechanic",
-  "who", "someone who", "person who",
 ];
 const SERVICE_SIGNALS = ["repair", "fix", "design", "install", "clean", "deliver", "build", "teach"];
 
@@ -123,15 +20,13 @@ export interface SearchIntent {
   isService: boolean;
 }
 
-function detectIntent(query: string, expandedTerms: string[]): SearchIntent {
+function detectIntent(query: string): SearchIntent {
   const q = query.toLowerCase();
-  const combined = [q, ...expandedTerms].join(" ");
-
   return {
-    isGeo: LOCATION_SIGNALS.some((s) => combined.includes(s)),
-    isPriceSensitive: PRICE_SIGNALS.some((s) => combined.includes(s)),
-    isProfessional: PROFESSIONAL_SIGNALS.some((s) => combined.includes(s)),
-    isService: SERVICE_SIGNALS.some((s) => combined.includes(s)),
+    isGeo: LOCATION_SIGNALS.some((s) => q.includes(s)),
+    isPriceSensitive: PRICE_SIGNALS.some((s) => q.includes(s)),
+    isProfessional: PROFESSIONAL_SIGNALS.some((s) => q.includes(s)),
+    isService: SERVICE_SIGNALS.some((s) => q.includes(s)),
   };
 }
 
@@ -145,22 +40,32 @@ export interface UseSearchReturn {
   results: SearchResult[];
   allResults: SearchResult[];
   loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
   intent: SearchIntent | null;
   query: string;
   setQuery: (q: string) => void;
   activeFilter: EntityType | "all";
   setActiveFilter: (f: EntityType | "all") => void;
   counts: Record<EntityType | "all", number>;
+  loadMore: () => void;
 }
 
-const DEBOUNCE_MS = 280;
+const DEBOUNCE_MS = 300;
+const LIMIT_PER_PAGE = 20;
 
 export function useSearch(): UseSearchReturn {
   const [query, setQueryState] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<EntityType | "all">("all");
+  
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [allResults, setAllResults] = useState<SearchResult[]>([]);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [intent, setIntent] = useState<SearchIntent | null>(null);
+
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const setQuery = useCallback((q: string) => {
@@ -180,8 +85,74 @@ export function useSearch(): UseSearchReturn {
     }, DEBOUNCE_MS);
   }, []);
 
-  const [intent, setIntent] = useState<SearchIntent | null>(null);
+  const fetchResults = async (q: string, p: number, append: boolean) => {
+    try {
+      const { stores, products } = await StoreService.globalSearch(q, p, LIMIT_PER_PAGE);
 
+      const scored: SearchResult[] = [];
+
+      for (const store of stores) {
+        scored.push({
+          id: store.id.toString(),
+          type: "store",
+          title: store.name,
+          subtitle: store.tagline || "Store",
+          tags: [store.name],
+          keywords: [store.name],
+          popularityScore: 60,
+          rating: store.rating || 5.0,
+          reviewCount: store.reviews || 0,
+          isVerified: true,
+          isFeatured: false,
+          imageUrl: resolveImageUrl(store.cover_image_url) || undefined,
+          accentColor: store.accent_color || undefined,
+          badge: store.merchant_type === "basic_shop" ? "Basic Store" : "Vendor",
+          route: `/store/${store.id}`,
+          score: 1, // Relevance is handled by backend ordering
+        });
+      }
+
+      for (const prod of products) {
+        scored.push({
+          id: prod.id.toString(),
+          type: "product",
+          title: prod.name,
+          subtitle: prod.storeId ? `Store ID: ${prod.storeId}` : "Store", // Real store names require more robust formatting 
+          tags: [prod.name, prod.category || ""],
+          keywords: [prod.name],
+          popularityScore: 60,
+          rating: prod.rating || 5.0,
+          reviewCount: prod.reviews || 0,
+          isVerified: true,
+          isFeatured: false,
+          price: prod.price,
+          imageUrl: resolveImageUrl(prod.image_url) || undefined,
+          badge: prod.shopType || "Basic Store",
+          route: `/product/${prod.id}`,
+          score: 1,
+        });
+      }
+
+      const totalReturned = stores.length + products.length;
+      // We know there's more if we got back exactly the limit. But since we do two independent queries on the backend, it's safer to just check if we got any results at all.
+      setHasMore(totalReturned > 0);
+
+      if (append) {
+        setAllResults((prev) => {
+          // Prevent duplicates
+          const existingIds = new Set(prev.map(r => r.id + r.type));
+          const newUnique = scored.filter(r => !existingIds.has(r.id + r.type));
+          return [...prev, ...newUnique];
+        });
+      } else {
+        setAllResults(scored);
+      }
+    } catch (err) {
+      console.warn("Global search failed", err);
+    }
+  };
+
+  // Initial Search
   useEffect(() => {
     let active = true;
 
@@ -189,84 +160,36 @@ export function useSearch(): UseSearchReturn {
       setAllResults([]);
       setLoading(false);
       setIntent(null);
+      setPage(1);
+      setHasMore(false);
       return;
     }
 
     async function doSearch() {
-      const expandedTerms = expandQuery(debouncedQuery);
-      const detectedIntent = detectIntent(debouncedQuery, expandedTerms);
       if (!active) return;
-      setIntent(detectedIntent);
-
-      const scored: SearchResult[] = [];
-
-      try {
-        const { stores, products } = await StoreService.globalSearch(debouncedQuery);
-
-        for (const store of stores) {
-          const storeEntity: SearchEntity = {
-            id: store.id,
-            type: "store",
-            title: store.name,
-            subtitle: store.tagline || store.description || "Store",
-            tags: [store.name],
-            keywords: [store.name],
-            popularityScore: 60,
-            rating: 5.0,
-            reviewCount: 0,
-            isVerified: true,
-            isFeatured: false,
-            imageUrl: resolveImageUrl(store.cover_image_url) || undefined,
-            accentColor: store.accent_color,
-            badge: store.merchant_type === "basic_shop" ? "Basic Store" : "Vendor",
-            route: `/store/${store.id}`
-          };
-          const ss = scoreEntity(storeEntity, expandedTerms);
-          if (ss > 0) scored.push({ ...storeEntity, score: ss });
-        }
-
-        for (const p of products) {
-          const prodEntity: SearchEntity = {
-            id: p.id,
-            type: "product",
-            title: p.name,
-            subtitle: p.shopName || "Store",
-            tags: [p.name, p.category || ""],
-            keywords: [p.name],
-            popularityScore: 60,
-            rating: p.rating || 5.0,
-            reviewCount: 0,
-            isVerified: true,
-            isFeatured: false,
-            price: p.price,
-            imageUrl: resolveImageUrl(p.image_url) || undefined,
-            badge: p.shopType || "Basic Store",
-            route: `/product/${p.id}`
-          };
-          const ps = scoreEntity(prodEntity, expandedTerms);
-          if (ps > 0) scored.push({ ...prodEntity, score: ps });
-        }
-      } catch (err) {
-        console.warn("Global search failed", err);
-      }
+      setIntent(detectIntent(debouncedQuery));
+      setPage(1);
+      
+      await fetchResults(debouncedQuery, 1, false);
 
       if (!active) return;
-
-      // Sort: score descending, then popularity, then rating
-      scored.sort((a, b) => {
-        if (b.score !== a.score) return b.score - a.score;
-        if (b.popularityScore !== a.popularityScore)
-          return b.popularityScore - a.popularityScore;
-        return b.rating - a.rating;
-      });
-
-      setAllResults(scored);
       setLoading(false);
     }
 
     doSearch();
     return () => { active = false; };
   }, [debouncedQuery]);
+
+  // Load More
+  const loadMore = useCallback(async () => {
+    if (loading || loadingMore || !hasMore || !debouncedQuery) return;
+    
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    await fetchResults(debouncedQuery, nextPage, true);
+    setPage(nextPage);
+    setLoadingMore(false);
+  }, [loading, loadingMore, hasMore, debouncedQuery, page]);
 
   // Filter by active type
   const results: SearchResult[] =
@@ -288,11 +211,14 @@ export function useSearch(): UseSearchReturn {
     results,
     allResults,
     loading,
+    loadingMore,
+    hasMore,
     intent,
     query,
     setQuery,
     activeFilter,
     setActiveFilter,
     counts,
+    loadMore,
   };
 }

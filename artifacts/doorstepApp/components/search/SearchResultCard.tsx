@@ -43,7 +43,7 @@ export function SearchResultCard({ result, query, onPress }: Props) {
 
   const handlePress = () => {
     if (Platform.OS !== "web") Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    if (onPress) { onPress(); return; }
+    if (onPress) { onPress(); }
     if (result.route) router.push(result.route as any);
   };
 

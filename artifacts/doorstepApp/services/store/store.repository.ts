@@ -1,6 +1,8 @@
 // Store repository for the Doorstep mobile app.
 import { Platform } from "react-native";
-import { Store, StoreProduct } from "@/types/store";
+import { Store, StoreProduct, StoreReview, StoreInteractionStatus } from "@/types/store";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { chatApiCall } from "@/lib/api";
 
 export interface IStoreRepository {
   getStoreByOwnerId(ownerId: string): Promise<Store | null>;
@@ -16,8 +18,16 @@ export interface IStoreRepository {
   
   // Search
   searchStores(query?: string, merchantType?: string): Promise<Store[]>;
-  globalSearch(query: string): Promise<{ stores: Store[], products: StoreProduct[] }>;
+  globalSearch(query: string, page?: number, limit?: number): Promise<{ stores: Store[], products: StoreProduct[] }>;
   linkStoreToProfile(storeId: string, chatProfileId: string, merchantId: string): Promise<Store | null>;
+
+  // Interactions
+  getStoreReviews(storeId: string): Promise<StoreReview[]>;
+  getInteractionStatus(storeId: string): Promise<StoreInteractionStatus | null>;
+  submitStoreReview(storeId: string, rating: number, text: string): Promise<{ review: StoreReview; stats: StoreStats } | null>;
+  deleteStoreReview(storeId: string, reviewId: string): Promise<StoreStats | null>;
+  followStore(storeId: string): Promise<StoreStats | null>;
+  unfollowStore(storeId: string): Promise<StoreStats | null>;
 }
 
 // Detect host based on platform (localhost for iOS/web, 10.0.2.2 for Android emulator)
@@ -184,10 +194,10 @@ export class SupabaseStoreRepository implements IStoreRepository {
     }
   }
 
-  async globalSearch(query: string): Promise<{ stores: Store[], products: StoreProduct[] }> {
+  async globalSearch(query: string, page: number = 1, limit: number = 20): Promise<{ stores: Store[], products: StoreProduct[] }> {
     if (!query) return { stores: [], products: [] };
     try {
-      const url = `${this.baseUrl}/public/search?q=${encodeURIComponent(query)}`;
+      const url = `${this.baseUrl}/public/search?q=${encodeURIComponent(query)}&page=${page}&limit=${limit}`;
       const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to perform global search");
       return await res.json();
@@ -208,6 +218,91 @@ export class SupabaseStoreRepository implements IStoreRepository {
       return await res.json();
     } catch (err) {
       console.warn("Express linkStoreToProfile error:", err);
+      return null;
+    }
+  }
+
+  // ── Interactions ──────────────────────────────────────────────────────────
+
+  async getStoreReviews(storeId: string): Promise<StoreReview[]> {
+    try {
+      const res = await fetch(`${this.baseUrl}/public/stores/${storeId}/reviews`);
+      if (!res.ok) return [];
+      return await res.json();
+    } catch {
+      return [];
+    }
+  }
+
+  async getInteractionStatus(storeId: string): Promise<StoreInteractionStatus | null> {
+    try {
+      const token = await AsyncStorage.getItem("chatAuthToken");
+      if (!token) return null;
+      const res = await chatApiCall<StoreInteractionStatus>(`/api/store-interactions/${storeId}/status`, "GET", token);
+      return res;
+    } catch {
+      return null;
+    }
+  }
+
+  async submitStoreReview(storeId: string, rating: number, text: string): Promise<{ review: StoreReview; stats: StoreStats } | null> {
+    try {
+      const token = await AsyncStorage.getItem("chatAuthToken");
+      if (!token) return null;
+      const res = await chatApiCall<{ success: boolean; review: StoreReview; stats: StoreStats }>(
+        `/api/store-interactions/${storeId}/reviews`,
+        "POST",
+        token,
+        { rating, text }
+      );
+      if (!res?.review) return null;
+      return { review: res.review, stats: res.stats };
+    } catch {
+      return null;
+    }
+  }
+
+  async deleteStoreReview(storeId: string, reviewId: string): Promise<StoreStats | null> {
+    try {
+      const token = await AsyncStorage.getItem("chatAuthToken");
+      if (!token) return null;
+      const res = await chatApiCall<{ success: boolean; stats: StoreStats }>(
+        `/api/store-interactions/${storeId}/reviews/${reviewId}`,
+        "DELETE",
+        token
+      );
+      return res?.success ? res.stats : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async followStore(storeId: string): Promise<StoreStats | null> {
+    try {
+      const token = await AsyncStorage.getItem("chatAuthToken");
+      if (!token) return null;
+      const res = await chatApiCall<{ success: boolean; stats: StoreStats }>(
+        `/api/store-interactions/${storeId}/followers`,
+        "POST",
+        token
+      );
+      return res?.success ? res.stats : null;
+    } catch {
+      return null;
+    }
+  }
+
+  async unfollowStore(storeId: string): Promise<StoreStats | null> {
+    try {
+      const token = await AsyncStorage.getItem("chatAuthToken");
+      if (!token) return null;
+      const res = await chatApiCall<{ success: boolean; stats: StoreStats }>(
+        `/api/store-interactions/${storeId}/followers`,
+        "DELETE",
+        token
+      );
+      return res?.success ? res.stats : null;
+    } catch {
       return null;
     }
   }
